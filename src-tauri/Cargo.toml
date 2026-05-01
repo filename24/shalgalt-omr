@@ -1,11 +1,9 @@
 [package]
 name = "shalgalt-omr"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Local-First OMR Grading IDE"
+authors = ["filename24"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
@@ -18,8 +16,69 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# --- Tauri ---
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# --- Database (Blueprint §4) ---
+# Tauri SQL 플러그인: 마이그레이션 정의 + 프론트엔드(`@tauri-apps/plugin-sql`)에서
+# Database.load("sqlite:shalgalt-omr.sqlite") 로 사용한다.
+# Rust 측에서 직접 sqlx 풀을 잡지 않는다 — DB CRUD는 프론트엔드 IPC로 일원화.
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+
+# --- Async runtime ---
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+# --- Serialization ---
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# --- Error handling / logging ---
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# --- Computer Vision (Blueprint §2 — opencv-rust) ---
+# NOTE: Requires system-installed OpenCV (libopencv-dev on Debian/Ubuntu, brew opencv on macOS,
+# or vcpkg on Windows). See README for setup.
+opencv = { version = "0.94", default-features = false, features = [
+    "clang-runtime",
+    "imgcodecs",
+    "imgproc",
+    "core",
+] }
+
+# --- PDF rasterization (Blueprint §2 — pdfium-render) ---
+# NOTE: Requires the pdfium dynamic library at runtime. We use `bblanchon/pdfium-binaries`
+# downloaded at build/install time. See README.
+pdfium-render = { version = "0.8", default-features = false, features = [
+    "thread_safe",
+    "image",
+    "sync",
+] }
+image = "0.25"
+
+# --- Excel export (Blueprint §2 — rust_xlsxwriter) ---
+rust_xlsxwriter = { version = "0.83", features = ["chrono"] }
+
+# --- Background HTTP server (Blueprint §2 — axum) ---
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# --- Misc ---
+uuid = { version = "1", features = ["v4", "serde"] }
+directories = "5"
+
+[features]
+default = []
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
