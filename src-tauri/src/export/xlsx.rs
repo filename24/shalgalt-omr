@@ -1,3 +1,3 @@
-//! `rust_xlsxwriter` 기반 다중 워크시트 엑셀 출력.
+//! Multi-worksheet Excel output via `rust_xlsxwriter`.
 //!
-//! P0 스텁. P4에서 시험별 시트, 학생 요약 시트, 문항별 정답률 시트를 채운다.
+//! P0 stub. P4 fills in per-exam, per-student summary, and per-question accuracy sheets.

@@ -2,9 +2,10 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { TaskProgress } from "$lib/types/progress";
 
 /**
- * Rule 2 — Rust가 발행하는 `task-progress` 이벤트를 단일 스토어에 모은다.
+ * Rule 2 — collect every `task-progress` event the Rust core emits into one store.
  *
- * Svelte 5 runes 기반: `progress.last`/`progress.history`를 컴포넌트가 reactive하게 읽을 수 있다.
+ * Built on Svelte 5 runes: components can read `progress.last` / `progress.history`
+ * reactively.
  */
 class ProgressStore {
   last = $state<TaskProgress | null>(null);

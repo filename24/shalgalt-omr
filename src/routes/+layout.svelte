@@ -4,6 +4,7 @@
 
   let { children } = $props();
 
+  // P0 placeholder labels. Replaced by Mongolian copy from the P1 string-table.
   const nav = [
     { href: "/", label: "Dashboard" },
     { href: "/editor", label: "Template Editor" },

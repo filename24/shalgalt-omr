@@ -1,10 +1,12 @@
-//! PDF 일괄 채점 IPC.
+//! Batch PDF grading IPC.
 //!
-//! Rule 1·2 적용: 인자는 **로컬 절대 경로 문자열**, 본 작업은 `tokio::spawn` 백그라운드.
-//! 즉시 `task_id`만 반환하고, 실제 진행은 emit 이벤트로만 통보한다.
+//! Rule 1·2: arguments are **local absolute path strings** and the heavy work runs in a
+//! `tokio::spawn` background task. The command returns a `task_id` immediately and reports
+//! progress through emitted events only.
 //!
-//! Rule (DB): 채점 결과는 본 명령이 직접 DB에 쓰지 않고, `task-result` 이벤트로 발행한다.
-//! 프론트엔드는 `tauri-plugin-sql`을 통해 결과 행을 INSERT 한다.
+//! DB rule: this command never writes to the database directly. Grading results are
+//! announced via a `task-result` event; the frontend persists them through
+//! `tauri-plugin-sql`.
 
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -36,7 +38,8 @@ pub async fn scan_grade_pdf(
     let task_id = Uuid::new_v4().to_string();
     let task_id_for_task = task_id.clone();
 
-    // P0: 실제 CV 처리는 P2에서 채워진다. 일단 진행률 0/0 이벤트만 한 번 쏴서 채널 동작을 검증.
+    // P0: actual CV processing arrives in P2. For now, emit a single 0/0 progress event so
+    // the channel can be smoke-tested end-to-end.
     tokio::spawn(async move {
         let _ = app.emit(
             PROGRESS_EVENT,

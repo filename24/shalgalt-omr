@@ -1,5 +1,5 @@
-//! CORS 정책. P0에서는 개발 편의를 위해 모든 origin/method/header를 허용한다.
-//! P4에서 운영 정책으로 좁힌다.
+//! CORS policy. P0 keeps the policy permissive (any origin / method / header) for ease of
+//! development. P4 narrows it down before any production exposure.
 
 use tower_http::cors::{Any, CorsLayer};
 

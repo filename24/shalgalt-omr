@@ -21,11 +21,11 @@
 <section class="p-8">
   <h2 class="mb-2 text-2xl font-bold">Grade PDF</h2>
   <p class="mb-6 text-sm text-[var(--color-text-muted)]">
-    Rule 1: 파일을 첨부하지 말고 <strong>로컬 절대 경로</strong>만 전달합니다.
+    Rule 1 — pass an <strong>absolute file path</strong> instead of attaching the file.
   </p>
 
   <label class="block text-sm">
-    PDF 절대 경로
+    PDF absolute path
     <input
       bind:value={pdfPath}
       class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
@@ -46,7 +46,7 @@
     onclick={start}
     class="mt-4 rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-black"
   >
-    채점 시작
+    Start grading
   </button>
 
   {#if error}

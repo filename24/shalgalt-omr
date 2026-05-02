@@ -1,6 +1,6 @@
-//! 채점 오케스트레이터 — PDF 분해 → 페이지별 perspective transform → 버블 판독 → 결과 저장.
+//! Grading orchestrator — PDF split → per-page perspective transform → bubble read → save.
 //!
-//! P0 스텁: 진행률 이벤트 페이로드 타입만 정의한다.
+//! P0 stub: only the progress payload types are defined here.
 
 use serde::{Deserialize, Serialize};
 
@@ -17,14 +17,15 @@ pub enum TaskStage {
     Failed,
 }
 
-/// `task-progress` 이벤트의 페이로드. 프론트엔드 `progress.svelte.ts` 스토어가 구독한다.
+/// Payload of the `task-progress` event consumed by the frontend `progress.svelte.ts`
+/// store.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskProgress {
     pub task_id: String,
     pub processed: u32,
     pub total: u32,
     pub stage: TaskStage,
-    /// 사람이 읽을 보조 메시지 (옵션).
+    /// Optional human-readable secondary message.
     #[serde(default)]
     pub message: Option<String>,
 }

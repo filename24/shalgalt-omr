@@ -1,10 +1,11 @@
-//! Tauri IPC 진입점 모음.
+//! Tauri IPC entry points.
 //!
-//! 각 핸들러는 검증 → 도메인/CV 호출 → `AppError` 변환만 수행한다 (박막 원칙).
+//! Each handler is a thin shim: validate input → call domain / CV code → convert to
+//! `AppError`.
 //!
-//! DB CRUD 는 `tauri-plugin-sql`을 통해 프론트엔드에서 직접 수행하므로
-//! 이 모듈에는 데이터 read/write 명령이 없다.
-//! 여기에 남는 것은 (a) Rust 전용 무거운 작업(스캔), (b) 외부 포맷 변환(xlsx) 뿐이다.
+//! Database CRUD is performed from the frontend through `tauri-plugin-sql`, so this module
+//! contains no read/write commands. What lives here is (a) Rust-only heavy work (scan) and
+//! (b) external-format conversion (xlsx).
 
 pub mod export;
 pub mod scan;

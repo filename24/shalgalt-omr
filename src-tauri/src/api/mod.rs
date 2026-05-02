@@ -1,4 +1,4 @@
-//! Rule 4 — Tauri UI 스레드와 독립적으로 동작하는 axum 백그라운드 HTTP 서버.
+//! Rule 4 — axum HTTP server that runs independently of the Tauri UI thread.
 
 pub mod cors;
 pub mod routes;

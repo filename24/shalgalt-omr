@@ -1,13 +1,13 @@
 /**
- * `tauri-plugin-sql` 단일 진입점.
+ * Single entry point for `tauri-plugin-sql`.
  *
- * 모든 DB 접근 모듈(`templates.ts`, `results.ts`, `students.ts`)은 `getDb()` 만 사용하고
- * 직접 `Database.load()` 를 호출하지 않는다. 이렇게 하면:
- *  - connection 식별자(`sqlite:shalgalt-omr.sqlite`)가 한 곳에 고정되고,
- *  - 첫 호출 시 1회만 로드되어 이후 호출은 캐시된 인스턴스를 재사용한다.
+ * Every DB module (`templates.ts`, `results.ts`, `students.ts`) goes through `getDb()` and
+ * never calls `Database.load()` directly. This way:
+ *  - the connection identifier (`sqlite:shalgalt-omr.sqlite`) lives in one place, and
+ *  - the first call performs the load once; subsequent calls reuse the cached instance.
  *
- * 마이그레이션은 Rust 측 `tauri_plugin_sql::Builder::add_migrations` 로 등록되어 있으므로
- * 첫 `Database.load()` 시점에 자동 적용된다.
+ * Migrations are registered via `tauri_plugin_sql::Builder::add_migrations` on the Rust
+ * side, so they are applied automatically on the very first `Database.load()`.
  */
 import Database from "@tauri-apps/plugin-sql";
 

@@ -1,3 +1,4 @@
-//! 채점 알고리즘 본체.
+//! Core grading algorithm.
 //!
-//! P0 스텁: 인터페이스만 정의해 두고, 실제 정/오/blank/multi 분기는 P3.
+//! P0 stub: keeps the interface surface only. Correct / wrong / blank / multi branching is
+//! implemented in P3.

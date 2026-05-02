@@ -1,3 +1,4 @@
-//! 4-마커 검출 후 `cv::imgproc::warp_perspective`로 정렬된 캔버스를 생성한다.
+//! Detect the four markers and produce an aligned canvas with
+//! `cv::imgproc::warp_perspective`.
 //!
-//! P0 스텁. 실제 호출은 P2에서 `opencv::imgproc::*` 사용.
+//! P0 stub. Real `opencv::imgproc::*` calls arrive in P2.

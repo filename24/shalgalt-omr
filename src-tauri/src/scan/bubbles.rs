@@ -1,3 +1,4 @@
-//! 정렬된 캔버스 위 각 버블 ROI의 평균 픽셀 농도를 계산하여 마킹 여부를 판독한다.
+//! Compute average pixel density inside each bubble ROI of the aligned canvas to decide
+//! whether it is marked.
 //!
-//! P0 스텁. 실제 호출은 P2에서 `opencv::core::Mat` ROI sub-mat 사용.
+//! P0 stub. Real `opencv::core::Mat` ROI sub-mat usage arrives in P2.

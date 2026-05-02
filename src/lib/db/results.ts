@@ -1,5 +1,5 @@
 /**
- * `results` 테이블 Repository (프론트엔드).
+ * Repository for the `results` table (frontend).
  */
 import { getDb } from "./index";
 import type { ResultSummary } from "$lib/types/result";

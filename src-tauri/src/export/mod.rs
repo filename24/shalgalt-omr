@@ -1,3 +1,3 @@
-//! 결과를 외부 포맷(현 시점은 xlsx)으로 직렬화한다.
+//! Serialize results to external formats (currently xlsx).
 
 pub mod xlsx;

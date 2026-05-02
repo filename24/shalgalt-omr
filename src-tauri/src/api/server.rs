@@ -1,6 +1,7 @@
-//! axum 서버를 별도 tokio task로 띄우고, graceful shutdown 핸들을 반환한다.
+//! Spawn the axum server on a separate tokio task and return a graceful-shutdown handle.
 //!
-//! Rule 4: Tauri 메인 윈도우 라이프사이클과 무관해야 하므로 별도 oneshot 시그널로 종료한다.
+//! Rule 4: it must live independently of the Tauri main-window lifecycle, so a oneshot
+//! channel is used as the shutdown signal.
 
 use std::net::SocketAddr;
 
@@ -10,7 +11,7 @@ use tracing::{error, info};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
-/// 서버를 종료하는 토큰. `Drop` 시 자동 셧다운.
+/// Token used to terminate the server. Dropping it triggers shutdown automatically.
 pub struct ApiHandle {
     shutdown: Option<oneshot::Sender<()>>,
 }
@@ -29,7 +30,7 @@ impl Drop for ApiHandle {
     }
 }
 
-/// `127.0.0.1:8080` 에서 axum 서버를 띄운다 (Blueprint §2).
+/// Bind the axum server on `127.0.0.1:8080` (Blueprint §2).
 pub async fn spawn(state: AppState) -> AppResult<ApiHandle> {
     let addr: SocketAddr = "127.0.0.1:8080".parse().expect("hardcoded addr");
     let app = super::routes::router(state).layer(super::cors::permissive());

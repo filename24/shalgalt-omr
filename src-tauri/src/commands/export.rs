@@ -1,7 +1,7 @@
-//! 결과 엑셀 내보내기 IPC.
+//! Result xlsx export IPC.
 //!
-//! P4: 프론트엔드가 plugin-sql로 모은 결과 배열을 인자로 받아 xlsx로 변환 후
-//! 저장된 파일의 절대경로를 반환한다.
+//! P4: receives the result array gathered by the frontend (via plugin-sql) and writes the
+//! xlsx file, returning the absolute path to the file.
 
 use tauri::State;
 

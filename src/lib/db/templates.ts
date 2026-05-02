@@ -1,7 +1,7 @@
 /**
- * `templates` 테이블 Repository (프론트엔드).
+ * Repository for the `templates` table (frontend).
  *
- * Rule 3 — `json_schema` 컬럼은 항상 `OmrTemplate` 의 직렬화 결과여야 한다.
+ * Rule 3 — the `json_schema` column always holds a serialized `OmrTemplate`.
  */
 import { getDb } from "./index";
 import type { OmrTemplate, TemplateSummary } from "$lib/types/template";

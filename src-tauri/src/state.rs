@@ -1,15 +1,16 @@
-//! 모든 `tauri::command`/`axum` 핸들러가 공유하는 애플리케이션 상태.
+//! Application state shared by every `tauri::command` handler and by the axum server.
 //!
-//! Rule 4: axum 서버는 Tauri 윈도우와 무관하게 동일한 `AppState`만 받아 동작한다.
+//! Rule 4: the axum server lives independently of the Tauri window, so it receives the
+//! same `AppState` clone and never reaches into Tauri APIs.
 //!
-//! DB 접근은 Tauri SQL 플러그인을 통해 프론트엔드에서 직접 수행하므로 본 상태에는
-//! 데이터베이스 풀이 들어있지 않다. CV 임시 산출물 경로 등 OS 자원만 보관한다.
+//! Database access is performed by the Tauri SQL plugin from the frontend, so this state
+//! does NOT carry a database pool. Only OS-level resources (paths) are kept here.
 
 use std::sync::Arc;
 
 use crate::paths::AppDirs;
 
-/// `Clone`은 `Arc<Inner>`를 통해 저렴하게 수행한다.
+/// Cheap to clone — the underlying `Inner` is shared via `Arc`.
 #[derive(Clone)]
 pub struct AppState {
     inner: Arc<Inner>,

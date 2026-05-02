@@ -1,8 +1,8 @@
-//! axum 라우트 정의.
+//! axum route definitions.
 //!
-//! P0에서는 헬스 체크 1개만 노출한다.
-//! P4에서 결과/템플릿 외부 노출이 필요해지면 별도 sqlx 풀(또는 tauri-plugin-sql 의 내부 풀 공유)을 통해
-//! read-only 엔드포인트를 추가한다.
+//! P0 only exposes a single health-check endpoint. P4 may add read-only endpoints for
+//! result/template lookup, either through a dedicated sqlx pool or by reusing the
+//! plugin-sql pool internally.
 
 use axum::{routing::get, Json, Router};
 use serde::Serialize;

@@ -1,7 +1,7 @@
 /**
- * `students` 테이블 Repository (프론트엔드).
+ * Repository for the `students` table (frontend).
  *
- * P3에서 본격 사용. P0 단계에서는 list/insert만 제공.
+ * Used in earnest from P3 onward. P0 only exposes list / insert.
  */
 import { getDb } from "./index";
 

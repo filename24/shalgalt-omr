@@ -25,7 +25,7 @@
     onclick={refresh}
     class="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-black"
   >
-    템플릿 목록 새로고침
+    Refresh templates
   </button>
 
   {#if error}
@@ -43,7 +43,7 @@
         </li>
       {:else}
         <li class="text-sm text-[var(--color-text-muted)]">
-          저장된 템플릿이 아직 없습니다.
+          No templates saved yet.
         </li>
       {/each}
     </ul>

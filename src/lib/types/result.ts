@@ -1,4 +1,4 @@
-/** 백엔드 `commands::results::ResultSummary`. */
+/** Mirrors Rust `commands::results::ResultSummary`. */
 export interface ResultSummary {
   id: number;
   student_id: number | null;

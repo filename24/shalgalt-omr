@@ -1,7 +1,7 @@
-//! 앱 데이터/캐시/스캔 결과 등 OS-별 디렉터리 해석 헬퍼.
+//! Helper for resolving OS-specific data / cache / scan output directories.
 //!
-//! Rule 1: 결과 이미지는 임시 폴더에 저장 후 `asset://` 프로토콜로 노출하므로,
-//! 모든 경로 결정은 이 모듈을 단일 출처로 사용한다.
+//! Rule 1: result images live in a temp directory and are exposed to the UI through the
+//! `asset://` protocol, so every path decision flows through this single source.
 
 use std::path::{Path, PathBuf};
 
@@ -9,22 +9,22 @@ use directories::ProjectDirs;
 
 use crate::error::{AppError, AppResult};
 
-/// SQLite 파일명 — `tauri-plugin-sql`의 `sqlite:` URL 과 일관되게 유지.
+/// SQLite filename. Kept in sync with the `sqlite:` URL passed to `tauri-plugin-sql`.
 pub const DB_FILENAME: &str = "shalgalt-omr.sqlite";
 
-/// 앱이 사용하는 표준 디렉터리 묶음.
+/// Bundle of standard directories used by the app.
 #[derive(Debug, Clone)]
 pub struct AppDirs {
-    /// SQLite DB / 영속 설정.
+    /// SQLite file and persistent settings.
     pub data_dir: PathBuf,
-    /// PDF 분해 산출물 / 결과 이미지(asset:// 노출용).
+    /// PDF rasterization output and graded result images (exposed via `asset://`).
     pub scans_dir: PathBuf,
-    /// 일회성 임시 파일.
+    /// One-off temp files.
     pub cache_dir: PathBuf,
 }
 
 impl AppDirs {
-    /// `directories` 크레이트가 OS 별로 적절한 위치를 결정한다.
+    /// `directories` picks the appropriate location per OS.
     pub fn resolve() -> AppResult<Self> {
         let dirs = ProjectDirs::from("dev", "filename", "shalgalt-omr").ok_or_else(|| {
             AppError::Internal(anyhow::anyhow!(
@@ -47,8 +47,9 @@ impl AppDirs {
         })
     }
 
-    /// SQLite 파일의 절대 경로.
-    /// (참고용 — 실제 DB 접근은 `tauri-plugin-sql`이 AppConfig 디렉터리에서 수행한다.)
+    /// Absolute path to the SQLite file.
+    /// (Reference only — actual DB I/O is performed by `tauri-plugin-sql` via its
+    /// AppConfig-relative URL.)
     pub fn db_path(&self) -> PathBuf {
         self.data_dir.join(DB_FILENAME)
     }

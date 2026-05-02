@@ -1,13 +1,13 @@
-//! 앱 전역 에러 타입.
+//! Application-wide error type.
 //!
-//! Rule 1·2를 안전하게 지키려면 IPC 경계에서 에러도 평문으로 직렬화 가능해야 한다.
-//! `AppError`는 백엔드 내부에서 `thiserror`로 풍부한 컨텍스트를 보존하고,
-//! `serde::Serialize`를 통해 프론트엔드로 전달될 때는 안전한 메시지/코드만 노출한다.
+//! To respect Rule 1 and Rule 2 cleanly, errors crossing the IPC boundary must serialize to
+//! a frontend-safe payload. `AppError` keeps rich context internally via `thiserror`, while
+//! `serde::Serialize` exposes only a stable `{ code, message }` envelope to the UI.
 
 use serde::Serialize;
 use thiserror::Error;
 
-/// 앱 전역 에러.
+/// Application-wide error.
 #[derive(Debug, Error)]
 pub enum AppError {
     #[error("io error: {0}")]
@@ -26,7 +26,7 @@ pub enum AppError {
     Internal(#[from] anyhow::Error),
 }
 
-/// IPC 프론트엔드로 보낼 직렬화 안전 표현.
+/// Serialization-safe representation sent to the IPC frontend.
 #[derive(Debug, Serialize)]
 pub struct AppErrorPayload {
     pub code: &'static str,

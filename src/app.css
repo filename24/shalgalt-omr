@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* shalgalt-omr — global tokens. ARCHITECTURE.md §2 */
+/* shalgalt-omr — global tokens. See docs/ARCHITECTURE.md §2. */
 :root {
   --color-bg: oklch(18% 0 0);
   --color-surface: oklch(22% 0 0);

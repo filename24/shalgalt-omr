@@ -1,12 +1,12 @@
-//! Tauri 앱 진입점.
+//! Tauri application entry point.
 //!
-//! 부팅 순서 (Blueprint Rule 4 + ARCHITECTURE §4):
-//!   1. tracing 초기화
-//!   2. AppDirs 해석 → 데이터/스캔 디렉터리 보장
-//!   3. Tauri SQL 플러그인 등록 (마이그레이션 포함) — DB CRUD는 프론트엔드 담당
-//!   4. AppState 조립
-//!   5. axum 백그라운드 서버 spawn (Rule 4)
-//!   6. tauri::Builder 부착 + invoke_handler 등록
+//! Boot order (Blueprint Rule 4 + ARCHITECTURE §4):
+//!   1. initialize tracing
+//!   2. resolve `AppDirs` and ensure data/scan directories exist
+//!   3. register the Tauri SQL plugin (with embedded migrations) — DB CRUD lives in the UI
+//!   4. assemble `AppState`
+//!   5. spawn the axum background server (Rule 4)
+//!   6. attach `tauri::Builder` and register the invoke handler
 
 mod api;
 mod commands;
@@ -27,10 +27,10 @@ use crate::api::ApiHandle;
 use crate::paths::{AppDirs, DB_FILENAME};
 use crate::state::AppState;
 
-/// 프론트엔드와 동일한 connection 식별자. AppConfig 디렉터리 기준 상대경로.
+/// Connection identifier shared with the frontend. Resolved relative to AppConfig.
 const DB_URL: &str = "sqlite:shalgalt-omr.sqlite";
 
-/// 마이그레이션 SQL은 별도 파일에 보관하고 컴파일 타임에 임베드.
+/// Migration SQL is kept in a sibling file and embedded at compile time.
 const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -89,7 +89,8 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
 
     let state = AppState::new(dirs);
 
-    // Rule 4: axum 서버는 별도 task. 핸들은 AppHandle::manage로 보관해 종료 시 drop.
+    // Rule 4: the axum server lives in its own task. Storing the handle via `manage` means
+    // it is dropped (and shut down gracefully) when the Tauri app exits.
     let api: ApiHandle = api::spawn(state.clone()).await?;
     app.manage(api);
     app.manage(state);

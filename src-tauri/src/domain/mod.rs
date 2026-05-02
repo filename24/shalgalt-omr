@@ -1,7 +1,8 @@
-//! 인프라(DB / CV / Tauri)에 의존하지 않는 순수 도메인 모델.
+//! Pure domain models with no dependency on infrastructure (DB, CV, Tauri).
 //!
-//! 프론트엔드와 공유되는 직렬화 단위이며, 다른 모든 모듈은 이 모듈에 의존할 수 있지만
-//! 이 모듈은 어떤 모듈에도 의존하지 않는다 (의존 역전 방지).
+//! These types are the serialization unit shared with the frontend. Every other module is
+//! allowed to depend on this one, but this module depends on none — preserving an inverted
+//! dependency direction.
 
 pub mod result;
 pub mod student;

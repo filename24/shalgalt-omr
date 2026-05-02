@@ -1,4 +1,4 @@
-/** 백엔드 `scan::pipeline::TaskStage`. */
+/** Mirrors Rust `scan::pipeline::TaskStage`. */
 export type TaskStage =
   | "loading_pdf"
   | "rasterizing"
@@ -9,7 +9,7 @@ export type TaskStage =
   | "done"
   | "failed";
 
-/** Rule 2 — `task-progress` emit 페이로드. */
+/** Rule 2 — payload of the `task-progress` event. */
 export interface TaskProgress {
   task_id: string;
   processed: number;

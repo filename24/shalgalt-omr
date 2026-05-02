@@ -1,20 +1,20 @@
-/** 백엔드 `domain::template::TemplatePoint`. */
+/** Mirrors Rust `domain::template::TemplatePoint`. */
 export interface TemplatePoint {
   x: number;
   y: number;
 }
 
-/** 백엔드 `domain::template::Marker`. */
+/** Mirrors Rust `domain::template::Marker`. */
 export interface Marker {
   id: string;
   position: TemplatePoint;
   size: number;
 }
 
-/** 백엔드 `domain::template::BubbleKind`. */
+/** Mirrors Rust `domain::template::BubbleKind`. */
 export type BubbleKind = "student_id" | "question";
 
-/** 백엔드 `domain::template::BubbleGroup`. */
+/** Mirrors Rust `domain::template::BubbleGroup`. */
 export interface BubbleGroup {
   id: string;
   kind: BubbleKind;
@@ -24,7 +24,7 @@ export interface BubbleGroup {
   score: number;
 }
 
-/** Rule 3 — `templates.json_schema`로 직렬화되는 최상위 구조. */
+/** Rule 3 — top-level structure persisted into `templates.json_schema`. */
 export interface OmrTemplate {
   version: number;
   title: string;
@@ -32,7 +32,7 @@ export interface OmrTemplate {
   groups: BubbleGroup[];
 }
 
-/** `commands::templates::TemplateSummary`. */
+/** Mirrors `commands::templates::TemplateSummary`. */
 export interface TemplateSummary {
   id: number;
   title: string;

@@ -1,4 +1,4 @@
-//! 학생 도메인 모델 — `students` 테이블의 행과 1:1 대응.
+//! Student domain model — 1:1 with rows of the `students` table.
 
 use serde::{Deserialize, Serialize};
 
