@@ -159,6 +159,19 @@ Implementation notes:
   Subject is one short imperative line; body explains the *why* if the diff doesn't.
 - Never push `session/*` branches to remote.
 
+## Continuous Integration
+
+GitHub Actions runs on every push to `develop`/`stable` and on PRs targeting them.
+
+| Job          | Purpose                                                              |
+| ------------ | -------------------------------------------------------------------- |
+| `web-check`  | `pnpm install --frozen-lockfile`, `svelte-kit sync`, `pnpm check`    |
+| `rust-check` | apt deps (Tauri + OpenCV + clang) → `cargo fmt --check` → `clippy -D warnings` → `cargo check` |
+
+Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Both jobs must be
+green before merge. Heavy bundling (`tauri build`, pdfium download, packaging) is deferred
+to a release workflow off `stable` in P5.
+
 ## Phased Roadmap (current target)
 
 | Phase | Focus                                                                     |
