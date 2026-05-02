@@ -24,8 +24,8 @@ shalgalt-omr/
 ├── svelte.config.js
 ├── vite.config.js
 ├── tsconfig.json
-├── tailwind.config.ts             # added in P0
-└── postcss.config.js              # added in P0
+├── components.json                # shadcn-svelte CLI config (added in P0)
+└── (no tailwind.config / postcss.config — Tailwind v4 reads tokens from app.css `@theme`)
 ```
 
 ## 2. Frontend (`src/`)
@@ -33,8 +33,9 @@ shalgalt-omr/
 ```
 src/
 ├── app.html
-├── app.css                        # Tailwind directives + CSS variables
+├── app.css                        # Tailwind v4 `@import` + `@theme inline` + design tokens
 ├── lib/
+│   ├── utils.ts                   # cn() + bits-ui type re-exports (shadcn-svelte contract)
 │   ├── ipc/                       # Rust-only command wrappers (scan, xlsx)
 │   │   ├── index.ts
 │   │   ├── scan.ts                # PDF split / grading invoke + emit listener
@@ -46,35 +47,37 @@ src/
 │   │   └── students.ts
 │   ├── stores/                    # Svelte 5 runes-based stores
 │   │   ├── progress.svelte.ts     # subscribes to the task-progress emit
-│   │   ├── currentTemplate.svelte.ts
-│   │   └── session.svelte.ts
+│   │   ├── currentTemplate.svelte.ts  # editor draft + pristine snapshot (P1+)
+│   │   └── session.svelte.ts          # active job id, last PDF path, last template id
+│   ├── hooks/
+│   │   └── is-mobile/             # shadcn-svelte sidebar mobile breakpoint hook
 │   ├── components/
-│   │   ├── shell/                 # paneforge IDE shell
-│   │   │   ├── IdeShell.svelte    # left (tree) / center (canvas) / right (inspector)
-│   │   │   ├── ActivityBar.svelte
-│   │   │   └── StatusBar.svelte
-│   │   ├── editor/                # svelte-konva editor
+│   │   ├── shell/                 # IDE shell — built on shadcn-svelte sidebar
+│   │   │   ├── AppSidebar.svelte  # Sidebar.Root + Workspace nav (lucide icons)
+│   │   │   └── StatusBar.svelte   # bottom strip — bound to progress + session stores
+│   │   ├── editor/                # svelte-konva editor (P1)
 │   │   │   ├── TemplateCanvas.svelte
 │   │   │   ├── MarkerLayer.svelte         # 4 corner markers
 │   │   │   ├── BubbleGroupLayer.svelte    # student-id / question bubble groups
 │   │   │   ├── PropertyPanel.svelte
 │   │   │   └── Toolbar.svelte
-│   │   ├── grader/                # batch grading UI
+│   │   ├── grader/                # batch grading UI (P2/P3)
 │   │   │   ├── PdfPicker.svelte
 │   │   │   ├── ProgressOverlay.svelte
 │   │   │   └── ReviewGrid.svelte          # manual correction for failed pages
-│   │   ├── results/
+│   │   ├── results/               # result browsing (P3/P4)
 │   │   │   ├── ResultTable.svelte
 │   │   │   └── ResultDetail.svelte
-│   │   └── ui/                    # shared atoms
-│   │       ├── Button.svelte
-│   │       └── Dialog.svelte
+│   │   └── ui/                    # shadcn-svelte component copies (CLI-managed)
+│   │       ├── button, badge, card, dialog, dropdown-menu,
+│   │       ├── input, label, separator, sheet, sidebar,
+│   │       ├── skeleton, sonner, tooltip
 │   └── types/                     # shapes shared with the backend (manually defined)
 │       ├── template.ts            # OmrTemplate, BubbleGroup, Marker
 │       ├── result.ts
 │       └── progress.ts
 └── routes/                        # SvelteKit App Router
-    ├── +layout.svelte             # wraps IdeShell
+    ├── +layout.svelte             # Sidebar.Provider + AppSidebar + Inset header + StatusBar
     ├── +page.svelte               # dashboard (recent templates / results)
     ├── editor/
     │   └── +page.svelte           # template editor
@@ -83,6 +86,11 @@ src/
     └── results/
         └── +page.svelte           # result browsing / export
 ```
+
+> **UI kit drift (resolved in P0).** The editor shell uses **shadcn-svelte sidebar** rather
+> than a hand-rolled `IdeShell` + `ActivityBar` pair, and `components/ui/` is now CLI-managed
+> shadcn copies instead of two bespoke atoms. paneforge stays in the dependency set for the
+> P1 editor's resizable canvas / inspector splits.
 
 ## 3. Rust Core (`src-tauri/`)
 

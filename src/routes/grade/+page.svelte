@@ -1,66 +1,95 @@
 <script lang="ts">
   import { progress } from "$lib/stores/progress.svelte";
+  import { session } from "$lib/stores/session.svelte";
   import { gradePdf } from "$lib/ipc/scan";
+  import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
+  import { Label } from "$lib/components/ui/label";
+  import { Badge } from "$lib/components/ui/badge";
+  import * as Card from "$lib/components/ui/card";
+  import { toast } from "svelte-sonner";
 
-  let pdfPath = $state("");
-  let templateId = $state(1);
-  let job = $state<string | null>(null);
-  let error = $state<string | null>(null);
+  let pdfPath = $state(session.lastPdfPath ?? "");
+  let templateId = $state(session.lastOpenedTemplateId ?? 1);
+  let job = $state<string | null>(session.activeJobId);
+  let busy = $state(false);
+
+  const last = $derived(progress.last);
+  const pct = $derived(
+    last && last.total > 0 ? Math.round((last.processed / last.total) * 100) : null,
+  );
 
   async function start() {
-    error = null;
+    busy = true;
     try {
       const r = await gradePdf(pdfPath, templateId);
       job = r.task_id;
+      session.setActiveJob(r.task_id);
+      session.recordPdfPath(pdfPath);
+      session.recordTemplate(templateId);
+      toast.success("Grading started", { description: `task_id ${r.task_id}` });
     } catch (e) {
-      error = String(e);
+      toast.error("Failed to start grading", { description: String(e) });
+    } finally {
+      busy = false;
     }
   }
 </script>
 
 <section class="p-8">
-  <h2 class="mb-2 text-2xl font-bold">Grade PDF</h2>
-  <p class="mb-6 text-sm text-[var(--color-text-muted)]">
-    Rule 1 — pass an <strong>absolute file path</strong> instead of attaching the file.
-  </p>
-
-  <label class="block text-sm">
-    PDF absolute path
-    <input
-      bind:value={pdfPath}
-      class="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
-      placeholder="/Users/.../scans/2026-05-01.pdf"
-    />
-  </label>
-  <label class="mt-3 block text-sm">
-    Template ID
-    <input
-      type="number"
-      bind:value={templateId}
-      class="mt-1 w-32 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
-    />
-  </label>
-
-  <button
-    type="button"
-    onclick={start}
-    class="mt-4 rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-black"
-  >
-    Start grading
-  </button>
-
-  {#if error}
-    <p class="mt-4 text-sm text-red-400">{error}</p>
-  {/if}
-  {#if job}
-    <p class="mt-4 text-sm">task_id: <code>{job}</code></p>
-  {/if}
-
-  <div class="mt-6 rounded-md border border-[var(--color-border)] p-4">
-    <p class="text-xs uppercase text-[var(--color-text-muted)]">Progress</p>
-    <p class="mt-1 text-sm">
-      stage = {progress.last?.stage ?? "—"} ({progress.last?.processed ?? 0} /
-      {progress.last?.total ?? 0})
+  <header class="mb-6">
+    <h2 class="text-2xl font-bold">Grade PDF</h2>
+    <p class="text-muted-foreground text-sm">
+      Rule 1 — pass an <strong>absolute file path</strong> instead of attaching the file.
     </p>
-  </div>
+  </header>
+
+  <Card.Root class="max-w-2xl">
+    <Card.Header>
+      <Card.Title>Start a grade job</Card.Title>
+      <Card.Description>
+        Spawns a background tokio task; progress streams back via the
+        <code>task-progress</code> event.
+      </Card.Description>
+    </Card.Header>
+    <Card.Content class="space-y-4">
+      <div class="space-y-1.5">
+        <Label for="pdf-path">PDF absolute path</Label>
+        <Input
+          id="pdf-path"
+          bind:value={pdfPath}
+          placeholder="/Users/.../scans/2026-05-01.pdf"
+        />
+      </div>
+      <div class="space-y-1.5">
+        <Label for="template-id">Template ID</Label>
+        <Input id="template-id" type="number" bind:value={templateId} class="w-32" />
+      </div>
+    </Card.Content>
+    <Card.Footer class="flex items-center justify-between">
+      <Button onclick={start} disabled={busy || !pdfPath}>
+        {busy ? "Starting..." : "Start grading"}
+      </Button>
+      {#if job}
+        <Badge variant="secondary">task_id {job.slice(0, 8)}</Badge>
+      {/if}
+    </Card.Footer>
+  </Card.Root>
+
+  {#if last}
+    <Card.Root class="mt-6 max-w-2xl">
+      <Card.Header>
+        <Card.Title class="text-base">Live progress</Card.Title>
+      </Card.Header>
+      <Card.Content class="text-sm">
+        <p>
+          stage = <code>{last.stage}</code>
+          ({last.processed} / {last.total}{pct !== null ? ` — ${pct}%` : ""})
+        </p>
+        {#if last.message}
+          <p class="text-muted-foreground mt-1">{last.message}</p>
+        {/if}
+      </Card.Content>
+    </Card.Root>
+  {/if}
 </section>

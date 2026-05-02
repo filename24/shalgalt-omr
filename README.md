@@ -10,6 +10,7 @@
 | Layer       | Tech                                                                  |
 | ----------- | --------------------------------------------------------------------- |
 | Frontend    | SvelteKit 5 (adapter-static), TailwindCSS v4, svelte-konva, paneforge |
+| UI kit      | shadcn-svelte (bits-ui + tailwind-variants), @lucide/svelte icons     |
 | Native UI   | Tauri 2.0                                                             |
 | Core        | Rust — opencv-rust, pdfium-render, rust_xlsxwriter                    |
 | Persistence | tauri-plugin-sql + SQLite (single local file)                         |
