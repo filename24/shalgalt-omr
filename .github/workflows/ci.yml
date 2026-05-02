@@ -98,9 +98,14 @@ jobs:
             runner: ubuntu-latest
           - name: macos-arm64
             runner: macos-14
-          # Windows is intentionally excluded until the OpenCV/vcpkg setup is ADR'd
-          # (see README "Windows" section). Re-enable once the build script lands.
+          - name: windows-x86_64
+            runner: windows-latest
+            # Windows uses the prebuilt opencv-X.Y.Z-windows.exe self-extractor
+            # per docs/adr/0001-windows-opencv-strategy.md (option B).
     runs-on: ${{ matrix.platform.runner }}
+    env:
+      # Pinned for reproducible Windows builds. Bump in lockstep with the ADR.
+      OPENCV_VERSION: "4.10.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -151,6 +156,45 @@ jobs:
         run: |
           brew update
           brew install opencv pkg-config
+
+      - name: Cache OpenCV (Windows)
+        if: runner.os == 'Windows'
+        id: opencv-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\tools\opencv
+          key: opencv-windows-${{ env.OPENCV_VERSION }}
+
+      - name: Install OpenCV (Windows)
+        if: runner.os == 'Windows' && steps.opencv-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $url = "https://github.com/opencv/opencv/releases/download/${{ env.OPENCV_VERSION }}/opencv-${{ env.OPENCV_VERSION }}-windows.exe"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile opencv.exe
+          New-Item -ItemType Directory -Force -Path C:\tools | Out-Null
+          # The opencv-X.Y.Z-windows.exe is a 7-Zip self-extractor. The `-o` flag
+          # is the destination root; it creates `C:\tools\opencv\` underneath.
+          Start-Process -FilePath .\opencv.exe -ArgumentList '-o"C:\tools" -y' -Wait -NoNewWindow
+          Remove-Item opencv.exe
+
+      - name: Configure OpenCV env (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # opencv-rust auto-discovers via these env vars when pkg-config fails (Windows).
+          # `opencv_world` is the monolithic single-DLL build shipped by upstream — see
+          # docs/adr/0001-windows-opencv-strategy.md for the trade-off discussion.
+          # opencv_world<MAJOR><MINOR><PATCH> with dots stripped. Each component
+          # is concatenated as-is — for 4.10.0 the DLL is `opencv_world4100.dll`.
+          $libCode = "${{ env.OPENCV_VERSION }}" -replace '\.', ''
+          "OPENCV_LINK_LIBS=opencv_world$libCode" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "OPENCV_LINK_PATHS=C:\tools\opencv\build\x64\vc16\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "OPENCV_INCLUDE_PATHS=C:\tools\opencv\build\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+          # libclang for opencv-rust bindgen — windows-latest preinstalls LLVM here.
+          "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          # The DLL must be on PATH so the produced .exe can resolve it at runtime.
+          "C:\tools\opencv\build\x64\vc16\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile

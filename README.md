@@ -40,8 +40,31 @@ brew install opencv pkg-config llvm
 
 ### Windows
 
-Install OpenCV via [vcpkg](https://github.com/microsoft/vcpkg) and set
-`OPENCV_LINK_LIBS` / `OPENCV_INCLUDE_PATHS`. Detailed steps will land as an ADR after P0.
+Per [ADR 0001](docs/adr/0001-windows-opencv-strategy.md) we use the upstream OpenCV
+prebuilt self-extractor (option B). LLVM (for opencv-rust's bindgen) ships with recent
+Visual Studio installs; install separately via [llvm.org](https://releases.llvm.org/) if
+missing.
+
+```powershell
+# 1) Download and extract OpenCV 4.10.0 to C:\tools\opencv
+$url = "https://github.com/opencv/opencv/releases/download/4.10.0/opencv-4.10.0-windows.exe"
+Invoke-WebRequest $url -OutFile opencv.exe
+Start-Process .\opencv.exe -ArgumentList '-o"C:\tools" -y' -Wait
+Remove-Item opencv.exe
+
+# 2) Set env vars (persist via setx, or add to your shell profile)
+$env:OPENCV_LINK_LIBS     = "opencv_world4100"
+$env:OPENCV_LINK_PATHS    = "C:\tools\opencv\build\x64\vc16\lib"
+$env:OPENCV_INCLUDE_PATHS = "C:\tools\opencv\build\include"
+$env:LIBCLANG_PATH        = "C:\Program Files\LLVM\bin"
+
+# 3) Add the OpenCV runtime DLL directory to PATH so the produced exe can resolve it
+$env:Path = "C:\tools\opencv\build\x64\vc16\bin;$env:Path"
+```
+
+Bumping OpenCV requires updating the version in three places: the snippet above, the
+`OPENCV_VERSION` job-level env in [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
+and the ADR itself.
 
 ### pdfium
 
