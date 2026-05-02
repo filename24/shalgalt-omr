@@ -55,11 +55,7 @@ opencv = { version = "0.94", default-features = false, features = [
 # --- PDF rasterization (Blueprint §2 — pdfium-render) ---
 # NOTE: Requires the pdfium dynamic library at runtime. We use `bblanchon/pdfium-binaries`
 # downloaded at build/install time. See README.
-pdfium-render = { version = "0.8", default-features = false, features = [
-    "thread_safe",
-    "image",
-    "sync",
-] }
+pdfium-render = { version = "0.8", features = ["thread_safe", "image", "sync"] }
 image = "0.25"
 
 # --- Excel export (Blueprint §2 — rust_xlsxwriter) ---
