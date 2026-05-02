@@ -1,0 +1,222 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, stable]
+  pull_request:
+    branches: [develop, stable]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-check:
+    name: Web (svelte-check + tsc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync SvelteKit
+        run: pnpm exec svelte-kit sync
+
+      - name: Type-check (svelte-check)
+        run: pnpm check
+
+  rust-check:
+    name: Rust (fmt + clippy + check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libopencv-dev \
+            clang \
+            libclang-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: cargo check
+        run: cargo check --all-targets --all-features
+
+  dev-build:
+    name: Dev build (${{ matrix.platform.name }})
+    # Skipped on pull_request to keep review feedback fast — manually trigger via the
+    # "Run workflow" button on the Actions tab when a PR build is needed.
+    if: github.event_name != 'pull_request'
+    needs: [web-check, rust-check]
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: linux-x86_64
+            runner: ubuntu-latest
+          - name: macos-arm64
+            runner: macos-14
+          - name: windows-x86_64
+            runner: windows-latest
+            # Windows uses the prebuilt opencv-X.Y.Z-windows.exe self-extractor
+            # per docs/adr/0001-windows-opencv-strategy.md (option B).
+    runs-on: ${{ matrix.platform.runner }}
+    env:
+      # Pinned for reproducible Windows builds. Bump in lockstep with the ADR.
+      OPENCV_VERSION: "4.10.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute short commit SHA
+        id: vars
+        shell: bash
+        run: echo "sha_short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          # Cache key is OS-scoped (not SHA-scoped) so successive commits reuse it.
+          key: ${{ matrix.platform.name }}-debug
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libopencv-dev \
+            clang \
+            libclang-dev
+
+      - name: Install macOS system deps
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install opencv pkg-config
+
+      - name: Cache OpenCV (Windows)
+        if: runner.os == 'Windows'
+        id: opencv-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\tools\opencv
+          key: opencv-windows-${{ env.OPENCV_VERSION }}
+
+      - name: Install OpenCV (Windows)
+        if: runner.os == 'Windows' && steps.opencv-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $url = "https://github.com/opencv/opencv/releases/download/${{ env.OPENCV_VERSION }}/opencv-${{ env.OPENCV_VERSION }}-windows.exe"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile opencv.exe
+          New-Item -ItemType Directory -Force -Path C:\tools | Out-Null
+          # The opencv-X.Y.Z-windows.exe is a 7-Zip self-extractor. The `-o` flag
+          # is the destination root; it creates `C:\tools\opencv\` underneath.
+          Start-Process -FilePath .\opencv.exe -ArgumentList '-o"C:\tools" -y' -Wait -NoNewWindow
+          Remove-Item opencv.exe
+
+      - name: Configure OpenCV env (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # opencv-rust auto-discovers via these env vars when pkg-config fails (Windows).
+          # `opencv_world` is the monolithic single-DLL build shipped by upstream — see
+          # docs/adr/0001-windows-opencv-strategy.md for the trade-off discussion.
+          # opencv_world<MAJOR><MINOR><PATCH> with dots stripped. Each component
+          # is concatenated as-is — for 4.10.0 the DLL is `opencv_world4100.dll`.
+          $libCode = "${{ env.OPENCV_VERSION }}" -replace '\.', ''
+          "OPENCV_LINK_LIBS=opencv_world$libCode" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "OPENCV_LINK_PATHS=C:\tools\opencv\build\x64\vc16\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "OPENCV_INCLUDE_PATHS=C:\tools\opencv\build\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+          # libclang for opencv-rust bindgen — windows-latest preinstalls LLVM here.
+          "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          # The DLL must be on PATH so the produced .exe can resolve it at runtime.
+          "C:\tools\opencv\build\x64\vc16\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (debug bundle)
+        # `tauri build --debug` produces installer bundles using debug-optimized
+        # binaries — much faster than release builds, suitable for smoke testing.
+        # NOTE: pdfium dynamic library is NOT bundled yet (P4 task) — these
+        # artifacts compile but will not launch until a pdfium-binaries archive
+        # is dropped next to the executable. See README "pdfium" section.
+        run: pnpm tauri build --debug
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shalgalt-omr-${{ matrix.platform.name }}-${{ steps.vars.outputs.sha_short }}
+          # tauri emits per-target subfolders; collect every bundle plus the raw
+          # debug executable as a fallback for spot inspection.
+          path: |
+            src-tauri/target/debug/bundle/**/*
+            src-tauri/target/debug/shalgalt-omr
+            src-tauri/target/debug/shalgalt-omr.exe
+            src-tauri/target/debug/shalgalt-omr.app
+          if-no-files-found: warn
+          retention-days: 14
