@@ -108,15 +108,47 @@ These are **hard rules**; every PR must respect them.
   in SQLite (e.g., grading results), it emits an event and the frontend persists it. This
   keeps backend/frontend ownership boundaries clean.
 
-## Korean JSDoc Convention
+## Language Conventions (MANDATORY)
 
-Every exported Rust symbol (functions, structs, enums, traits, consts) and every exported
-TS function/type carries a Korean `///` or `/** */` doc comment. Source-code language is
-Korean by team convention; this AGENTS.md and other repo-level docs stay English so tooling
-and external collaborators can read them.
+There are **two separate languages** used in this repository, and they do not overlap.
 
-When citing the BLUEPRINT, point to the rule number (e.g. "Rule 3: 직렬화") rather than
-quoting the whole rule.
+### 1. Code & Documentation — English only
+
+Every comment, doc comment, identifier, log message, error string, commit message, PR
+description, repo-level Markdown file, and inline TODO MUST be written in English.
+
+- Rust `///` and `//` comments — English.
+- TypeScript / Svelte `/** */` and `//` comments — English.
+- Migration SQL comments — English.
+- Files in `docs/`, `AGENTS.md`, `README.md`, ADRs — English.
+- `tracing::info!` / `console.log` messages — English.
+- `AppError` / thrown error messages — English.
+
+When citing BLUEPRINT, refer to the rule number (e.g. "Rule 3 — Template Serialization")
+rather than quoting Korean text.
+
+> Code reviewers should treat any non-English string in source code or documentation as a
+> blocker, except for the user-facing UI strings described next.
+
+### 2. UI Language — Mongolian only
+
+All end-user visible text in the application MUST be in Mongolian (Cyrillic script —
+монгол хэл).
+
+- Page titles, button labels, form labels, table headers — Mongolian.
+- Validation messages, toast messages, dialog copy — Mongolian.
+- Error surfaces shown to the user (translated from `AppError.code`) — Mongolian.
+- Help text, tooltips, empty-state copy — Mongolian.
+
+Implementation notes:
+
+- A single string-table module (introduced in P1) is the source of truth. Components must
+  not hard-code Mongolian strings inline; reference the table by key. This makes future
+  re-translation cheap and keeps the rule mechanically enforceable.
+- Backend `AppError.code` stays English (it is a stable identifier, not user-visible). The
+  frontend maps `code` → Mongolian message in the string table.
+- i18n machinery (multi-language switcher) is **not** in scope. Mongolian is the only
+  shipping language. Treat any framework choice (e.g. `svelte-i18n`) as overkill until P5.
 
 ## Branching & Commits
 
@@ -142,7 +174,8 @@ quoting the whole rule.
 
 - **OpenCV** is in use. System OpenCV is a build-time prerequisite (see README).
 - **`tauri-plugin-sql`** owns the SQLite connection. No separate sqlx pool.
-- **Korean** is the only UI language for the app itself (i18n deferred to P5).
+- **Code & docs language**: English only (see Language Conventions above).
+- **UI language**: Mongolian only. No multi-language switcher; i18n machinery deferred to P5.
 - **macOS / Linux / Windows** are all supported targets.
 
 ## Per-Package Docs
