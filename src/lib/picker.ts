@@ -14,3 +14,16 @@ export async function pickPdf(): Promise<string | null> {
   });
   return typeof selected === "string" ? selected : null;
 }
+
+/**
+ * Open a native file picker for a single backdrop image (PNG/JPG/JPEG/WebP)
+ * and return its absolute path. Same Rule 1 invariant as `pickPdf`.
+ */
+export async function pickImage(): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "Image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}

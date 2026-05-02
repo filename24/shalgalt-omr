@@ -1,18 +1,9 @@
 <script lang="ts">
   import { progress } from "$lib/stores/progress.svelte";
   import { session } from "$lib/stores/session.svelte";
+  import { mn } from "$lib/i18n";
 
-  // P0 placeholder labels. Replaced by Mongolian copy from the P1 string-table.
-  const stageLabel: Record<string, string> = {
-    loading_pdf: "Loading PDF",
-    rasterizing: "Rasterizing",
-    detecting_markers: "Detecting markers",
-    reading_bubbles: "Reading bubbles",
-    grading: "Grading",
-    saving: "Saving",
-    done: "Done",
-    failed: "Failed",
-  };
+  const stageLabel = mn.status.stage as Readonly<Record<string, string>>;
 
   const last = $derived(progress.last);
   const pct = $derived(
@@ -32,7 +23,7 @@
       class:bg-primary={isActive}
       class:bg-muted-foreground={!isActive}
     ></span>
-    {isActive ? "Working" : "Idle"}
+    {isActive ? mn.status.working : mn.status.idle}
   </span>
 
   {#if last}
@@ -46,10 +37,10 @@
 
   <span class="ml-auto flex items-center gap-3">
     {#if session.activeJobId}
-      <span>job <code class="font-mono">{session.activeJobId.slice(0, 8)}</code></span>
+      <span>{mn.status.job} <code class="font-mono">{session.activeJobId.slice(0, 8)}</code></span>
     {/if}
     {#if session.lastOpenedTemplateId !== null}
-      <span>tmpl #{session.lastOpenedTemplateId}</span>
+      <span>{mn.status.template} #{session.lastOpenedTemplateId}</span>
     {/if}
   </span>
 </footer>

@@ -8,11 +8,13 @@
 //! announced via a `task-result` event; the frontend persists them through
 //! `tauri-plugin-sql`.
 
+use std::path::PathBuf;
+
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-use crate::error::AppResult;
-use crate::scan::{TaskProgress, TaskStage};
+use crate::error::{AppError, AppResult};
+use crate::scan::{preview, TaskProgress, TaskStage};
 use crate::state::AppState;
 
 const PROGRESS_EVENT: &str = "task-progress";
@@ -54,4 +56,25 @@ pub async fn scan_grade_pdf(
     });
 
     Ok(ScanJob { task_id })
+}
+
+/// Rasterize the first page of a PDF into a PNG and return the absolute cache
+/// path. Used by the P1 template editor to import a PDF as the canvas
+/// backdrop. Heavy work runs on a blocking thread (pdfium-render is sync).
+#[tauri::command]
+pub async fn rasterize_pdf_first_page(
+    state: State<'_, AppState>,
+    pdf_path: String,
+) -> AppResult<String> {
+    if pdf_path.trim().is_empty() {
+        return Err(AppError::BadRequest("pdf_path is empty".into()));
+    }
+    let pdf = PathBuf::from(&pdf_path);
+    let cache_dir = state.dirs().cache_dir.clone();
+
+    let dest = tokio::task::spawn_blocking(move || preview::rasterize_first_page(&pdf, &cache_dir))
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("join error: {e}")))??;
+
+    Ok(dest.to_string_lossy().into_owned())
 }

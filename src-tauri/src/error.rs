@@ -24,6 +24,9 @@ pub enum AppError {
 
     #[error("internal: {0}")]
     Internal(#[from] anyhow::Error),
+
+    #[error("pdfium dynamic library unavailable")]
+    PdfiumUnavailable,
 }
 
 /// Serialization-safe representation sent to the IPC frontend.
@@ -41,6 +44,7 @@ impl AppError {
             AppError::BadRequest(_) => "bad_request",
             AppError::NotFound(_) => "not_found",
             AppError::Internal(_) => "internal",
+            AppError::PdfiumUnavailable => "pdfium_unavailable",
         }
     }
 }
