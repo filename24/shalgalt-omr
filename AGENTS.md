@@ -14,7 +14,7 @@ background HTTP API for optional integrations.
 | Frontend     | SvelteKit 5 (adapter-static, SSG), Svelte 5 runes, TailwindCSS v4     |
 | UI kit       | shadcn-svelte (bits-ui + tailwind-variants), @lucide/svelte icons     |
 | Editor / UI  | svelte-konva (Canvas), paneforge (IDE panes)                          |
-| Native shell | Tauri 2.0                                                             |
+| Native shell | Tauri 2.0 + plugins: sql, dialog, fs, opener, log, single-instance, window-state |
 | Core         | Rust — opencv-rust, pdfium-render, rust_xlsxwriter                    |
 | Persistence  | `tauri-plugin-sql` + SQLite (single file in `ProjectDirs::data_dir`)  |
 | Bg API       | axum on `127.0.0.1:8080` (CORS permissive, oneshot graceful shutdown) |
@@ -29,7 +29,8 @@ src/              — SvelteKit frontend
   lib/
     db/           — tauri-plugin-sql adapter (templates, results, students, getDb singleton)
     ipc/          — Rust-only command wrappers (scan, export). NO db CRUD here.
-    stores/       — Svelte 5 runes stores (progress.svelte.ts subscribes to `task-progress`)
+    picker.ts     — tauri-plugin-dialog wrappers (pickPdf etc.) — returns absolute paths only
+    stores/       — Svelte 5 runes stores (progress / currentTemplate / session)
     components/   — UI (shell, editor, grader, results)
       ui/         — shadcn-svelte component copies (CLI-generated, freely editable)
     utils.ts      — `cn()` Tailwind-merge helper + bits-ui type re-exports (shadcn contract)
@@ -72,6 +73,14 @@ These are **hard rules**; every PR must respect them.
   loads them via the `asset://localhost/` protocol.
 - New Tauri commands that touch images MUST take `pdf_path: String` / `image_path: String`,
   never `bytes: Vec<u8>` or base64.
+- **File system access policy** (Rule 1 corollary):
+  - **`tauri-plugin-dialog`** — use for picking paths (PDF, xlsx-save, future template
+    JSON). Wrap calls in `$lib/picker.ts`.
+  - **`tauri-plugin-fs`** — use ONLY for small text payloads (CSV student rosters,
+    `OmrTemplate` JSON import/export, `readDir` on the scans folder). Never read PDFs,
+    PNGs, or any binary > ~1 MB through `fs.readFile` — push the path to Rust instead.
+  - **`asset://localhost/`** — use for displaying graded result images in `<img>`. Never
+    `readFile(image)` → base64 → data URL.
 
 ### Rule 2 — No UI Freeze on Batch Work
 
