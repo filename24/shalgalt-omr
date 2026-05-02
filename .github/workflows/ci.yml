@@ -5,6 +5,7 @@ on:
     branches: [develop, stable]
   pull_request:
     branches: [develop, stable]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -81,3 +82,91 @@ jobs:
 
       - name: cargo check
         run: cargo check --all-targets --all-features
+
+  dev-build:
+    name: Dev build (${{ matrix.platform.name }})
+    # Skipped on pull_request to keep review feedback fast — manually trigger via the
+    # "Run workflow" button on the Actions tab when a PR build is needed.
+    if: github.event_name != 'pull_request'
+    needs: [web-check, rust-check]
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: linux-x86_64
+            runner: ubuntu-latest
+          - name: macos-arm64
+            runner: macos-14
+          # Windows is intentionally excluded until the OpenCV/vcpkg setup is ADR'd
+          # (see README "Windows" section). Re-enable once the build script lands.
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.platform.name }}-debug
+
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libopencv-dev \
+            clang \
+            libclang-dev
+
+      - name: Install macOS system deps
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install opencv pkg-config
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (debug bundle)
+        # `tauri build --debug` produces installer bundles using debug-optimized
+        # binaries — much faster than release builds, suitable for smoke testing.
+        # NOTE: pdfium dynamic library is NOT bundled yet (P4 task) — these
+        # artifacts compile but will not launch until a pdfium-binaries archive
+        # is dropped next to the executable. See README "pdfium" section.
+        run: pnpm tauri build --debug
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shalgalt-omr-${{ matrix.platform.name }}-debug
+          # tauri emits per-target subfolders; collect every bundle plus the raw
+          # debug executable as a fallback for spot inspection.
+          path: |
+            src-tauri/target/debug/bundle/**/*
+            src-tauri/target/debug/shalgalt-omr
+            src-tauri/target/debug/shalgalt-omr.exe
+            src-tauri/target/debug/shalgalt-omr.app
+          if-no-files-found: warn
+          retention-days: 14
