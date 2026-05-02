@@ -2,11 +2,13 @@
   import { progress } from "$lib/stores/progress.svelte";
   import { session } from "$lib/stores/session.svelte";
   import { gradePdf } from "$lib/ipc/scan";
+  import { pickPdf } from "$lib/picker";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
+  import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
   import { toast } from "svelte-sonner";
 
   let pdfPath = $state(session.lastPdfPath ?? "");
@@ -18,6 +20,15 @@
   const pct = $derived(
     last && last.total > 0 ? Math.round((last.processed / last.total) * 100) : null,
   );
+
+  async function browse() {
+    try {
+      const p = await pickPdf();
+      if (p) pdfPath = p;
+    } catch (e) {
+      toast.error("Failed to open file picker", { description: String(e) });
+    }
+  }
 
   async function start() {
     busy = true;
@@ -55,11 +66,18 @@
     <Card.Content class="space-y-4">
       <div class="space-y-1.5">
         <Label for="pdf-path">PDF absolute path</Label>
-        <Input
-          id="pdf-path"
-          bind:value={pdfPath}
-          placeholder="/Users/.../scans/2026-05-01.pdf"
-        />
+        <div class="flex gap-2">
+          <Input
+            id="pdf-path"
+            bind:value={pdfPath}
+            placeholder="/Users/.../scans/2026-05-01.pdf"
+            class="flex-1"
+          />
+          <Button type="button" variant="outline" onclick={browse}>
+            <FolderOpenIcon />
+            Browse
+          </Button>
+        </div>
       </div>
       <div class="space-y-1.5">
         <Label for="template-id">Template ID</Label>
