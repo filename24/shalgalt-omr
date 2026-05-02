@@ -12,6 +12,7 @@ background HTTP API for optional integrations.
 | Layer        | Tech                                                                  |
 | ------------ | --------------------------------------------------------------------- |
 | Frontend     | SvelteKit 5 (adapter-static, SSG), Svelte 5 runes, TailwindCSS v4     |
+| UI kit       | shadcn-svelte (bits-ui + tailwind-variants), @lucide/svelte icons     |
 | Editor / UI  | svelte-konva (Canvas), paneforge (IDE panes)                          |
 | Native shell | Tauri 2.0                                                             |
 | Core         | Rust — opencv-rust, pdfium-render, rust_xlsxwriter                    |
@@ -29,7 +30,9 @@ src/              — SvelteKit frontend
     db/           — tauri-plugin-sql adapter (templates, results, students, getDb singleton)
     ipc/          — Rust-only command wrappers (scan, export). NO db CRUD here.
     stores/       — Svelte 5 runes stores (progress.svelte.ts subscribes to `task-progress`)
-    components/   — UI (shell, editor, grader, results, ui)
+    components/   — UI (shell, editor, grader, results)
+      ui/         — shadcn-svelte component copies (CLI-generated, freely editable)
+    utils.ts      — `cn()` Tailwind-merge helper + bits-ui type re-exports (shadcn contract)
     types/        — Shapes mirroring Rust `domain` (template, result, progress)
 src-tauri/
   migrations/     — SQL files embedded into Rust via `include_str!` and registered with
@@ -94,6 +97,29 @@ These are **hard rules**; every PR must respect them.
   UI thread, and it shuts down via `oneshot` channel held by `ApiHandle` in app state.
 - CORS is currently permissive (`Any` origin/method/header). Tighten in P4 before any
   production release.
+
+## UI Kit — shadcn-svelte
+
+The frontend UI is built on **shadcn-svelte** (bits-ui + tailwind-variants). Components are
+copied into the repo, not imported from a package — that is the whole point of the
+shadcn model.
+
+- **Location**: `src/lib/components/ui/<component>/*` — every file there is owned by us
+  and freely editable. Treat them like first-party code.
+- **Adding a component**: `pnpm dlx shadcn-svelte@latest add <name> --yes`. The CLI reads
+  [`components.json`](components.json) and writes into `src/lib/components/ui/`.
+- **Theme tokens**: see `src/app.css`. Two parallel families coexist — legacy
+  `--color-*` tokens and the shadcn contract (`--background`, `--primary`, …). Both alias
+  the same OKLCH dark palette. Add new tokens to *both* sides when introducing them.
+- **`src/lib/utils.ts` is part of the shadcn contract**. It exports `cn()` plus the
+  `WithElementRef` / `WithoutChild` / `WithoutChildrenOrChild` re-exports that the
+  CLI-generated components import. Do not delete or rename these.
+- **Toaster**: `<Toaster />` from `$lib/components/ui/sonner` is mounted once in the root
+  layout. Use `import { toast } from "svelte-sonner"` everywhere else.
+- **UI strings**: shadcn ships English defaults. Per the Mongolian-only UI rule, any
+  user-visible copy added to a shadcn component (button labels, dialog headings, toast
+  messages) must come from the P1 string-table once it lands. P0 placeholders can stay
+  English with a `// P0 placeholder` comment.
 
 ## Database Access Policy
 

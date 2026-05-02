@@ -1,38 +1,37 @@
 <script lang="ts">
   import "../app.css";
+  import * as Sidebar from "$lib/components/ui/sidebar";
+  import { Separator } from "$lib/components/ui/separator";
+  import { Toaster } from "$lib/components/ui/sonner";
+  import AppSidebar from "$lib/components/shell/AppSidebar.svelte";
   import { page } from "$app/state";
 
   let { children } = $props();
 
   // P0 placeholder labels. Replaced by Mongolian copy from the P1 string-table.
-  const nav = [
-    { href: "/", label: "Dashboard" },
-    { href: "/editor", label: "Template Editor" },
-    { href: "/grade", label: "Grade PDF" },
-    { href: "/results", label: "Results" },
-  ];
+  const titleByPath: Record<string, string> = {
+    "/": "Dashboard",
+    "/editor": "Template Editor",
+    "/grade": "Grade PDF",
+    "/results": "Results",
+  };
+  const pageTitle = $derived(titleByPath[page.url.pathname] ?? "");
 </script>
 
-<div class="flex h-screen w-screen overflow-hidden">
-  <aside
-    class="w-56 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-3"
-  >
-    <h1 class="mb-4 text-sm font-semibold tracking-wide text-[var(--color-text-muted)]">
-      shalgalt-omr
-    </h1>
-    <nav class="flex flex-col gap-1">
-      {#each nav as item (item.href)}
-        <a
-          href={item.href}
-          class="rounded-md px-3 py-2 text-sm transition hover:bg-[var(--color-surface-elevated)]"
-          class:bg-[var(--color-surface-elevated)]={page.url.pathname === item.href}
-        >
-          {item.label}
-        </a>
-      {/each}
-    </nav>
-  </aside>
-  <main class="flex-1 overflow-auto">
-    {@render children?.()}
-  </main>
-</div>
+<Sidebar.Provider>
+  <AppSidebar />
+  <Sidebar.Inset>
+    <header
+      class="bg-background sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b px-3"
+    >
+      <Sidebar.Trigger class="-ml-1" />
+      <Separator orientation="vertical" class="mr-2 h-4" />
+      <h1 class="text-sm font-medium">{pageTitle}</h1>
+    </header>
+    <main class="flex-1 overflow-auto">
+      {@render children?.()}
+    </main>
+  </Sidebar.Inset>
+</Sidebar.Provider>
+
+<Toaster richColors position="bottom-right" />
