@@ -8,6 +8,10 @@
 //!   5. spawn the axum background server (Rule 4)
 //!   6. attach `tauri::Builder` and register the invoke handler
 
+// P0 scaffolding exposes APIs that are wired up in P1–P4. Remove these allows once the
+// CV pipeline (P2) and grading engine (P3) consume the stubbed accessors and re-exports.
+#![allow(dead_code, unused_imports)]
+
 mod api;
 mod commands;
 mod domain;
