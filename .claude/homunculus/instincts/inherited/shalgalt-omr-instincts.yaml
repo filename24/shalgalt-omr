@@ -1,0 +1,357 @@
+# Instincts generated from https://github.com/filename24/shalgalt-omr
+# Generated: 2026-05-02T10:52:34.646Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: shalgalt-omr-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: docs, feat, chore
+
+## Evidence
+
+- 6 commits analyzed
+- Detected conventional commit pattern
+- Examples: docs: add blueprint and P0 architecture for OMR grading IDE, feat(core): scaffold Tauri 2 with tauri-plugin-sql, axum, and CV deps
+
+---
+id: shalgalt-omr-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Commit Length
+
+## Action
+
+Write moderate-length commit messages (~66 characters)
+
+## Evidence
+
+- Average commit message length: 66 chars
+- Based on 6 commits
+
+---
+id: shalgalt-omr-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: shalgalt-omr-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: shalgalt-omr-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: lib, routes
+
+---
+id: shalgalt-omr-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: shalgalt-omr-workflow-documentation-update
+trigger: "when doing documentation update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Documentation Update
+
+## Action
+
+Follow the documentation-update workflow:
+1. Edit or create markdown files in the docs/ directory or root README.md
+2. Commit with a docs: prefix in the message
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: README.md, docs/ARCHITECTURE.md, docs/BLUEPRINT.md
+
+---
+id: shalgalt-omr-workflow-project-wide-language-or-style-migration
+trigger: "when doing project wide language or style migration"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Project Wide Language Or Style Migration
+
+## Action
+
+Follow the project-wide-language-or-style-migration workflow:
+1. Edit multiple files across backend, frontend, and docs to update language or style
+2. Commit with a chore: or docs: prefix in the message
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: README.md, docs/ARCHITECTURE.md, docs/BLUEPRINT.md
+
+---
+id: shalgalt-omr-instinct-camelcase-functions
+trigger: "When creating or naming a function in Rust code"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Camelcase Functions
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+- Seen in src-tauri/src/**/*.rs
+
+---
+id: shalgalt-omr-instinct-pascalcase-classes
+trigger: "When defining a class or struct"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Pascalcase Classes
+
+## Action
+
+Use PascalCase for class or struct names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+- Seen in src-tauri/src/**/*.rs
+
+---
+id: shalgalt-omr-instinct-screaming-snake-constants
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Screaming Snake Constants
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+- Seen in src-tauri/src/**/*.rs
+
+---
+id: shalgalt-omr-instinct-mixed-imports
+trigger: "When importing modules or dependencies"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Mixed Imports
+
+## Action
+
+Use mixed import styles as appropriate for the language/module
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+- Seen in src/lib/**/*.ts
+- Seen in src-tauri/src/**/*.rs
+
+---
+id: shalgalt-omr-instinct-named-exports
+trigger: "When exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+- Seen in src/lib/**/*.ts
+
+---
+id: shalgalt-omr-instinct-test-location-separate
+trigger: "When adding new tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Location Separate
+
+## Action
+
+Place test files in a separate test directory
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+- Seen in src-tauri/tests or similar
+
+---
+id: shalgalt-omr-instinct-conventional-commits
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Conventional Commits
+
+## Action
+
+Use conventional commit prefixes (docs:, feat:, chore:), followed by a concise description
+
+## Evidence
+
+- Seen in commit 'docs: add blueprint and P0 architecture for OMR grading IDE'
+- Seen in commit 'feat(core): scaffold Tauri 2 with tauri-plugin-sql, axum, and CV deps'
+- Pattern in commits.prefixes
+
+---
+id: shalgalt-omr-instinct-docs-update
+trigger: "When someone wants to add new documentation or update existing docs"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Docs Update
+
+## Action
+
+Edit or create markdown files in the docs/ directory or root README.md, then commit with a docs: prefix
+
+## Evidence
+
+- Workflow: documentation-update
+- Seen in commit 'docs: add AGENTS.md repo guide with CLAUDE.md symlink'
+- Pattern in workflows.documentation-update.commitSequence
+
+---
+id: shalgalt-omr-instinct-language-style-migration
+trigger: "When someone wants to enforce language or style conventions across the project"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Language Style Migration
+
+## Action
+
+Edit multiple files across backend, frontend, and docs to update language or style, then commit with a chore: or docs: prefix
+
+## Evidence
+
+- Workflow: project-wide-language-or-style-migration
+- Seen in commit 'chore(i18n): migrate code, docs, and UI strings to English'
+- Pattern in workflows.project-wide-language-or-style-migration.commitSequence
+
