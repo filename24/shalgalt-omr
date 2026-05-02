@@ -50,7 +50,6 @@ opencv = { version = "0.94", default-features = false, features = [
     "clang-runtime",
     "imgcodecs",
     "imgproc",
-    "core",
 ] }
 
 # --- PDF rasterization (Blueprint §2 — pdfium-render) ---
