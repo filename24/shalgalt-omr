@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Local-First OMR Grading IDE",
   "type": "module",
+  "packageManager": "pnpm@10.29.1",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",

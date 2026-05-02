@@ -6,10 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum GradedAnswer {
     /// Single mark — correct answer.
-    Correct {
-        group_id: String,
-        marked_index: u32,
-    },
+    Correct { group_id: String, marked_index: u32 },
     /// Single mark — wrong answer.
     Wrong {
         group_id: String,
