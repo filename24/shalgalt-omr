@@ -3,10 +3,11 @@
 //! Boot order (Blueprint Rule 4 + ARCHITECTURE §4):
 //!   1. initialize tracing
 //!   2. resolve `AppDirs` and ensure data/scan directories exist
-//!   3. register the Tauri SQL plugin (with embedded migrations) — DB CRUD lives in the UI
-//!   4. assemble `AppState`
-//!   5. spawn the axum background server (Rule 4)
-//!   6. attach `tauri::Builder` and register the invoke handler
+//!   3. register single-instance / window-state / log plugins (desktop QoL)
+//!   4. register the Tauri SQL plugin (with embedded migrations) — DB CRUD lives in the UI
+//!   5. assemble `AppState`
+//!   6. spawn the axum background server (Rule 4)
+//!   7. attach `tauri::Builder` and register the invoke handler
 
 // P0 scaffolding exposes APIs that are wired up in P1–P4. Remove these allows once the
 // CV pipeline (P2) and grading engine (P3) consume the stubbed accessors and re-exports.
@@ -48,7 +49,44 @@ pub fn run() {
         kind: MigrationKind::Up,
     }];
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Single-instance MUST be the first plugin registered. When a second copy launches
+    // it forwards argv/cwd to the already-running app, which focuses its main window.
+    // Critical here because two processes on the same SQLite file can corrupt state.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(
+            |app, _args, _cwd| {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            },
+        ));
+    }
+
+    // Restore the last window size/position automatically.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    }
+
+    builder
+        .plugin(
+            // Persistent rotating log file in the OS log dir, plus stdout for `tauri dev`
+            // and the webview console for frontend `info!` / `warn!` calls.
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("shalgalt-omr".into()),
+                    }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                ])
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

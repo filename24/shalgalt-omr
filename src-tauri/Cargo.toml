@@ -21,6 +21,12 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+tauri-plugin-log = "2"
+
+# Desktop-only quality-of-life plugins (guarded by cfg(desktop) at the call site)
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
 
 # --- Database (Blueprint §4) ---
 # Tauri SQL plugin: defines migrations on the Rust side and is consumed from the frontend
@@ -42,6 +48,7 @@ anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+log = "0.4"
 
 # --- Computer Vision (Blueprint §2 — opencv-rust) ---
 # NOTE: Requires system-installed OpenCV (libopencv-dev on Debian/Ubuntu, brew opencv on macOS,
