@@ -47,7 +47,11 @@ serde_json = "1"
 anyhow = "1"
 thiserror = "2"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# `default-features = false` drops the `tracing-log` feature so tracing-subscriber
+# does NOT install a global `log::Log` implementation. `tauri-plugin-log` owns that
+# slot — keeping both enabled panics with "attempted to set a logger after the
+# logging system was already initialized" during plugin init.
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "ansi", "std", "smallvec"] }
 log = "0.4"
 
 # --- Computer Vision (Blueprint §2 — opencv-rust) ---
