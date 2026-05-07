@@ -4,17 +4,24 @@
 //! Pixel coordinates of the actual scanned image are derived during the
 //! `scan::perspective::warp` step. This policy lets a single template be reused across PDFs
 //! at different DPIs and page sizes.
+//!
+//! `#[derive(TS)]` emits the matching TypeScript interfaces into
+//! `src/lib/types/generated/` (P2-04). Run `pnpm generate-types` after editing
+//! these structs.
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub struct TemplatePoint {
     pub x: f32,
     pub y: f32,
 }
 
 /// Reference point used for the 4-corner perspective transform.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub struct Marker {
     pub id: String,
     pub position: TemplatePoint,
@@ -22,8 +29,9 @@ pub struct Marker {
     pub size: f32,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub enum BubbleKind {
     /// Student-id input region.
     StudentId,
@@ -32,7 +40,8 @@ pub enum BubbleKind {
 }
 
 /// A group of bubbles that share semantics (e.g. "question 1", "tens digit of student id").
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub struct BubbleGroup {
     pub id: String,
     pub kind: BubbleKind,
@@ -49,6 +58,7 @@ pub struct BubbleGroup {
     /// Optional UI-only grouping label (e.g. "Шифр", "1-Р ХЭСЭГ", "2.1"). Used by the
     /// editor's LayerTree and the result table, ignored by the CV pipeline.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "string")]
     pub section: Option<String>,
 }
 
@@ -57,7 +67,8 @@ fn default_score() -> f32 {
 }
 
 /// Top-level structure persisted verbatim into the `templates.json_schema` column.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub struct OmrTemplate {
     /// Schema version — bump when the format breaks compatibility.
     #[serde(default = "current_version")]
