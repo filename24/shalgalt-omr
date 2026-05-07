@@ -4,8 +4,13 @@ Local-First OMR Grading IDE. A Tauri 2 desktop app with a SvelteKit frontend and
 that grades scanned OMR PDFs offline using OpenCV, persists results in SQLite, and exposes a
 background HTTP API for optional integrations.
 
-> **Source of truth.** Product spec lives in [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md), folder
-> structure and module responsibilities in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> **Source of truth.** The v1.0 roadmap, locked architectural decisions, and the full
+> sub-issue catalog live in
+> [`.claude/PRPs/plans/shalgalt-omr-master.plan.md`](.claude/PRPs/plans/shalgalt-omr-master.plan.md).
+> The corresponding GitHub tracking issue is [#11 — Master tracking issue](https://github.com/filename24/shalgalt-omr/issues/11).
+> The original product spec still lives in [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) and
+> the P0 module-shape doc in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); both are
+> superseded by the master plan where they conflict.
 
 ## Stack
 
@@ -104,8 +109,9 @@ These are **hard rules**; every PR must respect them.
 
 - The HTTP server runs on its own tokio task spawned in `setup`. It does not block the Tauri
   UI thread, and it shuts down via `oneshot` channel held by `ApiHandle` in app state.
-- CORS is currently permissive (`Any` origin/method/header). Tighten in P4 before any
-  production release.
+- CORS is currently permissive (`Any` origin/method/header). Tightened to an allow-list in
+  P5 (issue P5-04) before any production release. Server-mode bearer-token auth lands in
+  the same phase per master plan §6.6.
 
 ## UI Kit — shadcn-svelte
 
@@ -204,33 +210,64 @@ GitHub Actions runs on every push to `develop`/`stable` and on PRs targeting the
 | `rust-check` | apt deps (Tauri + OpenCV + clang) → `cargo fmt --check` → `clippy -D warnings` → `cargo check` |
 
 Workflow file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Both jobs must be
-green before merge. Heavy bundling (`tauri build`, pdfium download, packaging) is deferred
-to a release workflow off `stable` in P5.
+green before merge. Heavy bundling (signed installers, pdfium download, packaging) is
+handled by the dedicated `release.yml` workflow that triggers on `v*` tags — landing in
+P6 per master plan §10.
 
-## Phased Roadmap (current target)
+## Phased Roadmap (v1.0 target)
 
-| Phase | Focus                                                                     |
-| ----- | ------------------------------------------------------------------------- |
-| P0    | Foundation: scaffolding, plugin-sql, Rust modules, IDE shell — **current** |
-| P1    | svelte-konva template editor (markers + bubble groups)                    |
-| P2    | CV pipeline: pdfium → 4-marker perspective → bubble density read          |
-| P3    | Grading engine + result persistence + manual correction UI                |
-| P4    | rust_xlsxwriter export + axum read-only endpoints                         |
-| P5    | UX polish, i18n, packaging, autoupdater                                   |
+Aligned with master plan §10 and the GitHub milestones `v0.2.0` … `v1.0.0`.
+
+| Phase | Milestone                  | Focus                                                                                          |
+| ----- | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| P0    | (pre-roadmap)              | Foundation: scaffolding, plugin-sql, Rust modules, IDE shell — **complete**                    |
+| P1    | (pre-roadmap)              | svelte-konva template editor + Mongolian-standard preset — **complete**                        |
+| P2    | `v0.2.0 — Workspace + PDF` | Cargo workspace split, `shalgalt-pdf` crate, light theme + comfort mode, dashboard widgets — **current** |
+| P3    | `v0.3.0 — Grading`         | `shalgalt-cv` (ArUco + adaptive threshold + confidence), grading engine, batch + manual review |
+| P4    | `v0.4.0 — Project file`    | `.shalgalt` zip + `age` encryption, exam management, answer-key entry, file association        |
+| P5    | `v0.5.0 — Excel + API`     | xlsx export, results browser, REST `/v1/`, `apps/server` standalone binary, OpenAPI            |
+| P6    | `v0.6.0 — Distribution`    | `release.yml`, code signing, opt-in `tauri-plugin-updater`, AppImage + `.deb`                  |
+| P7    | `v0.7.0 — Docs`            | Developer mdBook + Mongolian VitePress user manual + API reference + sample `.shalgalt` files  |
+| P8    | `v0.8.0 — Hardening`       | A11y audit, performance pass, security review                                                  |
+| P9    | `v1.0.0 — Public release`  | Final QA, signed bundles, public Release                                                       |
 
 ## Decisions Locked
+
+Each item below is locked. Re-litigation requires an ADR under `docs/adr/` plus a master-
+plan update in the same PR.
+
+### Foundational (already in force)
 
 - **OpenCV** is in use. System OpenCV is a build-time prerequisite (see README).
 - **`tauri-plugin-sql`** owns the SQLite connection. No separate sqlx pool.
 - **Code & docs language**: English only (see Language Conventions above).
 - **UI language**: Mongolian only. No multi-language switcher; i18n machinery deferred to P5.
-- **macOS / Linux / Windows** are all supported targets.
+- **Distribution targets**: Windows (priority 1), macOS (2), Linux (3) — per master plan §6.9.
+
+### v1.0-direction (locked by master plan §6, take effect during P2+)
+
+- **Cargo workspace + monorepo** — `apps/desktop`, `apps/server`, `crates/shalgalt-{core,pdf,cv,fileformat}`. P2 migration.
+- **PDF generator**: `printpdf` (pure Rust, embedded Noto Sans + Noto Sans Mongolian).
+- **Project-file format**: `.shalgalt` zip container with optional `age` passphrase encryption. `manifest.json` always plaintext.
+- **CV markers**: ArUco `DICT_6X6_50` replaces corner squares. Adaptive thresholding + auto-deskew + per-bubble confidence scoring; sheets with any bubble in `[0.35, 0.65]` ⇒ `needs_review`.
+- **HTTP API**: versioned under `/v1/`. Local mode = `127.0.0.1`, no auth. Server mode = `0.0.0.0`, bearer token from `SHALGALT_API_TOKEN`, CORS allow-list.
+- **Theming**: light theme is the default; dark theme optional via `mode-watcher`. No high-contrast mode. A "Comfortable" typography toggle (16 → 18 px base) sits next to the theme toggle.
+- **Distribution channel**: GitHub Releases triggered by `v*` tags via `tauri-action`.
+- **Auto-update**: `tauri-plugin-updater` with a static manifest on `gh-pages`. **Default OFF** so offline schools never see prompts.
+- **No telemetry, no crash reporting, no analytics.** Local rotating logs only.
 
 ## Per-Package Docs
 
-When per-package guides become useful (e.g. once `apps/*` or workspace splits arrive),
-each package gets its own `AGENTS.md` (with `CLAUDE.md` as a symlink). Until then, this
-file is the only repo-level guide.
+The repo-level guide is **this file plus the master plan**:
+
+- [`AGENTS.md`](AGENTS.md) — repo rules, locked decisions, language conventions (this file).
+- [`.claude/PRPs/plans/shalgalt-omr-master.plan.md`](.claude/PRPs/plans/shalgalt-omr-master.plan.md) — v1.0 architecture, roadmap, sub-issue catalog.
+- [`.claude/PRPs/plans/issue-map.json`](.claude/PRPs/plans/issue-map.json) — `spec_id` ↔ GitHub issue number mapping.
+- GitHub master tracking: [#11](https://github.com/filename24/shalgalt-omr/issues/11).
+
+Once the workspace migration (P2-01) lands, each crate under `crates/` and each app under
+`apps/` gets its own `AGENTS.md` (with `CLAUDE.md` as a symlink). Until then, this file
+remains the only repo-level guide.
 
 ## Security & Secrets
 
