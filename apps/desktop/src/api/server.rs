@@ -1,15 +1,15 @@
 //! Spawn the axum server on a separate tokio task and return a graceful-shutdown handle.
 //!
 //! Rule 4: it must live independently of the Tauri main-window lifecycle, so a oneshot
-//! channel is used as the shutdown signal.
+//! channel is used as the shutdown signal. The router itself comes from `shalgalt-core`
+//! so `apps/server` (P5-05) can reuse it without pulling in any Tauri code.
 
 use std::net::SocketAddr;
 
+use shalgalt_core::api::{cors::permissive, router};
+use shalgalt_core::error::{AppError, AppResult};
 use tokio::sync::oneshot;
 use tracing::{error, info};
-
-use crate::error::{AppError, AppResult};
-use crate::state::AppState;
 
 /// Token used to terminate the server. Dropping it triggers shutdown automatically.
 pub struct ApiHandle {
@@ -31,9 +31,9 @@ impl Drop for ApiHandle {
 }
 
 /// Bind the axum server on `127.0.0.1:8080` (Blueprint §2).
-pub async fn spawn(state: AppState) -> AppResult<ApiHandle> {
+pub async fn spawn() -> AppResult<ApiHandle> {
     let addr: SocketAddr = "127.0.0.1:8080".parse().expect("hardcoded addr");
-    let app = super::routes::router(state).layer(super::cors::permissive());
+    let app = router().layer(permissive());
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await

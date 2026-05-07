@@ -10,10 +10,10 @@
 
 use std::path::PathBuf;
 
+use shalgalt_core::error::{AppError, AppResult};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-use crate::error::{AppError, AppResult};
 use crate::scan::{preview, TaskProgress, TaskStage};
 use crate::state::AppState;
 
@@ -32,9 +32,7 @@ pub async fn scan_grade_pdf(
     template_id: i64,
 ) -> AppResult<ScanJob> {
     if pdf_path.trim().is_empty() {
-        return Err(crate::error::AppError::BadRequest(
-            "pdf_path is empty".into(),
-        ));
+        return Err(AppError::BadRequest("pdf_path is empty".into()));
     }
 
     let task_id = Uuid::new_v4().to_string();

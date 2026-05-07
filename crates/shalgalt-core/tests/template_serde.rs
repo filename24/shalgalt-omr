@@ -12,7 +12,7 @@
 
 use std::path::PathBuf;
 
-use shalgalt_omr_lib::domain::template::{
+use shalgalt_core::domain::template::{
     BubbleGroup, BubbleKind, Marker, OmrTemplate, TemplatePoint,
 };
 

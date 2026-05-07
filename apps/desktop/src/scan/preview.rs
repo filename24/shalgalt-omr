@@ -19,7 +19,7 @@ use pdfium_render::prelude::{PdfPageRenderRotation, PdfRenderConfig, Pdfium, Pdf
 use sha2::{Digest, Sha256};
 use tracing::{info, warn};
 
-use crate::error::{AppError, AppResult};
+use shalgalt_core::error::{AppError, AppResult};
 
 /// Width of the rendered first page in pixels. 2000px gives the editor plenty
 /// of detail for marker placement without producing huge PNGs.

@@ -3,9 +3,9 @@
 //! P4: receives the result array gathered by the frontend (via plugin-sql) and writes the
 //! xlsx file, returning the absolute path to the file.
 
+use shalgalt_core::error::{AppError, AppResult};
 use tauri::State;
 
-use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
 #[tauri::command]

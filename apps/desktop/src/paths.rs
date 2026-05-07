@@ -10,9 +10,8 @@
 
 use std::path::{Path, PathBuf};
 
+use shalgalt_core::error::{AppError, AppResult};
 use tauri::{AppHandle, Manager};
-
-use crate::error::{AppError, AppResult};
 
 /// SQLite filename. Kept in sync with the `sqlite:` URL passed to `tauri-plugin-sql`.
 pub const DB_FILENAME: &str = "shalgalt-omr.sqlite";

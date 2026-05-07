@@ -16,6 +16,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# --- Workspace core (P2-02) ---
+# Domain models, grading engine, axum router, and the `AppError`/`AppResult`
+# envelope live in this crate so `apps/server` (P5) can reuse them without any
+# Tauri code on the dependency path.
+shalgalt-core = { path = "../../crates/shalgalt-core" }
+
 # --- Tauri ---
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
@@ -69,10 +75,10 @@ opencv = { version = "0.94", default-features = false, features = [
 pdfium-render = { version = "0.8", features = ["thread_safe", "image", "sync"] }
 image = "0.25"
 
-# --- Excel export (Blueprint §2 — rust_xlsxwriter) ---
-rust_xlsxwriter = { version = "0.83", features = ["chrono"] }
-
 # --- Background HTTP server (Blueprint §2 — axum) ---
+# `axum::serve` and the graceful-shutdown harness live in `src/api/server.rs`.
+# The router itself is built in `shalgalt-core::api`. xlsx export and the CORS
+# layer also moved to `shalgalt-core` in P2-02.
 axum = "0.8"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }

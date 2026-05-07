@@ -11,3 +11,18 @@ publish = false
 [lib]
 name = "shalgalt_core"
 path = "src/lib.rs"
+
+[dependencies]
+# Domain serialization (Rule 3) — every model derives Serialize/Deserialize.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error envelope shared across the workspace.
+thiserror = "2"
+anyhow = "1"
+
+# axum router for the background HTTP server (Rule 4). The actual `tokio::spawn` /
+# graceful-shutdown harness lives in `apps/desktop` so the router can stay
+# Tauri-agnostic and be reused by `apps/server` (P5-05).
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
