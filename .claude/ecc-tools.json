@@ -1,0 +1,240 @@
+{
+  "version": "1.3",
+  "schemaVersion": "1.0",
+  "generatedBy": "ecc-tools",
+  "generatedAt": "2026-05-07T15:40:49.993Z",
+  "repo": "https://github.com/filename24/shalgalt-omr",
+  "profiles": {
+    "requested": "security",
+    "recommended": "security",
+    "effective": "developer",
+    "requestedAlias": "security",
+    "recommendedAlias": "security",
+    "effectiveAlias": "developer"
+  },
+  "requestedProfile": "security",
+  "profile": "developer",
+  "recommendedProfile": "security",
+  "effectiveProfile": "developer",
+  "tier": "free",
+  "requestedComponents": [
+    "repo-baseline",
+    "workflow-automation",
+    "security-audits"
+  ],
+  "selectedComponents": [
+    "repo-baseline",
+    "workflow-automation"
+  ],
+  "requestedAddComponents": [],
+  "requestedRemoveComponents": [],
+  "blockedRemovalComponents": [],
+  "tierFilteredComponents": [
+    "security-audits"
+  ],
+  "requestedRootPackages": [
+    "runtime-core",
+    "workflow-pack",
+    "agentshield-pack"
+  ],
+  "selectedRootPackages": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "requestedPackages": [
+    "runtime-core",
+    "workflow-pack",
+    "agentshield-pack"
+  ],
+  "requestedAddPackages": [],
+  "requestedRemovePackages": [],
+  "selectedPackages": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "packages": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "blockedRemovalPackages": [],
+  "tierFilteredRootPackages": [
+    "agentshield-pack"
+  ],
+  "tierFilteredPackages": [
+    "agentshield-pack"
+  ],
+  "conflictingPackages": [],
+  "dependencyGraph": {
+    "runtime-core": [],
+    "workflow-pack": [
+      "runtime-core"
+    ]
+  },
+  "resolutionOrder": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "requestedModules": [
+    "runtime-core",
+    "workflow-pack",
+    "agentshield-pack"
+  ],
+  "selectedModules": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "modules": [
+    "runtime-core",
+    "workflow-pack"
+  ],
+  "managedFiles": [
+    ".claude/skills/shalgalt-omr/SKILL.md",
+    ".agents/skills/shalgalt-omr/SKILL.md",
+    ".agents/skills/shalgalt-omr/agents/openai.yaml",
+    ".claude/identity.json",
+    ".codex/config.toml",
+    ".codex/AGENTS.md",
+    ".codex/agents/explorer.toml",
+    ".codex/agents/reviewer.toml",
+    ".codex/agents/docs-researcher.toml",
+    ".claude/homunculus/instincts/inherited/shalgalt-omr-instincts.yaml",
+    ".claude/commands/add-database-table-or-schema-change.md",
+    ".claude/commands/feature-development-with-editor-components.md",
+    ".claude/commands/add-or-update-i18n-and-ui-strings.md"
+  ],
+  "packageFiles": {
+    "runtime-core": [
+      ".claude/skills/shalgalt-omr/SKILL.md",
+      ".agents/skills/shalgalt-omr/SKILL.md",
+      ".agents/skills/shalgalt-omr/agents/openai.yaml",
+      ".claude/identity.json",
+      ".codex/config.toml",
+      ".codex/AGENTS.md",
+      ".codex/agents/explorer.toml",
+      ".codex/agents/reviewer.toml",
+      ".codex/agents/docs-researcher.toml",
+      ".claude/homunculus/instincts/inherited/shalgalt-omr-instincts.yaml"
+    ],
+    "workflow-pack": [
+      ".claude/commands/add-database-table-or-schema-change.md",
+      ".claude/commands/feature-development-with-editor-components.md",
+      ".claude/commands/add-or-update-i18n-and-ui-strings.md"
+    ]
+  },
+  "moduleFiles": {
+    "runtime-core": [
+      ".claude/skills/shalgalt-omr/SKILL.md",
+      ".agents/skills/shalgalt-omr/SKILL.md",
+      ".agents/skills/shalgalt-omr/agents/openai.yaml",
+      ".claude/identity.json",
+      ".codex/config.toml",
+      ".codex/AGENTS.md",
+      ".codex/agents/explorer.toml",
+      ".codex/agents/reviewer.toml",
+      ".codex/agents/docs-researcher.toml",
+      ".claude/homunculus/instincts/inherited/shalgalt-omr-instincts.yaml"
+    ],
+    "workflow-pack": [
+      ".claude/commands/add-database-table-or-schema-change.md",
+      ".claude/commands/feature-development-with-editor-components.md",
+      ".claude/commands/add-or-update-i18n-and-ui-strings.md"
+    ]
+  },
+  "files": [
+    {
+      "moduleId": "runtime-core",
+      "path": ".claude/skills/shalgalt-omr/SKILL.md",
+      "description": "Repository-specific Claude Code skill generated from git history."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".agents/skills/shalgalt-omr/SKILL.md",
+      "description": "Codex-facing copy of the generated repository skill."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".agents/skills/shalgalt-omr/agents/openai.yaml",
+      "description": "Codex skill metadata so the repo skill appears cleanly in the skill interface."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".claude/identity.json",
+      "description": "Suggested identity.json baseline derived from repository conventions."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".codex/config.toml",
+      "description": "Repo-local Codex MCP and multi-agent baseline aligned with ECC defaults."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".codex/AGENTS.md",
+      "description": "Codex usage guide that points at the generated repo skill and workflow bundle."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".codex/agents/explorer.toml",
+      "description": "Read-only explorer role config for Codex multi-agent work."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".codex/agents/reviewer.toml",
+      "description": "Read-only reviewer role config focused on correctness and security."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".codex/agents/docs-researcher.toml",
+      "description": "Read-only docs researcher role config for API verification."
+    },
+    {
+      "moduleId": "runtime-core",
+      "path": ".claude/homunculus/instincts/inherited/shalgalt-omr-instincts.yaml",
+      "description": "Continuous-learning instincts derived from repository patterns."
+    },
+    {
+      "moduleId": "workflow-pack",
+      "path": ".claude/commands/add-database-table-or-schema-change.md",
+      "description": "Workflow command scaffold for add-database-table-or-schema-change."
+    },
+    {
+      "moduleId": "workflow-pack",
+      "path": ".claude/commands/feature-development-with-editor-components.md",
+      "description": "Workflow command scaffold for feature-development-with-editor-components."
+    },
+    {
+      "moduleId": "workflow-pack",
+      "path": ".claude/commands/add-or-update-i18n-and-ui-strings.md",
+      "description": "Workflow command scaffold for add-or-update-i18n-and-ui-strings."
+    }
+  ],
+  "workflows": [
+    {
+      "command": "add-database-table-or-schema-change",
+      "path": ".claude/commands/add-database-table-or-schema-change.md"
+    },
+    {
+      "command": "feature-development-with-editor-components",
+      "path": ".claude/commands/feature-development-with-editor-components.md"
+    },
+    {
+      "command": "add-or-update-i18n-and-ui-strings",
+      "path": ".claude/commands/add-or-update-i18n-and-ui-strings.md"
+    }
+  ],
+  "adapters": {
+    "claudeCode": {
+      "skillPath": ".claude/skills/shalgalt-omr/SKILL.md",
+      "identityPath": ".claude/identity.json",
+      "commandPaths": [
+        ".claude/commands/add-database-table-or-schema-change.md",
+        ".claude/commands/feature-development-with-editor-components.md",
+        ".claude/commands/add-or-update-i18n-and-ui-strings.md"
+      ]
+    },
+    "codex": {
+      "configPath": ".codex/config.toml",
+      "agentsGuidePath": ".codex/AGENTS.md",
+      "skillPath": ".agents/skills/shalgalt-omr/SKILL.md"
+    }
+  }
+}
