@@ -8,3 +8,11 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local-only translations and per-issue body drafts. The English master plan
+# at `.claude/PRPs/plans/shalgalt-omr-master.plan.md` and the body template
+# are committed; everything below was source material for one-shot GitHub
+# Issue creation and now lives only on github.com/filename24/shalgalt-omr.
+.claude/PRPs/plans/*.ko.md
+.claude/PRPs/plans/issues/P*.md
+.claude/PRPs/plans/issues/M-*.md
