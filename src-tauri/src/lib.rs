@@ -130,7 +130,7 @@ fn init_tracing() {
 }
 
 async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
-    let dirs = AppDirs::resolve()?;
+    let dirs = AppDirs::resolve(&app)?;
     info!(
         "data dir: {}, db file: {}",
         dirs.data_dir.display(),
