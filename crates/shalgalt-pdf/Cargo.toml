@@ -1,0 +1,13 @@
+[package]
+name = "shalgalt-pdf"
+description = "OMR PDF generator backed by printpdf with embedded Noto Sans fonts"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_pdf"
+path = "src/lib.rs"

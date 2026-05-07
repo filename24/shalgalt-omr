@@ -1,0 +1,13 @@
+[package]
+name = "shalgalt-cv"
+description = "OMR computer-vision pipeline: pdfium rasterization, OpenCV bubble reading"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_cv"
+path = "src/lib.rs"

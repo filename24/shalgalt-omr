@@ -4527,6 +4527,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "shalgalt-core"
+version = "0.1.0"
+
+[[package]]
+name = "shalgalt-cv"
+version = "0.1.0"
+
+[[package]]
+name = "shalgalt-fileformat"
+version = "0.1.0"
+
+[[package]]
 name = "shalgalt-omr"
 version = "0.1.0"
 dependencies = [
@@ -4558,6 +4570,14 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
 ]
+
+[[package]]
+name = "shalgalt-pdf"
+version = "0.1.0"
+
+[[package]]
+name = "shalgalt-server"
+version = "0.1.0"
 
 [[package]]
 name = "sharded-slab"

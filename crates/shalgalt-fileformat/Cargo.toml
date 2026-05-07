@@ -1,0 +1,13 @@
+[package]
+name = "shalgalt-fileformat"
+description = "Read/write `.shalgalt` zip project files with optional age passphrase encryption"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_fileformat"
+path = "src/lib.rs"

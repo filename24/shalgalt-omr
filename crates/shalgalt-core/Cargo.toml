@@ -1,0 +1,13 @@
+[package]
+name = "shalgalt-core"
+description = "Pure-Rust core: domain models, grading engine, xlsx export, axum router"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_core"
+path = "src/lib.rs"
