@@ -4517,6 +4517,17 @@ dependencies = [
 [[package]]
 name = "shalgalt-cv"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image",
+ "opencv",
+ "pdfium-render",
+ "serde",
+ "sha2",
+ "shalgalt-core",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "shalgalt-fileformat"
@@ -4529,14 +4540,11 @@ dependencies = [
  "anyhow",
  "axum",
  "futures",
- "image",
  "log",
- "opencv",
- "pdfium-render",
  "serde",
  "serde_json",
- "sha2",
  "shalgalt-core",
+ "shalgalt-cv",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

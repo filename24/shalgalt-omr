@@ -13,12 +13,12 @@
 // CV pipeline (P2) and grading engine (P3) consume the stubbed accessors and re-exports.
 #![allow(dead_code, unused_imports)]
 
-// Domain / grading / export / api router / error envelope all live in
-// `shalgalt-core` after P2-02. Only Tauri-bound modules stay in this crate.
+// Domain / grading / export / api router / error envelope live in
+// `shalgalt-core` (P2-02). The CV pipeline (`scan`/`preview`/`pipeline`) lives
+// in `shalgalt-cv` (P2-03). Only Tauri-bound modules stay in this crate.
 mod api;
 mod commands;
 mod paths;
-mod scan;
 mod state;
 
 use tauri::Manager;

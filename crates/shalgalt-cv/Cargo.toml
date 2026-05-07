@@ -11,3 +11,31 @@ publish = false
 [lib]
 name = "shalgalt_cv"
 path = "src/lib.rs"
+
+[dependencies]
+# Domain models + AppError envelope.
+shalgalt-core = { path = "../shalgalt-core" }
+
+# OMR algorithms.
+# NOTE: requires system-installed OpenCV (libopencv-dev / brew opencv / Windows
+# self-extractor — see README and ADR 0001).
+opencv = { version = "0.94", default-features = false, features = [
+    "clang-runtime",
+    "imgcodecs",
+    "imgproc",
+] }
+
+# PDF rasterization.
+pdfium-render = { version = "0.8", features = ["thread_safe", "image", "sync"] }
+image = "0.25"
+
+# Progress reporting + cache hashing.
+tokio = { version = "1", features = ["sync", "rt"] }
+sha2 = "0.10"
+
+# Logging + error context.
+tracing = "0.1"
+anyhow = "1"
+
+# Domain serialization (TaskProgress / TaskStage).
+serde = { version = "1", features = ["derive"] }
