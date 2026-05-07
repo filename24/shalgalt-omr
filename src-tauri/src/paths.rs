@@ -2,10 +2,15 @@
 //!
 //! Rule 1: result images live in a temp directory and are exposed to the UI through the
 //! `asset://` protocol, so every path decision flows through this single source.
+//!
+//! Paths are resolved through Tauri's `PathResolver` so that the Rust backend and the
+//! frontend `@tauri-apps/api/path` helpers always agree on locations. This keeps
+//! `tauri-plugin-fs` scopes (`$APPDATA/**`, `$APPCACHE/**`) valid for paths produced on
+//! either side of the IPC boundary.
 
 use std::path::{Path, PathBuf};
 
-use directories::ProjectDirs;
+use tauri::{AppHandle, Manager};
 
 use crate::error::{AppError, AppResult};
 
@@ -24,16 +29,15 @@ pub struct AppDirs {
 }
 
 impl AppDirs {
-    /// `directories` picks the appropriate location per OS.
-    pub fn resolve() -> AppResult<Self> {
-        let dirs = ProjectDirs::from("dev", "filename", "shalgalt-omr").ok_or_else(|| {
-            AppError::Internal(anyhow::anyhow!(
-                "failed to resolve project directories for current OS"
-            ))
+    /// Resolve all standard directories via Tauri's path resolver, ensuring they exist.
+    pub fn resolve(app: &AppHandle) -> AppResult<Self> {
+        let resolver = app.path();
+        let data_dir = resolver.app_data_dir().map_err(|e| {
+            AppError::Internal(anyhow::anyhow!("failed to resolve app_data_dir: {e}"))
         })?;
-
-        let data_dir = dirs.data_dir().to_path_buf();
-        let cache_dir = dirs.cache_dir().to_path_buf();
+        let cache_dir = resolver.app_cache_dir().map_err(|e| {
+            AppError::Internal(anyhow::anyhow!("failed to resolve app_cache_dir: {e}"))
+        })?;
         let scans_dir = data_dir.join("scans");
 
         for d in [&data_dir, &cache_dir, &scans_dir] {

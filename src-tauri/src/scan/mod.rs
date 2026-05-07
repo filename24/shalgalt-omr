@@ -12,5 +12,6 @@ pub mod bubbles;
 pub mod pdf;
 pub mod perspective;
 pub mod pipeline;
+pub mod preview;
 
 pub use pipeline::{TaskProgress, TaskStage};

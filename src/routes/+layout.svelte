@@ -6,15 +6,15 @@
   import AppSidebar from "$lib/components/shell/AppSidebar.svelte";
   import StatusBar from "$lib/components/shell/StatusBar.svelte";
   import { page } from "$app/state";
+  import { mn } from "$lib/i18n";
 
   let { children } = $props();
 
-  // P0 placeholder labels. Replaced by Mongolian copy from the P1 string-table.
   const titleByPath: Record<string, string> = {
-    "/": "Dashboard",
-    "/editor": "Template Editor",
-    "/grade": "Grade PDF",
-    "/results": "Results",
+    "/": mn.nav.dashboard,
+    "/editor": mn.nav.editor,
+    "/grade": mn.nav.grade,
+    "/results": mn.nav.results,
   };
   const pageTitle = $derived(titleByPath[page.url.pathname] ?? "");
 </script>

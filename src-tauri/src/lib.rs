@@ -15,7 +15,7 @@
 
 mod api;
 mod commands;
-mod domain;
+pub mod domain;
 mod error;
 mod export;
 mod grading;
@@ -37,17 +37,26 @@ const DB_URL: &str = "sqlite:shalgalt-omr.sqlite";
 
 /// Migration SQL is kept in a sibling file and embedded at compile time.
 const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
+const MIGRATION_0002: &str = include_str!("../migrations/0002_backdrop.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_tracing();
 
-    let migrations = vec![Migration {
-        version: 1,
-        description: "init_students_templates_results",
-        sql: MIGRATION_0001,
-        kind: MigrationKind::Up,
-    }];
+    let migrations = vec![
+        Migration {
+            version: 1,
+            description: "init_students_templates_results",
+            sql: MIGRATION_0001,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "add_templates_backdrop_path",
+            sql: MIGRATION_0002,
+            kind: MigrationKind::Up,
+        },
+    ];
 
     let mut builder = tauri::Builder::default();
 
@@ -104,6 +113,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::scan::scan_grade_pdf,
+            commands::scan::rasterize_pdf_first_page,
             commands::export::export_results_xlsx,
         ])
         .run(tauri::generate_context!())
@@ -120,7 +130,7 @@ fn init_tracing() {
 }
 
 async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
-    let dirs = AppDirs::resolve()?;
+    let dirs = AppDirs::resolve(&app)?;
     info!(
         "data dir: {}, db file: {}",
         dirs.data_dir.display(),

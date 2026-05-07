@@ -8,6 +8,8 @@
     "opener:default",
     "dialog:default",
     "fs:default",
+    "fs:allow-appdata-write-recursive",
+    "fs:allow-appcache-read-recursive",
     "log:default",
     "sql:default",
     "sql:allow-load",

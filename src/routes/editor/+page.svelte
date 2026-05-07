@@ -1,30 +1,45 @@
 <script lang="ts">
-  import * as Card from "$lib/components/ui/card";
-  import { Badge } from "$lib/components/ui/badge";
+  import { onMount } from "svelte";
+  import { beforeNavigate } from "$app/navigation";
+  import EditorShell from "$lib/components/editor/EditorShell.svelte";
+  import { currentTemplate } from "$lib/stores/currentTemplate.svelte";
+  import { createMongolianStandardTemplate } from "$lib/templates/mongolianStandard";
+  import { mn } from "$lib/i18n";
+
+  // Bootstrap a fresh draft when entering the route with nothing loaded. The
+  // Mongolian-standard preset is the friendlier default — most users start
+  // from this layout and tweak; advanced users hit "New > Empty" to drop it.
+  // We do NOT auto-create one if a template was already opened from the
+  // dashboard, because that would clobber the user's work.
+  onMount(() => {
+    if (!currentTemplate.draft) {
+      currentTemplate.initDraft(
+        createMongolianStandardTemplate({
+          title: mn.editor.presets.standardDefaultTitle,
+        }),
+        crypto.randomUUID(),
+      );
+    }
+  });
+
+  // SvelteKit in-app navigation guard.
+  beforeNavigate(({ cancel }) => {
+    if (currentTemplate.isDirty) {
+      const confirmed = window.confirm(mn.dialog.unsavedChanges.body);
+      if (!confirmed) cancel();
+    }
+  });
+
+  // Browser-level guard for refresh / window close.
+  function handleBeforeUnload(event: BeforeUnloadEvent) {
+    if (currentTemplate.isDirty) {
+      event.preventDefault();
+    }
+  }
 </script>
 
-<section class="p-8">
-  <header class="mb-6 flex items-center gap-3">
-    <h2 class="text-2xl font-bold">Template Editor</h2>
-    <Badge variant="outline">P1</Badge>
-  </header>
+<svelte:window onbeforeunload={handleBeforeUnload} />
 
-  <Card.Root class="max-w-2xl">
-    <Card.Header>
-      <Card.Title>svelte-konva canvas pending</Card.Title>
-      <Card.Description>
-        Phase 1 lights up the visual editor: 4 corner markers, drag-to-place bubble
-        groups, and an answer-key inspector. Templates serialize to
-        <code>OmrTemplate</code> JSON (Rule 3) and persist via
-        <code>$lib/db/templates</code>.
-      </Card.Description>
-    </Card.Header>
-    <Card.Content class="text-muted-foreground text-sm">
-      <ul class="list-disc space-y-1 pl-5">
-        <li>Marker layer + perspective preview</li>
-        <li>Bubble group tool (student-id / question)</li>
-        <li>Answer-key inspector bound to <code>currentTemplate</code> store</li>
-      </ul>
-    </Card.Content>
-  </Card.Root>
-</section>
+<div class="h-[calc(100vh-3rem-1.75rem)] w-full">
+  <EditorShell />
+</div>

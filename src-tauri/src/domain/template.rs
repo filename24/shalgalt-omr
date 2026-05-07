@@ -46,6 +46,10 @@ pub struct BubbleGroup {
     /// Score weight. Defaults to 1.0.
     #[serde(default = "default_score")]
     pub score: f32,
+    /// Optional UI-only grouping label (e.g. "Шифр", "1-Р ХЭСЭГ", "2.1"). Used by the
+    /// editor's LayerTree and the result table, ignored by the CV pipeline.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub section: Option<String>,
 }
 
 fn default_score() -> f32 {

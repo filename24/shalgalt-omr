@@ -16,7 +16,7 @@ background HTTP API for optional integrations.
 | Editor / UI  | svelte-konva (Canvas), paneforge (IDE panes)                          |
 | Native shell | Tauri 2.0 + plugins: sql, dialog, fs, opener, log, single-instance, window-state |
 | Core         | Rust — opencv-rust, pdfium-render, rust_xlsxwriter                    |
-| Persistence  | `tauri-plugin-sql` + SQLite (single file in `ProjectDirs::data_dir`)  |
+| Persistence  | `tauri-plugin-sql` + SQLite (single file in Tauri's `app_data_dir`)   |
 | Bg API       | axum on `127.0.0.1:8080` (CORS permissive, oneshot graceful shutdown) |
 | Async        | tokio (`full`)                                                        |
 
@@ -47,7 +47,7 @@ src-tauri/
     commands/     — `tauri::command` thin layer. ONLY Rust-only work (scan, export).
     error.rs      — `AppError` / `AppResult`. Implements `Serialize` for IPC-safe payloads.
     state.rs      — `AppState { dirs }`. No DB pool — plugin-sql owns the connection.
-    paths.rs      — OS-aware data/cache/scans dirs (`directories::ProjectDirs`).
+    paths.rs      — OS-aware data/cache/scans dirs (Tauri `PathResolver`-backed).
     lib.rs        — Bootstrap order: tracing → AppDirs → plugin-sql(migrations) → axum → builder.
 ```
 
@@ -234,8 +234,8 @@ file is the only repo-level guide.
 
 ## Security & Secrets
 
-- No secrets are committed. The local SQLite file lives in OS-specific
-  `ProjectDirs::data_dir` (e.g. `~/Library/Application Support/dev.filename.shalgalt-omr/`).
+- No secrets are committed. The local SQLite file lives in Tauri's bundle-identifier
+  `app_data_dir` (e.g. `~/Library/Application Support/dev.filename.shalgalt-omr.app/`).
 - The bundled axum server binds to `127.0.0.1` only. If exposing it, harden CORS first.
 
 ## When Documentation Drifts
