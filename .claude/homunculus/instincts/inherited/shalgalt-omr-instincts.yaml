@@ -1,0 +1,523 @@
+# Instincts generated from https://github.com/filename24/shalgalt-omr
+# Generated: 2026-05-07T15:41:40.197Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: shalgalt-omr-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Commit Length
+
+## Action
+
+Write moderate-length commit messages (~66 characters)
+
+## Evidence
+
+- Average commit message length: 66 chars
+- Based on 2 commits
+
+---
+id: shalgalt-omr-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: shalgalt-omr-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: shalgalt-omr-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: shalgalt-omr-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: lib, routes
+
+---
+id: shalgalt-omr-test-colocate
+trigger: "when writing tests"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Test Colocate
+
+## Action
+
+Place test file next to the source file (e.g., Button.test.tsx next to Button.tsx)
+
+## Evidence
+
+- Colocated test pattern detected
+- Tests live alongside source files
+
+---
+id: shalgalt-omr-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: shalgalt-omr-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: shalgalt-omr-workflow-add-database-table-or-schema-change
+trigger: "when doing add database table or schema change"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Add Database Table Or Schema Change
+
+## Action
+
+Follow the add-database-table-or-schema-change workflow:
+1. Create or modify a migration file in src-tauri/migrations/*.sql
+2. Update Rust domain model in src-tauri/src/domain/*.rs
+3. Update or create TypeScript DB accessors in src/lib/db/*.ts
+4. Update TypeScript types in src/lib/types/*.ts
+5. Update or add fixtures/tests in src-tauri/tests/*
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: src-tauri/migrations/*.sql, src-tauri/src/domain/*.rs, src/lib/db/*.ts
+
+---
+id: shalgalt-omr-workflow-feature-development-with-editor-components
+trigger: "when doing feature development with editor components"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Feature Development With Editor Components
+
+## Action
+
+Follow the feature-development-with-editor-components workflow:
+1. Create new Svelte components in src/lib/components/editor/
+2. Update or add supporting TypeScript logic in src/lib/components/editor/*.ts
+3. Update or add Svelte stores in src/lib/stores/*.ts
+4. Update or add DB accessors in src/lib/db/*.ts if needed
+5. Update or add IPC handlers in src/lib/ipc/*.ts
+6. Wire up new components in src/routes/* or existing shells
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/lib/components/editor/*.svelte, src/lib/components/editor/*.ts, src/lib/stores/*.ts
+
+---
+id: shalgalt-omr-workflow-add-or-update-i18n-and-ui-strings
+trigger: "when doing add or update i18n and ui strings"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Add Or Update I18n And Ui Strings
+
+## Action
+
+Follow the add-or-update-i18n-and-ui-strings workflow:
+1. Update or add i18n files in src/lib/i18n/*.ts
+2. Update Svelte components to use new i18n keys
+3. Update documentation if language conventions change
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: src/lib/i18n/*.ts, src/lib/components/**/*.svelte, AGENTS.md
+
+---
+id: shalgalt-omr-instinct-file-naming
+trigger: "When creating a new file or renaming an existing one"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct File Naming
+
+## Action
+
+Use camelCase for file names
+
+## Evidence
+
+- Pattern in namingConventions.files
+- All TypeScript/Svelte files in src/lib/components/editor/ use camelCase
+
+---
+id: shalgalt-omr-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions
+- Functions in src/lib/db/*.ts use camelCase
+
+---
+id: shalgalt-omr-instinct-class-naming
+trigger: "When creating a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes
+- Classes in src/lib/types/*.ts use PascalCase
+
+---
+id: shalgalt-omr-instinct-constant-naming
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in namingConventions.constants
+- Constants in src/lib/types/*.ts use SCREAMING_SNAKE_CASE
+
+---
+id: shalgalt-omr-instinct-import-style
+trigger: "When importing modules"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in importStyle
+- Imports in src/lib/db/*.ts are relative
+
+---
+id: shalgalt-omr-instinct-export-style
+trigger: "When exporting functions or types"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle
+- Exports in src/lib/db/*.ts are named
+
+---
+id: shalgalt-omr-instinct-test-location
+trigger: "When adding a test for a module"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Location
+
+## Action
+
+Colocate the test file next to the module using the pattern *.test.ts
+
+## Evidence
+
+- Pattern in testing.filePattern
+- Test files in src/lib/components/editor/ follow *.test.ts
+
+---
+id: shalgalt-omr-instinct-test-framework
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Framework
+
+## Action
+
+Use the Vitest framework for unit tests
+
+## Evidence
+
+- Pattern in testing.framework
+- vitest.config.ts present
+
+---
+id: shalgalt-omr-instinct-test-type
+trigger: "When deciding what tests to write"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Type
+
+## Action
+
+Write unit tests for new or changed logic
+
+## Evidence
+
+- Pattern in testing.testTypes
+- Unit test files in src-tauri/tests/
+
+---
+id: shalgalt-omr-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Commit Format
+
+## Action
+
+Prefix the commit with P0 or P1 followed by a colon and a concise description
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Examples: 'P0: foundation scaffolding...', 'P1: svelte-konva template editor...'
+
+---
+id: shalgalt-omr-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Commit Length
+
+## Action
+
+Keep the commit message concise, around 60-70 characters
+
+## Evidence
+
+- Pattern in commits.averageLength
+- Commit examples average 66 characters
+
+---
+id: shalgalt-omr-instinct-add-database-schema-change
+trigger: "When adding or modifying a database table or schema"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Database Schema Change
+
+## Action
+
+Create or modify a migration in src-tauri/migrations/*.sql, update Rust domain model in src-tauri/src/domain/*.rs, update or create TypeScript DB accessors in src/lib/db/*.ts, update TypeScript types in src/lib/types/*.ts, and update or add fixtures/tests in src-tauri/tests/*
+
+## Evidence
+
+- Workflow: add-database-table-or-schema-change
+- Commit sequences and files in workflow example
+
+---
+id: shalgalt-omr-instinct-feature-editor-component
+trigger: "When implementing a new editor feature or UI capability"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Feature Editor Component
+
+## Action
+
+Create Svelte components in src/lib/components/editor/, update supporting TypeScript logic, update/add Svelte stores in src/lib/stores/, update/add DB accessors in src/lib/db/ if needed, update/add IPC handlers in src/lib/ipc/, and wire up new components in src/routes/
+
+## Evidence
+
+- Workflow: feature-development-with-editor-components
+- Commit sequences and files in workflow example
+
+---
+id: shalgalt-omr-instinct-add-i18n-string
+trigger: "When adding new UI strings or supporting a new language"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add I18n String
+
+## Action
+
+Update or add i18n files in src/lib/i18n/*.ts, update Svelte components to use new i18n keys, and update documentation if language conventions change
+
+## Evidence
+
+- Workflow: add-or-update-i18n-and-ui-strings
+- Commit sequences and files in workflow example
+
