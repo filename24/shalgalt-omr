@@ -1,46 +1,31 @@
+/**
+ * Frontend re-exports for the OMR template domain.
+ *
+ * The bare interfaces (`OmrTemplate`, `BubbleGroup`, ...) are generated from
+ * the Rust domain types by `ts-rs` (P2-04) and live under `./generated/`.
+ * This module wraps them with the frontend-only helpers that have no Rust
+ * counterpart: a runtime `zod` schema, the `createEmptyTemplate` factory, and
+ * `TemplateSummary` which mirrors the desktop-side `commands::templates`
+ * response (and therefore stays hand-authored).
+ *
+ * To refresh the generated bindings after editing
+ * `crates/shalgalt-core/src/domain/*.rs`, run `pnpm generate-types`.
+ */
+
 import { z } from "zod";
 
-/** Mirrors Rust `domain::template::TemplatePoint`. */
-export interface TemplatePoint {
-  x: number;
-  y: number;
-}
+import type { BubbleGroup } from "./generated/BubbleGroup";
+import type { BubbleKind } from "./generated/BubbleKind";
+import type { Marker } from "./generated/Marker";
+import type { OmrTemplate } from "./generated/OmrTemplate";
+import type { TemplatePoint } from "./generated/TemplatePoint";
 
-/** Mirrors Rust `domain::template::Marker`. */
-export interface Marker {
-  id: string;
-  position: TemplatePoint;
-  size: number;
-}
+export type { BubbleGroup, BubbleKind, Marker, OmrTemplate, TemplatePoint };
 
-/** Mirrors Rust `domain::template::BubbleKind`. */
-export type BubbleKind = "student_id" | "question";
-
-/** Mirrors Rust `domain::template::BubbleGroup`. */
-export interface BubbleGroup {
-  id: string;
-  kind: BubbleKind;
-  label: string;
-  bubbles: TemplatePoint[];
-  answer_index: number | null;
-  score: number;
-  /**
-   * Optional UI-only grouping label (e.g. cipher / variant / section names).
-   * Pure organization metadata for the LayerTree and result tables — the CV
-   * pipeline and grading engine ignore it.
-   */
-  section?: string;
-}
-
-/** Rule 3 — top-level structure persisted into `templates.json_schema`. */
-export interface OmrTemplate {
-  version: number;
-  title: string;
-  markers: [Marker, Marker, Marker, Marker];
-  groups: BubbleGroup[];
-}
-
-/** Mirrors `commands::templates::TemplateSummary`. */
+/**
+ * Mirrors `commands::templates::TemplateSummary` (desktop-only IPC type, no
+ * Rust counterpart in `shalgalt-core`).
+ */
 export interface TemplateSummary {
   id: number;
   title: string;

@@ -8,9 +8,11 @@ import {
   type OmrTemplate,
 } from "./template";
 
+// Fixture moved to `crates/shalgalt-core/tests/fixtures/` in P2-02 when the
+// domain types were extracted into the shalgalt-core crate.
 const FIXTURE_PATH = resolve(
   __dirname,
-  "../../../src-tauri/tests/fixtures/template-v1.json",
+  "../../../crates/shalgalt-core/tests/fixtures/template-v1.json",
 );
 
 describe("OmrTemplate round-trip parity", () => {
@@ -64,7 +66,7 @@ describe("OmrTemplate round-trip parity", () => {
   });
 
   test("Rust-generated fixture is accepted by the TS Zod schema", () => {
-    // This guards field-name parity between `src-tauri/src/domain/template.rs`
+    // This guards field-name parity between `crates/shalgalt-core/src/domain/template.rs`
     // (serde) and `src/lib/types/template.ts` (Zod). If a Rust-side field
     // rename or type change ships without updating Zod, this test fails.
     const text = readFileSync(FIXTURE_PATH, "utf8");

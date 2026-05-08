@@ -11,10 +11,10 @@
 use std::path::PathBuf;
 
 use shalgalt_core::error::{AppError, AppResult};
+use shalgalt_cv::{preview, TaskProgress, TaskStage};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-use crate::scan::{preview, TaskProgress, TaskStage};
 use crate::state::AppState;
 
 const PROGRESS_EVENT: &str = "task-progress";

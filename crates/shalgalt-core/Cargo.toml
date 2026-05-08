@@ -26,3 +26,9 @@ anyhow = "1"
 # Tauri-agnostic and be reused by `apps/server` (P5-05).
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# TypeScript binding generation (P2-04). Domain types derive `TS` and emit
+# `.ts` interfaces into `src/lib/types/generated/` whenever `cargo test -p
+# shalgalt-core` runs (frontend `pnpm generate-types` wraps that). Required at
+# build time because the derive expands to runtime code.
+ts-rs = "10"
