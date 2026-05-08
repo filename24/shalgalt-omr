@@ -43,9 +43,6 @@ jobs:
     name: Rust (fmt + clippy + check)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: src-tauri
     steps:
       - uses: actions/checkout@v4
 
@@ -71,17 +68,29 @@ jobs:
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
 
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 
       - name: cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
       - name: cargo check
-        run: cargo check --all-targets --all-features
+        run: cargo check --workspace --all-targets --all-features
+
+      # ts-rs writes `src/lib/types/generated/*.ts` as a side effect of running
+      # `cargo test -p shalgalt-core`. Running it on every CI build catches
+      # situations where someone edited a domain type in Rust but forgot to run
+      # `pnpm generate-types`, by surfacing a dirty working tree.
+      - name: Regenerate TS bindings (ts-rs)
+        run: cargo test -p shalgalt-core --quiet
+
+      - name: Verify TS bindings are up to date
+        run: |
+          if ! git diff --exit-code -- src/lib/types/generated; then
+            echo "::error::Generated TS bindings drifted. Run 'pnpm generate-types' and commit."
+            exit 1
+          fi
 
   dev-build:
     name: Dev build (${{ matrix.platform.name }})
@@ -131,7 +140,6 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
           # Cache key is OS-scoped (not SHA-scoped) so successive commits reuse it.
           key: ${{ matrix.platform.name }}-debug
 
@@ -214,9 +222,9 @@ jobs:
           # tauri emits per-target subfolders; collect every bundle plus the raw
           # debug executable as a fallback for spot inspection.
           path: |
-            src-tauri/target/debug/bundle/**/*
-            src-tauri/target/debug/shalgalt-omr
-            src-tauri/target/debug/shalgalt-omr.exe
-            src-tauri/target/debug/shalgalt-omr.app
+            target/debug/bundle/**/*
+            target/debug/shalgalt-omr
+            target/debug/shalgalt-omr.exe
+            target/debug/shalgalt-omr.app
           if-no-files-found: warn
           retention-days: 14

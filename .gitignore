@@ -9,6 +9,9 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Cargo workspace target dir lives at the repo root after the P2-01 layout switch.
+/target/
+
 # Local-only translations and per-issue body drafts. The English master plan
 # at `.claude/PRPs/plans/shalgalt-omr-master.plan.md` and the body template
 # are committed; everything below was source material for one-shot GitHub

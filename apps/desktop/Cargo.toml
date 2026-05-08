@@ -1,0 +1,84 @@
+[package]
+name = "shalgalt-omr"
+version = "0.1.0"
+description = "Local-First OMR Grading IDE"
+authors = ["filename24"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "shalgalt_omr_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# --- Workspace core (P2-02) ---
+# Domain models, grading engine, axum router, and the `AppError`/`AppResult`
+# envelope live in this crate so `apps/server` (P5) can reuse them without any
+# Tauri code on the dependency path.
+shalgalt-core = { path = "../../crates/shalgalt-core" }
+
+# --- CV pipeline (P2-03) ---
+# Multi-page PDF rasterization, perspective alignment, bubble reading, and the
+# `TaskProgress` / `TaskStage` payloads all live in this crate. Tauri-bound
+# concerns (event emission, IPC commands) stay here in `commands::scan`.
+shalgalt-cv = { path = "../../crates/shalgalt-cv" }
+
+# --- Tauri ---
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-log = "2"
+
+# Desktop-only quality-of-life plugins (guarded by cfg(desktop) at the call site)
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
+
+# --- Database (Blueprint §4) ---
+# Tauri SQL plugin: defines migrations on the Rust side and is consumed from the frontend
+# via `@tauri-apps/plugin-sql` using `Database.load("sqlite:shalgalt-omr.sqlite")`.
+# We deliberately do NOT keep a separate sqlx pool here — DB CRUD is unified through the
+# frontend.
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+
+# --- Async runtime ---
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+# --- Serialization ---
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# --- Error handling / logging ---
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+# `default-features = false` drops the `tracing-log` feature so tracing-subscriber
+# does NOT install a global `log::Log` implementation. `tauri-plugin-log` owns that
+# slot — keeping both enabled panics with "attempted to set a logger after the
+# logging system was already initialized" during plugin init.
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "ansi", "std", "smallvec"] }
+log = "0.4"
+
+# --- Background HTTP server (Blueprint §2 — axum) ---
+# `axum::serve` and the graceful-shutdown harness live in `src/api/server.rs`.
+# The router itself is built in `shalgalt-core::api`. xlsx export and the CORS
+# layer also moved to `shalgalt-core` in P2-02.
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# --- Misc ---
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[features]
+default = []
+
+# `[profile.release]` lives at the workspace root (../../Cargo.toml). Cargo emits
+# a warning if a non-root member redeclares profiles in a workspace.

@@ -1,0 +1,13 @@
+[package]
+name = "shalgalt-server"
+description = "Standalone axum server reusing shalgalt-core (P5)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "shalgalt-server"
+path = "src/main.rs"

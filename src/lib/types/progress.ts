@@ -1,19 +1,11 @@
-/** Mirrors Rust `scan::pipeline::TaskStage`. */
-export type TaskStage =
-  | "loading_pdf"
-  | "rasterizing"
-  | "detecting_markers"
-  | "reading_bubbles"
-  | "grading"
-  | "saving"
-  | "done"
-  | "failed";
+/**
+ * Frontend re-exports for the `task-progress` IPC payload.
+ *
+ * Generated from `shalgalt_core::domain::progress` via `ts-rs` (P2-04).
+ * Refresh with `pnpm generate-types` after editing the Rust struct.
+ */
 
-/** Rule 2 — payload of the `task-progress` event. */
-export interface TaskProgress {
-  task_id: string;
-  processed: number;
-  total: number;
-  stage: TaskStage;
-  message?: string | null;
-}
+import type { TaskProgress } from "./generated/TaskProgress";
+import type { TaskStage } from "./generated/TaskStage";
+
+export type { TaskProgress, TaskStage };

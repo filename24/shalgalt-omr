@@ -87,18 +87,38 @@ pnpm tauri dev
 
 ## Project Layout (summary)
 
+The repo is a Cargo workspace as of P2-01 — Rust crates live under `apps/` and
+`crates/`, the SvelteKit frontend stays at the root, and a single
+`Cargo.lock` / `target/` lives at the workspace root.
+
 ```
-docs/             — BLUEPRINT, ARCHITECTURE
-src/              — SvelteKit (routes, lib/ipc, lib/db, lib/stores, lib/components, lib/types)
-src-tauri/
-  migrations/     — SQL files embedded into Rust via `include_str!`
-  src/
-    domain/       — pure models (Rule 3 serialization unit)
-    scan/         — CV pipeline (P2)
-    grading/      — grading engine (P3)
-    export/       — xlsx (P4)
-    api/          — axum background server (Rule 4)
-    commands/     — tauri::command IPC thin layer (Rule 1·2)
+docs/             — BLUEPRINT, ARCHITECTURE, ADRs
+src/              — SvelteKit frontend (routes, lib/ipc, lib/db, lib/stores, lib/components, lib/types)
+apps/
+  desktop/        — Tauri 2 desktop app (was `src-tauri/`)
+    migrations/   — SQL files embedded into Rust via `include_str!`
+    src/
+      domain/     — pure models (moves to crates/shalgalt-core in P2-02)
+      scan/       — CV pipeline (moves to crates/shalgalt-cv in P2-03)
+      grading/    — grading engine (moves to crates/shalgalt-core in P2-02)
+      export/     — xlsx (moves to crates/shalgalt-core in P2-02)
+      api/        — axum background server (Rule 4 — router moves to shalgalt-core in P2-02)
+      commands/   — tauri::command IPC thin layer (Rule 1·2) — stays here
+  server/         — standalone axum binary (implemented in P5-05; placeholder today)
+crates/
+  shalgalt-core/  — domain + grading + xlsx export + axum router (P2-02)
+  shalgalt-pdf/   — printpdf-based OMR PDF generator (P2-05)
+  shalgalt-cv/    — CV pipeline facade (P2-03)
+  shalgalt-fileformat/ — `.shalgalt` zip + age encryption (P4-01)
+```
+
+Common commands run at the workspace root:
+
+```bash
+cargo check --workspace --all-targets --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
+pnpm tauri dev              # spawns Tauri pointing at apps/desktop/tauri.conf.json
 ```
 
 ## License
