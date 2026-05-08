@@ -29,3 +29,8 @@ reasoning*, not the prose volume.
 | ID | Title | Status |
 | -- | ----- | ------ |
 | [0001](0001-windows-opencv-strategy.md) | Windows OpenCV install strategy | Accepted |
+| [0002](0002-pdf-generator-printpdf.md) | PDF generator: `printpdf` | Accepted |
+| [0003](0003-cargo-workspace-and-crate-boundaries.md) | Cargo workspace + crate boundaries | Accepted |
+| [0004](0004-ts-rs-type-codegen.md) | Generate TypeScript bindings from Rust via `ts-rs` | Accepted |
+| [0005](0005-pdf-ipc-contract.md) | PDF generation IPC contract | Accepted |
+| [0006](0006-light-theme-and-comfort-typography.md) | Light-default theme + comfortable typography mode | Accepted |
