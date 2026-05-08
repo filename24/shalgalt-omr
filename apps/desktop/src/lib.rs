@@ -13,14 +13,12 @@
 // CV pipeline (P2) and grading engine (P3) consume the stubbed accessors and re-exports.
 #![allow(dead_code, unused_imports)]
 
+// Domain / grading / export / api router / error envelope live in
+// `shalgalt-core` (P2-02). The CV pipeline (`scan`/`preview`/`pipeline`) lives
+// in `shalgalt-cv` (P2-03). Only Tauri-bound modules stay in this crate.
 mod api;
 mod commands;
-pub mod domain;
-mod error;
-mod export;
-mod grading;
 mod paths;
-mod scan;
 mod state;
 
 use tauri::Manager;
@@ -141,7 +139,7 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
 
     // Rule 4: the axum server lives in its own task. Storing the handle via `manage` means
     // it is dropped (and shut down gracefully) when the Tauri app exits.
-    let api: ApiHandle = api::spawn(state.clone()).await?;
+    let api: ApiHandle = api::spawn().await?;
     app.manage(api);
     app.manage(state);
 

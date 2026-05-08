@@ -78,6 +78,20 @@ jobs:
       - name: cargo check
         run: cargo check --workspace --all-targets --all-features
 
+      # ts-rs writes `src/lib/types/generated/*.ts` as a side effect of running
+      # `cargo test -p shalgalt-core`. Running it on every CI build catches
+      # situations where someone edited a domain type in Rust but forgot to run
+      # `pnpm generate-types`, by surfacing a dirty working tree.
+      - name: Regenerate TS bindings (ts-rs)
+        run: cargo test -p shalgalt-core --quiet
+
+      - name: Verify TS bindings are up to date
+        run: |
+          if ! git diff --exit-code -- src/lib/types/generated; then
+            echo "::error::Generated TS bindings drifted. Run 'pnpm generate-types' and commit."
+            exit 1
+          fi
+
   dev-build:
     name: Dev build (${{ matrix.platform.name }})
     # Skipped on pull_request to keep review feedback fast — manually trigger via the

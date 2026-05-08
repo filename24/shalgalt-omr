@@ -16,6 +16,18 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# --- Workspace core (P2-02) ---
+# Domain models, grading engine, axum router, and the `AppError`/`AppResult`
+# envelope live in this crate so `apps/server` (P5) can reuse them without any
+# Tauri code on the dependency path.
+shalgalt-core = { path = "../../crates/shalgalt-core" }
+
+# --- CV pipeline (P2-03) ---
+# Multi-page PDF rasterization, perspective alignment, bubble reading, and the
+# `TaskProgress` / `TaskStage` payloads all live in this crate. Tauri-bound
+# concerns (event emission, IPC commands) stay here in `commands::scan`.
+shalgalt-cv = { path = "../../crates/shalgalt-cv" }
+
 # --- Tauri ---
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
@@ -54,32 +66,16 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "ansi", "std", "smallvec"] }
 log = "0.4"
 
-# --- Computer Vision (Blueprint §2 — opencv-rust) ---
-# NOTE: Requires system-installed OpenCV (libopencv-dev on Debian/Ubuntu, brew opencv on macOS,
-# or vcpkg on Windows). See README for setup.
-opencv = { version = "0.94", default-features = false, features = [
-    "clang-runtime",
-    "imgcodecs",
-    "imgproc",
-] }
-
-# --- PDF rasterization (Blueprint §2 — pdfium-render) ---
-# NOTE: Requires the pdfium dynamic library at runtime. We use `bblanchon/pdfium-binaries`
-# downloaded at build/install time. See README.
-pdfium-render = { version = "0.8", features = ["thread_safe", "image", "sync"] }
-image = "0.25"
-
-# --- Excel export (Blueprint §2 — rust_xlsxwriter) ---
-rust_xlsxwriter = { version = "0.83", features = ["chrono"] }
-
 # --- Background HTTP server (Blueprint §2 — axum) ---
+# `axum::serve` and the graceful-shutdown harness live in `src/api/server.rs`.
+# The router itself is built in `shalgalt-core::api`. xlsx export and the CORS
+# layer also moved to `shalgalt-core` in P2-02.
 axum = "0.8"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # --- Misc ---
 uuid = { version = "1", features = ["v4", "serde"] }
-sha2 = "0.10"
 
 [features]
 default = []
