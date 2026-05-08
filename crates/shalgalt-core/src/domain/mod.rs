@@ -4,11 +4,13 @@
 //! allowed to depend on this one, but this module depends on none — preserving an inverted
 //! dependency direction.
 
+pub mod paper;
 pub mod progress;
 pub mod result;
 pub mod student;
 pub mod template;
 
+pub use paper::{Orientation, PaperSpec};
 pub use progress::{TaskProgress, TaskStage};
 pub use result::{GradedAnswer, GradedSheet};
 pub use student::Student;
