@@ -113,6 +113,8 @@ pub fn run() {
             commands::scan::scan_grade_pdf,
             commands::scan::rasterize_pdf_first_page,
             commands::export::export_results_xlsx,
+            commands::pdf::pdf_generate_omr,
+            commands::pdf::pdf_render_template_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -134,6 +136,9 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
         dirs.data_dir.display(),
         DB_FILENAME
     );
+
+    // Drop preview cache files older than 24h before the editor opens.
+    commands::pdf::prune_old_previews(&dirs.cache_dir);
 
     let state = AppState::new(dirs);
 

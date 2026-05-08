@@ -77,6 +77,21 @@ export const mn = {
       redo: "Дахин хийх",
       saveDisabledNoBackdrop: "Эхлээд зургийн дэвсгэр сонгоно уу",
       undoRedoDeferredHint: "P5 шатанд нэмэгдэнэ",
+      exportPdf: "PDF болгож хадгалах",
+      togglePreview: "Хэвлэх харагдац",
+      refreshPreview: "Шинэчлэх",
+    },
+    preview: {
+      title: "Хэвлэх харагдац",
+      empty: "Загвар сонгоогүй байна",
+      loading: "Бэлдэж байна…",
+      failed: "Харагдац үүсгэхэд алдаа гарлаа",
+      paperHint: "A4 — 210 × 297 мм",
+    },
+    export: {
+      success: "PDF файл үүсгэгдлээ",
+      failed: "PDF файл үүсгэхэд алдаа гарлаа",
+      defaultName: "OMR.pdf",
     },
     markers: {
       tl: "Зүүн дээд",
