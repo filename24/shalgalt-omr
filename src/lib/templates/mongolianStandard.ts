@@ -198,10 +198,10 @@ export function createMongolianStandardTemplate(opts?: { title?: string }): OmrT
     version: TEMPLATE_VERSION,
     title: opts?.title ?? "",
     markers: [
-      { id: "m-tl", position: { x: 0.04, y: 0.04 }, size: 0.02 },
-      { id: "m-tr", position: { x: 0.96, y: 0.04 }, size: 0.02 },
-      { id: "m-br", position: { x: 0.96, y: 0.96 }, size: 0.02 },
-      { id: "m-bl", position: { x: 0.04, y: 0.96 }, size: 0.02 },
+      { id: "m-tl", position: { x: 0.04, y: 0.04 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-tr", position: { x: 0.96, y: 0.04 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-br", position: { x: 0.96, y: 0.96 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-bl", position: { x: 0.04, y: 0.96 }, size: 0.02, kind: { type: "square" } },
     ],
     groups: [
       ...buildShifrRows(),

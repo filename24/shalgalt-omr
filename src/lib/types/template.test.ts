@@ -29,10 +29,10 @@ describe("OmrTemplate round-trip parity", () => {
       version: 1,
       title: "round-trip",
       markers: [
-        { id: "m-tl", position: { x: 0.05, y: 0.05 }, size: 0.02 },
-        { id: "m-tr", position: { x: 0.95, y: 0.05 }, size: 0.02 },
-        { id: "m-br", position: { x: 0.95, y: 0.95 }, size: 0.02 },
-        { id: "m-bl", position: { x: 0.05, y: 0.95 }, size: 0.02 },
+        { id: "m-tl", position: { x: 0.05, y: 0.05 }, size: 0.02, kind: { type: "square" } },
+        { id: "m-tr", position: { x: 0.95, y: 0.05 }, size: 0.02, kind: { type: "square" } },
+        { id: "m-br", position: { x: 0.95, y: 0.95 }, size: 0.02, kind: { type: "square" } },
+        { id: "m-bl", position: { x: 0.05, y: 0.95 }, size: 0.02, kind: { type: "square" } },
       ],
       groups: [
         {

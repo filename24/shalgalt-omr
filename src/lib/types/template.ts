@@ -42,10 +42,22 @@ const templatePointSchema = z.object({
   y: z.number(),
 });
 
+const markerKindSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("square") }),
+  z.object({
+    type: z.literal("aruco6x6"),
+    ids: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  }),
+]);
+
 const markerSchema = z.object({
   id: z.string().min(1),
   position: templatePointSchema,
   size: z.number().nonnegative(),
+  // Optional on the Zod side because Rust serializes MarkerKind::Square as
+  // omitted (`skip_serializing_if = "MarkerKind::is_default"`). Pre-P2-06
+  // fixtures without `kind` still parse cleanly.
+  kind: markerKindSchema.optional(),
 });
 
 const bubbleKindSchema = z.union([z.literal("student_id"), z.literal("question")]);
@@ -88,10 +100,10 @@ export function createEmptyTemplate(opts?: { title?: string }): OmrTemplate {
     // so the type module stays decoupled from i18n.
     title: opts?.title ?? "",
     markers: [
-      { id: "m-tl", position: { x: 0.05, y: 0.05 }, size: 0.02 },
-      { id: "m-tr", position: { x: 0.95, y: 0.05 }, size: 0.02 },
-      { id: "m-br", position: { x: 0.95, y: 0.95 }, size: 0.02 },
-      { id: "m-bl", position: { x: 0.05, y: 0.95 }, size: 0.02 },
+      { id: "m-tl", position: { x: 0.05, y: 0.05 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-tr", position: { x: 0.95, y: 0.05 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-br", position: { x: 0.95, y: 0.95 }, size: 0.02, kind: { type: "square" } },
+      { id: "m-bl", position: { x: 0.05, y: 0.95 }, size: 0.02, kind: { type: "square" } },
     ],
     groups: [],
   };
