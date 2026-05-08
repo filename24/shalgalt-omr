@@ -10,6 +10,8 @@
   import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
   import SaveIcon from "@lucide/svelte/icons/save";
   import ImageIcon from "@lucide/svelte/icons/image";
+  import FileDownIcon from "@lucide/svelte/icons/file-down";
+  import EyeIcon from "@lucide/svelte/icons/eye";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
   import Undo2Icon from "@lucide/svelte/icons/undo-2";
@@ -27,13 +29,16 @@
   import { createEmptyTemplate } from "$lib/types/template";
   import { createMongolianStandardTemplate } from "$lib/templates/mongolianStandard";
   import type { OmrTemplate, TemplateSummary } from "$lib/types/template";
-  import { pickImage, pickPdf } from "$lib/picker";
+  import { pickImage, pickPdf, pickPdfSavePath } from "$lib/picker";
+  import { generateOmrPdf } from "$lib/ipc/pdf";
   import {
     importImageBackdrop,
     importPdfBackdrop,
     purgeTemplateAssets,
   } from "$lib/fs/templateAssets";
   import { expand } from "$lib/components/editor/groupLayout";
+
+  let { previewVisible = $bindable(false) }: { previewVisible?: boolean } = $props();
 
   let templates = $state<TemplateSummary[]>([]);
   let saveDialogOpen = $state(false);
@@ -207,6 +212,25 @@
     );
     editorSelection.clear();
   }
+
+  async function handleExportPdf() {
+    if (!currentTemplate.draft) return;
+    const defaultName =
+      `${currentTemplate.draft.title || mn.editor.untitled}.pdf`.replace(/[/\\]/g, "_");
+    const outputPath = await pickPdfSavePath(defaultName || mn.editor.export.defaultName);
+    if (!outputPath) return;
+    try {
+      await generateOmrPdf({ template: currentTemplate.draft, outputPath });
+      toast.success(mn.editor.export.success);
+    } catch (e) {
+      console.error("export pdf failed", e);
+      toast.error(mn.editor.export.failed);
+    }
+  }
+
+  function togglePreview() {
+    previewVisible = !previewVisible;
+  }
 </script>
 
 <div class="bg-background flex h-12 items-center gap-1 border-b px-2">
@@ -289,6 +313,26 @@
     onclick={() => openSaveDialog("saveAs")}
   >
     {mn.editor.toolbar.saveAs}
+  </Button>
+
+  <Button
+    variant="ghost"
+    size="sm"
+    disabled={!currentTemplate.draft}
+    onclick={handleExportPdf}
+  >
+    <FileDownIcon class="size-4" />
+    {mn.editor.toolbar.exportPdf}
+  </Button>
+
+  <Button
+    variant={previewVisible ? "secondary" : "ghost"}
+    size="sm"
+    onclick={togglePreview}
+    title={mn.editor.toolbar.togglePreview}
+  >
+    <EyeIcon class="size-4" />
+    {mn.editor.toolbar.togglePreview}
   </Button>
 
   <span class="bg-border mx-2 h-6 w-px"></span>

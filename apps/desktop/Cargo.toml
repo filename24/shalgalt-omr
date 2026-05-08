@@ -28,6 +28,14 @@ shalgalt-core = { path = "../../crates/shalgalt-core" }
 # concerns (event emission, IPC commands) stay here in `commands::scan`.
 shalgalt-cv = { path = "../../crates/shalgalt-cv" }
 
+# --- PDF renderer (P2-05/06) ---
+# `render_template` produces a single-page A4 OMR PDF from an `OmrTemplate`.
+# Used by `commands::pdf` (P2-07/08) — generate to disk + render preview.
+shalgalt-pdf = { path = "../../crates/shalgalt-pdf" }
+
+# Stable cache filename for the preview pipeline (hash of the serialized template).
+sha2 = "0.10"
+
 # --- Tauri ---
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"

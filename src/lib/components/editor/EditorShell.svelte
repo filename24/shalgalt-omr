@@ -4,7 +4,9 @@
   import LayerTree from "$lib/components/editor/LayerTree.svelte";
   import Inspector from "$lib/components/editor/Inspector.svelte";
   import TemplateCanvas from "$lib/components/editor/TemplateCanvas.svelte";
+  import PdfPreview from "$lib/components/pdf-preview/PdfPreview.svelte";
 
+  let previewVisible = $state(false);
   let canvasWrapper = $state<HTMLDivElement | null>(null);
   let canvasWidth = $state(0);
   let canvasHeight = $state(0);
@@ -28,20 +30,26 @@
 </script>
 
 <div class="bg-background flex h-full min-h-0 flex-col">
-  <Toolbar />
+  <Toolbar bind:previewVisible />
   <div class="flex-1 min-h-0">
     <PaneGroup direction="horizontal" autoSaveId="editor-shell">
-      <Pane defaultSize={20} minSize={12} class="border-r">
+      <Pane defaultSize={18} minSize={12} class="border-r">
         <LayerTree />
       </Pane>
       <PaneResizer class="bg-border hover:bg-accent w-1 cursor-col-resize" />
-      <Pane defaultSize={55} minSize={30}>
+      <Pane defaultSize={previewVisible ? 40 : 57} minSize={30}>
         <div bind:this={canvasWrapper} class="bg-muted/30 h-full w-full">
           <TemplateCanvas width={canvasWidth} height={canvasHeight} />
         </div>
       </Pane>
+      {#if previewVisible}
+        <PaneResizer class="bg-border hover:bg-accent w-1 cursor-col-resize" />
+        <Pane defaultSize={20} minSize={15} class="border-l">
+          <PdfPreview />
+        </Pane>
+      {/if}
       <PaneResizer class="bg-border hover:bg-accent w-1 cursor-col-resize" />
-      <Pane defaultSize={25} minSize={18} class="border-l">
+      <Pane defaultSize={22} minSize={18} class="border-l">
         <Inspector />
       </Pane>
     </PaneGroup>
