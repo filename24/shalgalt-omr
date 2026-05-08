@@ -14,4 +14,4 @@ pub use paper::{Orientation, PaperSpec};
 pub use progress::{TaskProgress, TaskStage};
 pub use result::{GradedAnswer, GradedSheet};
 pub use student::Student;
-pub use template::{BubbleGroup, BubbleKind, Marker, OmrTemplate, TemplatePoint};
+pub use template::{BubbleGroup, BubbleKind, Marker, MarkerKind, OmrTemplate, TemplatePoint};

@@ -2,22 +2,23 @@
 import type { Orientation } from "./Orientation";
 
 /**
- * 인쇄 용지의 물리 치수와 마진. 단위는 모두 밀리미터.
+ * Physical dimensions and margins of a printed sheet. All units are millimetres.
  */
 export type PaperSpec = { 
 /**
- * 가로 길이 (mm).
+ * Page width in millimetres.
  */
 width_mm: number, 
 /**
- * 세로 길이 (mm).
+ * Page height in millimetres.
  */
 height_mm: number, 
 /**
- * 인쇄 가능 영역의 마진 (mm). 모든 변에 동일하게 적용된다.
+ * Margin (mm) applied uniformly to all four sides of the printable area.
  */
 margin_mm: number, 
 /**
- * 가로/세로 방향. 시각적 의미는 `width_mm`/`height_mm` 자체로 결정되며 이 값은 메타데이터.
+ * Page orientation. The visual meaning is determined by `width_mm`/`height_mm`
+ * themselves; this field carries the original intent as metadata.
  */
 orientation: Orientation, };

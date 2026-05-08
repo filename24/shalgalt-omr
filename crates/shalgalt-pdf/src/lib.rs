@@ -1,47 +1,54 @@
 //! `shalgalt-pdf` — pure-Rust OMR PDF renderer backed by [`printpdf`].
 //!
-//! P2-05 scope: bring the crate online — embed both Noto Sans fonts, accept an
-//! [`OmrTemplate`], and produce a valid one-page PDF whose only painted content is the
-//! four corner reference markers and the template title (the latter exists so the
-//! Cyrillic font pipeline is exercised by the test suite).
+//! P2-05 brought the crate online with embedded Noto Sans fonts and a `render_template`
+//! shell that drew corner markers + title. P2-06 turns the output into an actually
+//! print-ready OMR card:
 //!
-//! The full OMR layout (Шифр / variant / multi-choice grid / numeric / sidebar) lands
-//! in P2-06 on top of this scaffold. The crate stays free of `tauri` / OpenCV / pdfium
-//! deps so it is reusable from `apps/server` and future CLI tools.
+//! - four corner alignment markers ([`layout::markers`])
+//! - exam title / school / teacher header ([`layout::header`])
+//! - per-`BubbleGroup` labelled circles ([`layout::bubble_grid`])
+//! - vertical numeric blocks (Шифр / Section-2) ([`layout::numeric_block`])
+//! - right-edge 90°-rotated instructions sidebar ([`layout::sidebar`])
+//!
+//! The crate stays free of `tauri` / OpenCV / pdfium deps so it is reusable from
+//! `apps/server` and future CLI tools.
 //!
 //! # Coordinates
 //!
 //! Template coordinates are normalized to `[0, 1]` (master plan §9.2). PDF pages use
 //! `printpdf`'s native bottom-left origin in millimetres. The translation lives in
-//! [`coords::to_page_mm`] and is shared with P2-06.
+//! [`coords`] — both [`coords::to_page_mm`] (full page) for markers and
+//! [`coords::project`] (margin-aware) for body content.
 //!
 //! # Determinism
 //!
-//! `PdfSaveOptions::subset_fonts` is enabled so the output only embeds the glyphs
-//! actually drawn — keeping byte output stable enough for the golden-file tests
-//! introduced in P2-12.
+//! - `PdfSaveOptions::subset_fonts` is enabled so the output only embeds the glyphs
+//!   actually drawn.
+//! - `PdfDocument::new` defaults the `creation_date` / `modification_date` to the unix
+//!   epoch — fixed across runs unless the caller overrides via [`PdfOptions::created_at`].
+//! - The PDF trailer's `/ID` array is randomized per run by `printpdf`. The golden-file
+//!   test in `tests/golden.rs` strips `/ID` before comparison.
 
 use printpdf::{
-    Color, FontId, Mm, Op, PaintMode, ParsedFont, PdfDocument, PdfFontHandle, PdfFontParseWarning,
-    PdfPage, PdfSaveOptions, PdfWarnMsg, Point, Polygon, PolygonRing, Pt, Rgb, TextItem,
-    WindingOrder,
+    DateTime, ParsedFont, PdfDocument, PdfFontParseWarning, PdfPage, PdfSaveOptions, PdfWarnMsg,
 };
-use shalgalt_core::domain::{
-    template::{Marker, OmrTemplate},
-    PaperSpec,
-};
+use shalgalt_core::domain::{template::OmrTemplate, PaperSpec};
 
 pub mod coords;
 mod error;
+pub mod layout;
+pub mod shapes;
+pub mod style;
 
 pub use error::PdfError;
+pub use style::{BubbleStyle, HeaderText};
 
 /// Re-export the domain types this renderer consumes so callers do not need to depend on
 /// `shalgalt-core` directly.
 pub mod domain {
     pub use shalgalt_core::domain::paper::{Orientation, PaperSpec};
     pub use shalgalt_core::domain::template::{
-        BubbleGroup, BubbleKind, Marker, OmrTemplate, TemplatePoint,
+        BubbleGroup, BubbleKind, Marker, MarkerKind, OmrTemplate, TemplatePoint,
     };
 }
 
@@ -49,19 +56,15 @@ pub mod domain {
 /// time via `include_bytes!`.
 const NOTO_SANS_REGULAR: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
 
-/// Traditional Mongolian script fallback font. The P2-05 skeleton only embeds it; P2-06
-/// (sidebar) and P4 (project file) wire it into the actual draw calls. Kept around so the
-/// binary always carries it.
-#[allow(dead_code)]
+/// Traditional Mongolian script fallback font for the sidebar. Latin Noto Sans cannot
+/// render the Mongolian verticals, so any sidebar text always uses this font.
 const NOTO_SANS_MONGOLIAN_REGULAR: &[u8] =
     include_bytes!("../assets/fonts/NotoSansMongolian-Regular.ttf");
 
 /// Caller-controlled switches for a single-page render.
 ///
-/// `paper` decides the page rectangle and margin (in mm). `variant` is the label printed
-/// on multi-variant exams (`A` / `B` / …) — `None` for single-variant tests.
-/// `include_answer_key_overlay` is the P5 hook for teacher-facing proof prints; ignored
-/// in the P2-05 skeleton.
+/// All text input is expected to be pre-translated — this crate does not know about the
+/// i18n table.
 #[derive(Debug, Clone)]
 pub struct PdfOptions {
     /// Sheet geometry.
@@ -70,6 +73,20 @@ pub struct PdfOptions {
     pub variant: Option<String>,
     /// When `true`, draws the teacher answer-key overlay (enabled in P5).
     pub include_answer_key_overlay: bool,
+    /// Pre-translated header text. When all fields are `None`, the renderer falls back to
+    /// `template.title` only.
+    pub header: HeaderText,
+    /// Sidebar instructions in Mongolian script. `None` skips the sidebar entirely.
+    pub instructions: Option<String>,
+    /// Multiple-choice option labels (e.g. `['A','B','C','D','E']`). Empty disables labels.
+    pub choice_labels: Vec<char>,
+    /// Numeric-block labels (Шифр / Section-2), e.g. `['0','1', …, '9']`.
+    pub digit_labels: Vec<char>,
+    /// Bubble visual style.
+    pub bubble_style: BubbleStyle,
+    /// Explicit override for `/CreationDate` and `/ModDate`. `None` keeps the printpdf
+    /// epoch default — also deterministic.
+    pub created_at: Option<DateTime>,
 }
 
 impl Default for PdfOptions {
@@ -78,6 +95,12 @@ impl Default for PdfOptions {
             paper: PaperSpec::A4_PORTRAIT,
             variant: None,
             include_answer_key_overlay: false,
+            header: HeaderText::default(),
+            instructions: None,
+            choice_labels: vec!['A', 'B', 'C', 'D', 'E'],
+            digit_labels: vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            bubble_style: BubbleStyle::default(),
+            created_at: None,
         }
     }
 }
@@ -89,8 +112,14 @@ impl Default for PdfOptions {
 pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<u8>, PdfError> {
     let mut doc = PdfDocument::new(&template.title);
 
-    // Embed the Latin + Cyrillic body font. `from_bytes` uses font index 0 (we ship a
-    // single-face TTF, not a TTC).
+    // Pin the document timestamps when the caller asks for an explicit value.
+    if let Some(ts) = opts.created_at {
+        doc.metadata.info.creation_date = ts;
+        doc.metadata.info.modification_date = ts;
+        doc.metadata.info.metadata_date = ts;
+    }
+
+    // Embed the Latin + Cyrillic body font.
     let mut font_warnings: Vec<PdfFontParseWarning> = Vec::new();
     let body_font = ParsedFont::from_bytes(NOTO_SANS_REGULAR, 0, &mut font_warnings).ok_or(
         PdfError::FontLoad {
@@ -100,30 +129,65 @@ pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<
     )?;
     let body_font_id = doc.add_font(&body_font);
 
-    let mut ops: Vec<Op> = Vec::new();
+    // Only embed the Mongolian-script font when the caller actually has sidebar text —
+    // skipping it keeps the output bytes small for the common case.
+    let sidebar_font_id = if opts.instructions.is_some() {
+        let mut warns: Vec<PdfFontParseWarning> = Vec::new();
+        let mongolian_font = ParsedFont::from_bytes(NOTO_SANS_MONGOLIAN_REGULAR, 0, &mut warns)
+            .ok_or(PdfError::FontLoad {
+                font: "NotoSansMongolian-Regular",
+                message: "ParsedFont::from_bytes returned None".into(),
+            })?;
+        Some(doc.add_font(&mongolian_font))
+    } else {
+        None
+    };
 
-    // 1) Four corner alignment markers (placeholder — P2-06 may swap in ArUco).
-    push_marker_squares(&mut ops, &template.markers, &opts.paper);
+    let mut ops: Vec<printpdf::Op> = Vec::new();
 
-    // 2) Print the exam title at the top of the page (inside the margin). This minimal
-    //    text output exercises the Cyrillic / Mongolian glyph subset pipeline at P2-05
-    //    acceptance time — `printpdf` would fail at the subsetting stage if a glyph is
-    //    missing.
-    push_title(&mut ops, &template.title, &opts.paper, &body_font_id);
+    // 1) Four corner alignment markers.
+    layout::markers::draw(&mut ops, &template.markers, &opts.paper);
 
-    // 3) Stamp the variant label in the upper-right corner so printed copies cannot be
-    //    mixed up post-hoc.
+    // 2) Header (title / school / teacher). Fall back to `template.title` when the caller
+    //    did not specify a title explicitly.
+    let mut effective_header = opts.header.clone();
+    if effective_header.title.is_none() && !template.title.is_empty() {
+        effective_header.title = Some(template.title.clone());
+    }
+    layout::header::draw(&mut ops, &effective_header, &opts.paper, &body_font_id);
+
+    // 3) Render every BubbleGroup. The label set depends on the group's kind.
+    for group in &template.groups {
+        let labels: &[char] = match group.kind {
+            shalgalt_core::domain::BubbleKind::StudentId => &opts.digit_labels,
+            shalgalt_core::domain::BubbleKind::Question => &opts.choice_labels,
+        };
+        layout::bubble_grid::draw(
+            &mut ops,
+            group,
+            &opts.paper,
+            &opts.bubble_style,
+            labels,
+            &body_font_id,
+        );
+    }
+
+    // 4) Optional variant tag (`[A]` / `[B]`) in the upper-right corner.
     if let Some(label) = opts.variant.as_deref() {
         push_variant_label(&mut ops, label, &opts.paper, &body_font_id);
     }
 
-    // The P5 answer-key overlay is not wired up yet. Once P2-06 starts using the
-    // template's answer indices for real, we add the overlay branch here.
+    // 5) Sidebar (Mongolian script, 90° rotation).
+    if let (Some(text), Some(font)) = (opts.instructions.as_deref(), sidebar_font_id.as_ref()) {
+        layout::sidebar::draw(&mut ops, text, &opts.paper, font);
+    }
+
+    // The P5 answer-key overlay branch will land alongside `#P5-01`.
     let _ = opts.include_answer_key_overlay;
 
     let page = PdfPage::new(
-        Mm(opts.paper.width_mm as f32),
-        Mm(opts.paper.height_mm as f32),
+        printpdf::Mm(opts.paper.width_mm as f32),
+        printpdf::Mm(opts.paper.height_mm as f32),
         ops,
     );
 
@@ -145,65 +209,16 @@ pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<
     Ok(bytes)
 }
 
-/// Stamp the four markers as solid squares. Coordinates go through the normalized → mm
-/// helper.
-fn push_marker_squares(ops: &mut Vec<Op>, markers: &[Marker; 4], paper: &PaperSpec) {
-    ops.push(Op::SetFillColor {
-        col: Color::Rgb(Rgb {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            icc_profile: None,
-        }),
-    });
+/// Print a variant label (`[A]`, `[B]`, …) in the upper-right corner. Only invoked when
+/// the caller wants to flag a variant on the printed sheet.
+fn push_variant_label(
+    ops: &mut Vec<printpdf::Op>,
+    label: &str,
+    paper: &PaperSpec,
+    body_font_id: &printpdf::FontId,
+) {
+    use printpdf::{Color, Mm, Op, PdfFontHandle, Point, Pt, Rgb, TextItem};
 
-    for marker in markers {
-        let (cx, cy) =
-            coords::to_page_mm(marker.position.x as f64, marker.position.y as f64, paper);
-        // The marker's `size` is normalized; convert to mm using the shorter page edge
-        // and use the half-extent below.
-        let half = marker.size as f64 * paper.width_mm.min(paper.height_mm) * 0.5;
-        ops.push(Op::DrawPolygon {
-            polygon: square_polygon_around(cx, cy, half),
-        });
-    }
-}
-
-/// Print the title at the top-left of the page (inside the margin plus a small offset).
-fn push_title(ops: &mut Vec<Op>, title: &str, paper: &PaperSpec, body_font_id: &FontId) {
-    if title.is_empty() {
-        return;
-    }
-
-    // Baseline sits 12 mm below the top margin.
-    let baseline_y_mm = paper.height_mm - paper.margin_mm - 12.0;
-    let x_mm = paper.margin_mm;
-
-    ops.push(Op::StartTextSection);
-    ops.push(Op::SetTextCursor {
-        pos: Point::new(Mm(x_mm as f32), Mm(baseline_y_mm as f32)),
-    });
-    ops.push(Op::SetFont {
-        font: PdfFontHandle::External(body_font_id.clone()),
-        size: Pt(18.0),
-    });
-    ops.push(Op::SetLineHeight { lh: Pt(20.0) });
-    ops.push(Op::SetFillColor {
-        col: Color::Rgb(Rgb {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            icc_profile: None,
-        }),
-    });
-    ops.push(Op::ShowText {
-        items: vec![TextItem::Text(title.to_string())],
-    });
-    ops.push(Op::EndTextSection);
-}
-
-/// Print a variant label (`[A]`, `[B]`, …) in the upper-right corner.
-fn push_variant_label(ops: &mut Vec<Op>, label: &str, paper: &PaperSpec, body_font_id: &FontId) {
     let baseline_y_mm = paper.height_mm - paper.margin_mm - 8.0;
     let x_mm = paper.width_mm - paper.margin_mm - 18.0;
 
@@ -227,27 +242,4 @@ fn push_variant_label(ops: &mut Vec<Op>, label: &str, paper: &PaperSpec, body_fo
         items: vec![TextItem::Text(format!("[{label}]"))],
     });
     ops.push(Op::EndTextSection);
-}
-
-/// Polygon for a square of side `2 * half` mm, centered at `(cx, cy)` mm.
-fn square_polygon_around(cx: f64, cy: f64, half: f64) -> Polygon {
-    let pts = [
-        (cx - half, cy - half),
-        (cx + half, cy - half),
-        (cx + half, cy + half),
-        (cx - half, cy + half),
-    ];
-    Polygon {
-        rings: vec![PolygonRing {
-            points: pts
-                .iter()
-                .map(|(x, y)| printpdf::LinePoint {
-                    p: Point::new(Mm(*x as f32), Mm(*y as f32)),
-                    bezier: false,
-                })
-                .collect(),
-        }],
-        mode: PaintMode::Fill,
-        winding_order: WindingOrder::NonZero,
-    }
 }
