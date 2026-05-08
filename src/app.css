@@ -1,21 +1,111 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Register the `dark:` variant so it activates inside any `.dark` ancestor.
-   The app currently ships dark-only with tokens applied directly to :root,
-   but keeping the contract here lets us toggle a `.dark` class later. */
+/* `dark` variant activates inside any `.dark` ancestor — `mode-watcher` flips
+   the class on `<html>`. Light is the documented default (master plan §6.7). */
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------- *
- * shalgalt-omr — global tokens. See docs/ARCHITECTURE.md §2.
+ * shalgalt-omr — global tokens. See docs/ARCHITECTURE.md §2 and
+ * master plan §7 (visual direction).
  *
  * Two parallel token families coexist:
- *   1) --color-* / --font-*       : legacy hand-rolled components
- *   2) --background, --primary, … : shadcn-svelte contract (slate base)
- * Both alias the same OKLCH palette so visuals stay consistent.
+ *   1) --color-*  : legacy hand-rolled components.
+ *   2) shadcn contract (--background, --primary, …): framework surface.
+ *
+ * Light tokens live on `:root`; dark tokens on `.dark`. Sizing tokens
+ * (`--text-*`, `--space-section`, `--button-h`) are theme-agnostic and
+ * scale up under `:root[data-comfort="comfortable"]` (P2-10).
  * ---------------------------------------------------------------- */
+
 :root {
-  /* 1) Legacy IDE tokens */
+  /* --- 1) Legacy IDE tokens (light defaults) --- */
+  --color-bg: oklch(99% 0 0);
+  --color-surface: oklch(98% 0 0);
+  --color-surface-elevated: oklch(96% 0 0);
+  --color-border: oklch(90% 0 0);
+  --color-text: oklch(20% 0 0);
+  --color-text-muted: oklch(46% 0 0);
+  --color-accent: oklch(54% 0.18 250);
+
+  --font-ui:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* --- 2) shadcn contract (light palette) --- */
+  --background: oklch(99% 0 0);
+  --foreground: oklch(20% 0 0);
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(20% 0 0);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(20% 0 0);
+  --primary: oklch(54% 0.18 250);
+  --primary-foreground: oklch(99% 0 0);
+  --secondary: oklch(96% 0 0);
+  --secondary-foreground: oklch(20% 0 0);
+  --muted: oklch(96% 0 0);
+  --muted-foreground: oklch(46% 0 0);
+  --accent: oklch(96% 0 0);
+  --accent-foreground: oklch(20% 0 0);
+  --destructive: oklch(57% 0.21 27);
+  --destructive-foreground: oklch(99% 0 0);
+  --success: oklch(58% 0.16 145);
+  --success-foreground: oklch(99% 0 0);
+  --warning: oklch(70% 0.18 80);
+  --warning-foreground: oklch(20% 0 0);
+  --border: oklch(90% 0 0);
+  --input: oklch(90% 0 0);
+  --ring: oklch(54% 0.18 250);
+  --radius: 0.5rem;
+
+  /* Sidebar tokens (shadcn-svelte sidebar component). The sidebar carries a
+     subtle elevation against the main surface even in light mode. */
+  --sidebar: oklch(97% 0 0);
+  --sidebar-foreground: oklch(20% 0 0);
+  --sidebar-primary: oklch(54% 0.18 250);
+  --sidebar-primary-foreground: oklch(99% 0 0);
+  --sidebar-accent: oklch(94% 0 0);
+  --sidebar-accent-foreground: oklch(20% 0 0);
+  --sidebar-border: oklch(90% 0 0);
+  --sidebar-ring: oklch(54% 0.18 250);
+
+  /* Chart palette (results / grading visualizations). Tuned for light bg. */
+  --chart-1: oklch(54% 0.18 250);
+  --chart-2: oklch(58% 0.16 145);
+  --chart-3: oklch(70% 0.18 80);
+  --chart-4: oklch(56% 0.20 320);
+  --chart-5: oklch(57% 0.21 27);
+
+  /* --- Typography scale (default — comfortable mode bumps below) --- */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.375rem;    /* 22px */
+  --text-2xl: 1.75rem;    /* 28px */
+  --button-h: 2.5rem;     /* 40px */
+  --hit-min: 2.5rem;
+  --space-section: clamp(2rem, 1.5rem + 2vw, 4rem);
+}
+
+/* Comfortable typography mode (P2-10). Toggled by the sidebar Comfort
+   button via the `comfortMode` store, which writes `data-comfort` on
+   `<html>`. Bumps every text token + minimum hit target one notch. */
+:root[data-comfort="comfortable"] {
+  --text-xs: 0.875rem;    /* 14px */
+  --text-sm: 1rem;        /* 16px */
+  --text-base: 1.125rem;  /* 18px */
+  --text-lg: 1.25rem;     /* 20px */
+  --text-xl: 1.5rem;      /* 24px */
+  --text-2xl: 2rem;       /* 32px */
+  --button-h: 3rem;       /* 48px */
+  --hit-min: 3rem;
+}
+
+/* Dark theme overrides. Light is the default; `.dark` is opt-in. */
+.dark {
   --color-bg: oklch(18% 0 0);
   --color-surface: oklch(22% 0 0);
   --color-surface-elevated: oklch(26% 0 0);
@@ -23,13 +113,7 @@
   --color-text: oklch(94% 0 0);
   --color-text-muted: oklch(70% 0 0);
   --color-accent: oklch(72% 0.18 230);
-  --font-ui:
-    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, sans-serif;
-  --font-mono:
-    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* 2) shadcn-svelte contract (dark palette, slate base) */
   --background: oklch(18% 0 0);
   --foreground: oklch(94% 0 0);
   --card: oklch(22% 0 0);
@@ -46,12 +130,14 @@
   --accent-foreground: oklch(94% 0 0);
   --destructive: oklch(62% 0.22 25);
   --destructive-foreground: oklch(98% 0 0);
+  --success: oklch(70% 0.16 145);
+  --success-foreground: oklch(18% 0 0);
+  --warning: oklch(78% 0.18 80);
+  --warning-foreground: oklch(18% 0 0);
   --border: oklch(32% 0 0);
   --input: oklch(32% 0 0);
   --ring: oklch(72% 0.18 230);
-  --radius: 0.5rem;
 
-  /* Sidebar tokens (required by shadcn-svelte sidebar component) */
   --sidebar: oklch(22% 0 0);
   --sidebar-foreground: oklch(94% 0 0);
   --sidebar-primary: oklch(72% 0.18 230);
@@ -61,7 +147,6 @@
   --sidebar-border: oklch(32% 0 0);
   --sidebar-ring: oklch(72% 0.18 230);
 
-  /* Chart palette (results / grading visualizations) */
   --chart-1: oklch(72% 0.18 230);
   --chart-2: oklch(70% 0.16 160);
   --chart-3: oklch(75% 0.18 60);
@@ -71,7 +156,7 @@
 
 /* Expose the contract tokens as Tailwind utilities. After this block
    `bg-background`, `text-foreground`, `border-border`, `ring-ring`,
-   `rounded-md`, etc. resolve against our palette. */
+   `bg-success`, `bg-warning` etc. resolve against our palette. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -89,6 +174,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -123,6 +212,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Drives the comfortable-mode body-text bump (P2-10). */
+    font-size: var(--text-base);
   }
 }
 

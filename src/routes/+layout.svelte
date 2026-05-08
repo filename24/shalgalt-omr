@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../app.css";
+  import { ModeWatcher } from "mode-watcher";
   import * as Sidebar from "$lib/components/ui/sidebar";
   import { Separator } from "$lib/components/ui/separator";
   import { Toaster } from "$lib/components/ui/sonner";
@@ -7,6 +8,9 @@
   import StatusBar from "$lib/components/shell/StatusBar.svelte";
   import { page } from "$app/state";
   import { mn } from "$lib/i18n";
+  // Eagerly hydrate the comfort store so its constructor mirrors the
+  // persisted choice onto `<html data-comfort="…">` before first paint.
+  import "$lib/stores/comfortMode.svelte";
 
   let { children } = $props();
 
@@ -18,6 +22,8 @@
   };
   const pageTitle = $derived(titleByPath[page.url.pathname] ?? "");
 </script>
+
+<ModeWatcher defaultMode="light" />
 
 <Sidebar.Provider>
   <AppSidebar />
