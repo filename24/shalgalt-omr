@@ -5244,6 +5244,8 @@ dependencies = [
  "serde",
  "sha2",
  "shalgalt-core",
+ "shalgalt-pdf",
+ "tempfile",
  "tokio",
  "tracing",
 ]
