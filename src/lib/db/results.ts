@@ -36,6 +36,29 @@ export async function listResultsByTemplate(
   return rows.map(rowToSummary);
 }
 
+export interface RecentResultRow {
+  id: number;
+  student_id: number | null;
+  template_id: number;
+  total_score: number;
+  created_at: string;
+}
+
+/**
+ * Top-N most recent rows from `results` for the dashboard widget (P2-11).
+ *
+ * Stays lean — no `detail_answers` JSON, no `image_path` — so the widget
+ * renders quickly and never carries the blob across the wire.
+ */
+export async function listRecentResults(limit = 5): Promise<RecentResultRow[]> {
+  const db = await getDb();
+  return db.select<RecentResultRow[]>(
+    `SELECT id, student_id, template_id, total_score, created_at
+     FROM results ORDER BY created_at DESC, id DESC LIMIT $1`,
+    [limit],
+  );
+}
+
 export interface NewResult {
   student_id: number | null;
   template_id: number;

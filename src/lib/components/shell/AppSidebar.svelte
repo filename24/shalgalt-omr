@@ -6,6 +6,8 @@
   import ScanIcon from "@lucide/svelte/icons/scan-line";
   import ClipboardListIcon from "@lucide/svelte/icons/clipboard-list";
   import { mn } from "$lib/i18n";
+  import ThemeToggle from "$lib/components/theme/ThemeToggle.svelte";
+  import ComfortToggle from "$lib/components/theme/ComfortToggle.svelte";
 
   const items = [
     { href: "/", label: mn.nav.dashboard, icon: LayoutDashboardIcon },
@@ -40,5 +42,11 @@
       </Sidebar.GroupContent>
     </Sidebar.Group>
   </Sidebar.Content>
+  <Sidebar.Footer class="border-sidebar-border border-t">
+    <div class="space-y-1 p-1">
+      <ComfortToggle />
+      <ThemeToggle />
+    </div>
+  </Sidebar.Footer>
   <Sidebar.Rail />
 </Sidebar.Root>

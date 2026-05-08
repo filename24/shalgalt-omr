@@ -142,4 +142,38 @@ export const mn = {
     template_corrupt: "Загварын файл эвдэрсэн байна",
     backdrop_required: "Зургийн дэвсгэр заавал шаардлагатай",
   },
+  theme: {
+    light: "Цайвар горим",
+    dark: "Бараан горим",
+    system: "Системийн горим",
+    comfortOn: "Том үсэг асаалттай",
+    comfortOff: "Том үсэг тохируулах",
+    comfortHint: "Үсэг болон товчийг томруулна",
+  },
+  dashboard: {
+    title: "Хяналтын самбар",
+    subtitle: "Шалгалт OMR — багшийн ажлын самбар",
+    actions: {
+      title: "Түргэн үйлдэл",
+      newExam: "Шинэ сорил",
+      openProject: "Төсөл нээх",
+      openProjectComingSoon: "Удахгүй (P4)",
+      gradePdf: "PDF шалгах",
+    },
+    recentExams: {
+      title: "Сүүлд хийсэн сорил",
+      empty: "Сорил үүсээгүй байна",
+      cta: "Засварлагч руу очих",
+    },
+    recentResults: {
+      title: "Сүүлийн үр дүн",
+      empty: "Үр дүн бүртгэгдээгүй байна",
+      viewAll: "Бүгдийг үзэх",
+      column: {
+        student: "Сурагч",
+        score: "Оноо",
+        date: "Огноо",
+      },
+    },
+  },
 } as const;
