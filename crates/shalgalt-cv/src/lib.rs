@@ -5,7 +5,10 @@
 //! - `preview` — single-page rasterization used by the P1 template editor.
 //! - `perspective` — 4-marker detection + `warpPerspective` (P3).
 //! - `bubbles` — per-bubble fill-ratio reading (P3).
-//! - `pipeline` — orchestrator + `TaskProgress` / `TaskStage` payloads.
+//!
+//! `TaskProgress` / `TaskStage` are part of the IPC payload surface and live in
+//! `shalgalt_core::domain::progress`. They are re-exported here so the call
+//! sites that previously imported them from `shalgalt_cv` keep compiling.
 //!
 //! Rule 1 / Rule 2 are honored at the crate boundary: every public function takes
 //! filesystem paths (never byte buffers crossing IPC) and reports progress via a
@@ -14,10 +17,9 @@
 pub mod bubbles;
 pub mod pdf;
 pub mod perspective;
-pub mod pipeline;
 pub mod preview;
 
-pub use pipeline::{TaskProgress, TaskStage};
+pub use shalgalt_core::domain::{TaskProgress, TaskStage};
 
 use std::path::Path;
 

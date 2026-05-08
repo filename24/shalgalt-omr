@@ -11,3 +11,19 @@ publish = false
 [lib]
 name = "shalgalt_pdf"
 path = "src/lib.rs"
+
+[dependencies]
+# Pure-Rust PDF writer (master plan §6.2). Deterministic across OSes, supports
+# embedded TTF + auto-subsetting, vector primitives. No system C deps.
+printpdf = "0.9"
+
+# Domain types (`OmrTemplate`, `PaperSpec`) — re-exported via `shalgalt_pdf::domain`.
+shalgalt-core = { path = "../shalgalt-core" }
+
+# Internal ergonomic ?-mapping. Never leaks past `PdfError` at the crate boundary.
+anyhow = "1"
+thiserror = "2"
+
+[dev-dependencies]
+# PDF validity assertions in the smoke / Cyrillic-glyph tests.
+lopdf = "0.34"
