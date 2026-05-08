@@ -32,21 +32,25 @@ fn canonical_template() -> OmrTemplate {
                 id: "m-tl".into(),
                 position: TemplatePoint { x: 0.05, y: 0.05 },
                 size: 0.02,
+                kind: Default::default(),
             },
             Marker {
                 id: "m-tr".into(),
                 position: TemplatePoint { x: 0.95, y: 0.05 },
                 size: 0.02,
+                kind: Default::default(),
             },
             Marker {
                 id: "m-br".into(),
                 position: TemplatePoint { x: 0.95, y: 0.95 },
                 size: 0.02,
+                kind: Default::default(),
             },
             Marker {
                 id: "m-bl".into(),
                 position: TemplatePoint { x: 0.05, y: 0.95 },
                 size: 0.02,
+                kind: Default::default(),
             },
         ],
         groups: vec![
