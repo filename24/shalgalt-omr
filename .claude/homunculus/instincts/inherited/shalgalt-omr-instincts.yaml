@@ -1,0 +1,528 @@
+# Instincts generated from https://github.com/filename24/shalgalt-omr
+# Generated: 2026-05-08T03:02:36.959Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: shalgalt-omr-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat
+
+## Evidence
+
+- 2 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat(p2-05): create shalgalt-pdf crate skeleton (printpdf + Noto fonts)
+
+---
+id: shalgalt-omr-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Commit Length
+
+## Action
+
+Write moderate-length commit messages (~92 characters)
+
+## Evidence
+
+- Average commit message length: 92 chars
+- Based on 2 commits
+
+---
+id: shalgalt-omr-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: shalgalt-omr-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: shalgalt-omr-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: shalgalt-omr-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: lib
+
+---
+id: shalgalt-omr-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: shalgalt-omr-workflow-add-or-evolve-pdf-feature
+trigger: "when doing add or evolve pdf feature"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Workflow Add Or Evolve Pdf Feature
+
+## Action
+
+Follow the add-or-evolve-pdf-feature workflow:
+1. Update or create files in crates/shalgalt-pdf/src/ (e.g., new modules, layout, style, shapes)
+2. Add or update font assets in crates/shalgalt-pdf/assets/fonts/
+3. Update or create tests in crates/shalgalt-pdf/tests/ (including golden tests and smoke tests)
+4. Update or create related domain files in crates/shalgalt-core/src/domain/
+5. Update Cargo.lock and relevant Cargo.toml files
+6. Update generated TypeScript types in src/lib/types/generated/
+7. Optionally, add documentation in docs/adr/
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: crates/shalgalt-pdf/src/*.rs, crates/shalgalt-pdf/assets/fonts/*, crates/shalgalt-pdf/tests/*.rs
+
+---
+id: shalgalt-omr-instinct-naming-files
+trigger: "When creating or renaming a file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Naming Files
+
+## Action
+
+Use camelCase for file names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+- Consistent file naming in src/ and crates/
+
+---
+id: shalgalt-omr-instinct-naming-functions
+trigger: "When defining a function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Naming Functions
+
+## Action
+
+Use camelCase for function names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: shalgalt-omr-instinct-naming-classes
+trigger: "When defining a class or struct"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Naming Classes
+
+## Action
+
+Use PascalCase for class/struct names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: shalgalt-omr-instinct-naming-constants
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Naming Constants
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: shalgalt-omr-instinct-import-style
+trigger: "When importing modules in Rust"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: shalgalt-omr-instinct-export-style
+trigger: "When exporting modules or items"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: shalgalt-omr-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Location
+
+## Action
+
+Place tests in either the same folder as source files or in a dedicated tests/ folder (mixed location)
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+- Presence of crates/shalgalt-pdf/tests/*.rs
+
+---
+id: shalgalt-omr-instinct-test-type
+trigger: "When writing tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Type
+
+## Action
+
+Write unit tests
+
+## Evidence
+
+- Pattern in testing.testTypes
+- Presence of unit tests in crates/shalgalt-pdf/tests/
+
+---
+id: shalgalt-omr-instinct-test-pattern
+trigger: "When naming TypeScript test files"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Test Pattern
+
+## Action
+
+Use the *.test.ts file pattern
+
+## Evidence
+
+- Pattern in testing.filePattern
+
+---
+id: shalgalt-omr-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Commit Format
+
+## Action
+
+Use the conventional commit format with the 'feat' prefix for features (e.g., feat(p2-05): ...)
+
+## Evidence
+
+- Pattern in commits.type
+- Example: feat(p2-05): create shalgalt-pdf crate skeleton (printpdf + Noto fonts)
+
+---
+id: shalgalt-omr-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Commit Length
+
+## Action
+
+Aim for descriptive commit messages around 90 characters
+
+## Evidence
+
+- Pattern in commits.averageLength
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step1
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step1
+
+## Action
+
+Update or create files in crates/shalgalt-pdf/src/ (e.g., new modules, layout, style, shapes)
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in crates/shalgalt-pdf/src/
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step2
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step2
+
+## Action
+
+Add or update font assets in crates/shalgalt-pdf/assets/fonts/
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in crates/shalgalt-pdf/assets/fonts/
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step3
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step3
+
+## Action
+
+Update or create tests in crates/shalgalt-pdf/tests/ (including golden tests and smoke tests)
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in crates/shalgalt-pdf/tests/
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step4
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step4
+
+## Action
+
+Update or create related domain files in crates/shalgalt-core/src/domain/
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in crates/shalgalt-core/src/domain/
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step5
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step5
+
+## Action
+
+Update Cargo.lock and relevant Cargo.toml files
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files: Cargo.lock, crates/shalgalt-pdf/Cargo.toml
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step6
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.8
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step6
+
+## Action
+
+Update generated TypeScript types in src/lib/types/generated/
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in src/lib/types/generated/
+
+---
+id: shalgalt-omr-instinct-add-or-evolve-pdf-feature-step7
+trigger: "When introducing or updating a PDF generation/layout feature"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: filename24/shalgalt-omr
+---
+
+# Shalgalt Omr Instinct Add Or Evolve Pdf Feature Step7
+
+## Action
+
+Optionally, add documentation in docs/adr/
+
+## Evidence
+
+- Workflow: add-or-evolve-pdf-feature
+- Example commits and files in docs/adr/
+
