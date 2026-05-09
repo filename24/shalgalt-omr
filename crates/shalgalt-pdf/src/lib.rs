@@ -34,12 +34,14 @@ use printpdf::{
 };
 use shalgalt_core::domain::{template::OmrTemplate, PaperSpec};
 
+pub mod canvas;
 pub mod coords;
 mod error;
 pub mod layout;
 pub mod shapes;
 pub mod style;
 
+pub use canvas::Canvas;
 pub use error::PdfError;
 pub use style::{BubbleStyle, HeaderText};
 
@@ -84,6 +86,9 @@ pub struct PdfOptions {
     pub digit_labels: Vec<char>,
     /// Bubble visual style.
     pub bubble_style: BubbleStyle,
+    /// Draw a handwriting underline to the LEFT of every student-ID row so graders can
+    /// fall back to a manual cipher read when OMR detection fails. `true` by default.
+    pub manual_id_slots: bool,
     /// Explicit override for `/CreationDate` and `/ModDate`. `None` keeps the printpdf
     /// epoch default — also deterministic.
     pub created_at: Option<DateTime>,
@@ -100,6 +105,7 @@ impl Default for PdfOptions {
             choice_labels: vec!['A', 'B', 'C', 'D', 'E'],
             digit_labels: vec!['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
             bubble_style: BubbleStyle::default(),
+            manual_id_slots: true,
             created_at: None,
         }
     }
@@ -143,47 +149,7 @@ pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<
         None
     };
 
-    let mut ops: Vec<printpdf::Op> = Vec::new();
-
-    // 1) Four corner alignment markers.
-    layout::markers::draw(&mut ops, &template.markers, &opts.paper);
-
-    // 2) Header (title / school / teacher). Fall back to `template.title` when the caller
-    //    did not specify a title explicitly.
-    let mut effective_header = opts.header.clone();
-    if effective_header.title.is_none() && !template.title.is_empty() {
-        effective_header.title = Some(template.title.clone());
-    }
-    layout::header::draw(&mut ops, &effective_header, &opts.paper, &body_font_id);
-
-    // 3) Render every BubbleGroup. The label set depends on the group's kind.
-    for group in &template.groups {
-        let labels: &[char] = match group.kind {
-            shalgalt_core::domain::BubbleKind::StudentId => &opts.digit_labels,
-            shalgalt_core::domain::BubbleKind::Question => &opts.choice_labels,
-        };
-        layout::bubble_grid::draw(
-            &mut ops,
-            group,
-            &opts.paper,
-            &opts.bubble_style,
-            labels,
-            &body_font_id,
-        );
-    }
-
-    // 4) Optional variant tag (`[A]` / `[B]`) in the upper-right corner.
-    if let Some(label) = opts.variant.as_deref() {
-        push_variant_label(&mut ops, label, &opts.paper, &body_font_id);
-    }
-
-    // 5) Sidebar (Mongolian script, 90° rotation).
-    if let (Some(text), Some(font)) = (opts.instructions.as_deref(), sidebar_font_id.as_ref()) {
-        layout::sidebar::draw(&mut ops, text, &opts.paper, font);
-    }
-
-    // The P5 answer-key overlay branch will land alongside `#P5-01`.
-    let _ = opts.include_answer_key_overlay;
+    let ops = build_page_ops(template, opts, &body_font_id, sidebar_font_id.as_ref());
 
     let page = PdfPage::new(
         printpdf::Mm(opts.paper.width_mm as f32),
@@ -209,37 +175,127 @@ pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<
     Ok(bytes)
 }
 
+/// Test-only re-export of [`build_page_ops`] so the regression test in
+/// `tests/labels_layout.rs` can count `Op::ShowText` instances without parsing PDF
+/// bytes. Hidden from the public API surface; do not call from production code.
+#[doc(hidden)]
+pub fn build_page_ops_for_test(
+    template: &OmrTemplate,
+    opts: &PdfOptions,
+    body_font_id: &printpdf::FontId,
+    sidebar_font_id: Option<&printpdf::FontId>,
+) -> Vec<printpdf::Op> {
+    build_page_ops(template, opts, body_font_id, sidebar_font_id)
+}
+
+/// Build the ordered list of drawing ops for a single page. Extracted from
+/// [`render_template`] so the regression test in `tests/labels_layout.rs` can count
+/// `Op::ShowText` instances without parsing PDF bytes.
+pub(crate) fn build_page_ops(
+    template: &OmrTemplate,
+    opts: &PdfOptions,
+    body_font_id: &printpdf::FontId,
+    sidebar_font_id: Option<&printpdf::FontId>,
+) -> Vec<printpdf::Op> {
+    let mut canvas = Canvas::new();
+
+    // 1) Four corner alignment markers.
+    layout::markers::draw(&mut canvas, &template.markers, &opts.paper);
+
+    // 2) Header (title / school / teacher). Fall back to `template.title` when the caller
+    //    did not specify a title explicitly.
+    let mut effective_header = opts.header.clone();
+    if effective_header.title.is_none() && !template.title.is_empty() {
+        effective_header.title = Some(template.title.clone());
+    }
+    layout::header::draw(&mut canvas, &effective_header, &opts.paper, body_font_id);
+
+    // 3) Handwriting-backup underlines for every student-ID row (Шифр backup). Drawn
+    //    before the bubbles so any future overlay can paint on top.
+    if opts.manual_id_slots {
+        layout::manual_entry::draw(
+            &mut canvas,
+            &template.groups,
+            &opts.paper,
+            &opts.bubble_style,
+        );
+    }
+
+    // 3b) Section headers (1-Р ХЭСЭГ / 2-Р ХЭСЭГ + 2.1 / 2.2 / 2.3 / 2.4 stickers).
+    //     Шифр and Вариант suppress their headers — the layout already reads as cipher
+    //     and variant at a glance.
+    layout::section_headers::draw(
+        &mut canvas,
+        &template.groups,
+        &opts.paper,
+        &opts.bubble_style,
+        body_font_id,
+    );
+
+    // 4) Walk every group: row label to the left, then bubbles + per-bubble labels
+    //    drawn INSIDE each circle. Choice/digit labels come from `PdfOptions`. We pick
+    //    digit labels for any group whose bubble count exceeds `choice_labels.len()` so
+    //    numeric-question rows (kind=Question, 10 bubbles) get 0–9 instead of running
+    //    out of A–E. `BubbleKind::StudentId` always uses digit labels.
+    for group in &template.groups {
+        let labels: &[char] = match group.kind {
+            shalgalt_core::domain::BubbleKind::StudentId => &opts.digit_labels,
+            shalgalt_core::domain::BubbleKind::Question => {
+                if group.bubbles.len() > opts.choice_labels.len() {
+                    &opts.digit_labels
+                } else {
+                    &opts.choice_labels
+                }
+            }
+        };
+
+        layout::labels::draw_row_label(
+            &mut canvas,
+            group,
+            &opts.paper,
+            &opts.bubble_style,
+            body_font_id,
+        );
+        layout::bubble_grid::draw(
+            &mut canvas,
+            group,
+            &opts.paper,
+            &opts.bubble_style,
+            labels,
+            body_font_id,
+        );
+    }
+
+    // 5) Optional variant tag (`[A]` / `[B]`) in the upper-right corner.
+    if let Some(label) = opts.variant.as_deref() {
+        push_variant_label(&mut canvas, label, &opts.paper, body_font_id);
+    }
+
+    // 6) Sidebar (90° rotation). The default instructions string is Mongolian Cyrillic,
+    //    which NotoSans renders. Only switch to `sidebar_font_id` (NotoSansMongolian) when
+    //    a future caller passes a string in traditional Mongolian script.
+    if let Some(text) = opts.instructions.as_deref() {
+        // Force the body font for Cyrillic instructions; the Mongolian-script font is
+        // embedded but unused until traditional script support lands.
+        let _ = sidebar_font_id;
+        layout::sidebar::draw(&mut canvas, text, &opts.paper, body_font_id);
+    }
+
+    // The P5 answer-key overlay branch will land alongside `#P5-01`.
+    let _ = opts.include_answer_key_overlay;
+
+    canvas.into_ops()
+}
+
 /// Print a variant label (`[A]`, `[B]`, …) in the upper-right corner. Only invoked when
 /// the caller wants to flag a variant on the printed sheet.
 fn push_variant_label(
-    ops: &mut Vec<printpdf::Op>,
+    canvas: &mut Canvas,
     label: &str,
     paper: &PaperSpec,
-    body_font_id: &printpdf::FontId,
+    font: &printpdf::FontId,
 ) {
-    use printpdf::{Color, Mm, Op, PdfFontHandle, Point, Pt, Rgb, TextItem};
-
     let baseline_y_mm = paper.height_mm - paper.margin_mm - 8.0;
     let x_mm = paper.width_mm - paper.margin_mm - 18.0;
-
-    ops.push(Op::StartTextSection);
-    ops.push(Op::SetTextCursor {
-        pos: Point::new(Mm(x_mm as f32), Mm(baseline_y_mm as f32)),
-    });
-    ops.push(Op::SetFont {
-        font: PdfFontHandle::External(body_font_id.clone()),
-        size: Pt(14.0),
-    });
-    ops.push(Op::SetFillColor {
-        col: Color::Rgb(Rgb {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            icc_profile: None,
-        }),
-    });
-    ops.push(Op::ShowText {
-        items: vec![TextItem::Text(format!("[{label}]"))],
-    });
-    ops.push(Op::EndTextSection);
+    canvas.text(x_mm, baseline_y_mm, &format!("[{label}]"), font, 14.0);
 }
