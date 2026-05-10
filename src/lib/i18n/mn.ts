@@ -278,5 +278,16 @@ export const mn = {
         date: "Огноо",
       },
     },
+    recentJobs: {
+      title: "Сүүлийн ажил",
+      empty: "Шалгалт хийгдээгүй байна",
+      reviewCta: "Гараар шалгах",
+      column: {
+        pdf: "PDF",
+        status: "Төлөв",
+        flagged: "Шалгууртай",
+        date: "Огноо",
+      },
+    },
   },
 } as const;
