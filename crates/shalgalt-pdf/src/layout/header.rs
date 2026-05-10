@@ -1,8 +1,15 @@
 //! Top-of-page header band.
 //!
 //! Two-column layout, modelled after real Mongolian school OMR cards:
-//! - **Left**: exam title (18 pt) + optional subtitle/grade tag (12 pt)
-//! - **Right**: school + teacher lines (11 pt, right-aligned)
+//! - **Left**: exam title (centered above the cipher block — see below)
+//! - **Right**: school + teacher lines (right-aligned)
+//!
+//! The title sits above the cipher block (Шифр) rather than at the page's left margin.
+//! The original left-aligned title bled into the top-left ArUco marker's quiet zone,
+//! which lowers detection rates because the legacy `cv::aruco::detect_markers` and
+//! `cv::objdetect::ArucoDetector` algorithms expect a uniform white border one cell
+//! wide around each marker. Centring the title on the cipher block's normalized
+//! x-midpoint moves it out of all four corner-marker dead zones.
 //!
 //! Splitting the header into left + right blocks keeps the band height capped at the
 //! taller of the two columns — about 10 mm — so the cipher area (`startY = 0.08`,
@@ -12,7 +19,7 @@
 //! i18n table.
 
 use printpdf::FontId;
-use shalgalt_core::domain::PaperSpec;
+use shalgalt_core::domain::{BubbleGroup, BubbleKind, PaperSpec};
 
 use crate::{canvas::Canvas, style::HeaderText};
 
@@ -36,22 +43,33 @@ const SUBTITLE_GAP_MM: f64 = 4.5;
 const META_LINE_GAP_MM: f64 = 4.0;
 
 /// Draw the header band. An empty [`HeaderText`] adds no ops.
-pub fn draw(canvas: &mut Canvas, header: &HeaderText, paper: &PaperSpec, font: &FontId) {
+///
+/// `groups` is consulted to compute the cipher-block x-midpoint that the title is
+/// centred on. When the template has no `BubbleKind::StudentId` groups (custom
+/// templates without a cipher block), the title falls back to page-centre — that
+/// still keeps it clear of all four corner markers.
+pub fn draw(
+    canvas: &mut Canvas,
+    header: &HeaderText,
+    groups: &[BubbleGroup],
+    paper: &PaperSpec,
+    font: &FontId,
+) {
     if header == &HeaderText::default() {
         return;
     }
 
     let title_baseline_y = paper.height_mm - paper.margin_mm - TITLE_BASELINE_FROM_TOP_MM;
-    let left_x = paper.margin_mm;
+    let title_center_x = title_anchor_x_mm(groups, paper);
     let right_x = paper.width_mm - paper.margin_mm;
 
-    // Left column — title (18 pt) + subtitle (12 pt).
+    // Left column — title (centred over the cipher block) + subtitle directly under it.
     if let Some(title) = header.title.as_deref() {
-        canvas.text(left_x, title_baseline_y, title, font, TITLE_PT);
+        canvas.text_centered_x(title_center_x, title_baseline_y, title, font, TITLE_PT);
     }
     if let Some(subtitle) = header.subtitle.as_deref() {
-        canvas.text(
-            left_x,
+        canvas.text_centered_x(
+            title_center_x,
             title_baseline_y - SUBTITLE_GAP_MM,
             subtitle,
             font,
@@ -73,4 +91,32 @@ pub fn draw(canvas: &mut Canvas, header: &HeaderText, paper: &PaperSpec, font: &
             META_PT,
         );
     }
+}
+
+/// Compute the x-coordinate (mm, page-absolute) that the title should be centred on.
+/// Walks every `StudentId` group's bubble positions and returns the midpoint of their
+/// combined x-extent. Falls back to page-centre when no cipher block is present.
+fn title_anchor_x_mm(groups: &[BubbleGroup], paper: &PaperSpec) -> f64 {
+    let cipher_xs = groups
+        .iter()
+        .filter(|g| matches!(g.kind, BubbleKind::StudentId))
+        .flat_map(|g| g.bubbles.iter().map(|b| b.x as f64));
+
+    let mut min_x = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    for x in cipher_xs {
+        if x < min_x {
+            min_x = x;
+        }
+        if x > max_x {
+            max_x = x;
+        }
+    }
+
+    if min_x.is_finite() && max_x.is_finite() {
+        let mid_norm = (min_x + max_x) / 2.0;
+        return mid_norm * paper.width_mm;
+    }
+
+    paper.width_mm / 2.0
 }

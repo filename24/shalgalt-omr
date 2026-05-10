@@ -230,30 +230,33 @@ export function createMongolianStandardTemplate(opts?: {
   return {
     version: TEMPLATE_VERSION,
     title: opts?.title ?? '',
+    // P3-01: ArUco DICT_6X6_50 markers. IDs are assigned in TL/TR/BR/BL order
+    // so the CV pipeline can recover orientation even when the page is fed
+    // upside-down or sideways through a scanner. See docs/adr/0009-aruco-markers.md.
     markers: [
       {
         id: 'm-tl',
         position: { x: 0.04, y: 0.04 },
-        size: 0.02,
-        kind: { type: 'square' }
+        size: 0.04,
+        kind: { type: 'aruco6x6', ids: [0, 1, 2, 3] }
       },
       {
         id: 'm-tr',
         position: { x: 0.96, y: 0.04 },
-        size: 0.02,
-        kind: { type: 'square' }
+        size: 0.04,
+        kind: { type: 'aruco6x6', ids: [0, 1, 2, 3] }
       },
       {
         id: 'm-br',
         position: { x: 0.96, y: 0.96 },
-        size: 0.02,
-        kind: { type: 'square' }
+        size: 0.04,
+        kind: { type: 'aruco6x6', ids: [0, 1, 2, 3] }
       },
       {
         id: 'm-bl',
         position: { x: 0.04, y: 0.96 },
-        size: 0.02,
-        kind: { type: 'square' }
+        size: 0.04,
+        kind: { type: 'aruco6x6', ids: [0, 1, 2, 3] }
       }
     ],
     groups: [

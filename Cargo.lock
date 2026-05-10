@@ -5241,6 +5241,7 @@ dependencies = [
  "image",
  "opencv",
  "pdfium-render",
+ "rand 0.8.6",
  "serde",
  "sha2",
  "shalgalt-core",

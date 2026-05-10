@@ -36,3 +36,5 @@ reasoning*, not the prose volume.
 | [0006](0006-light-theme-and-comfort-typography.md) | Light-default theme + comfortable typography mode | Accepted |
 | [0007](0007-canvas-wrapper-and-layout-modules.md) | Canvas wrapper + per-element layout modules in `shalgalt-pdf` | Accepted |
 | [0008](0008-bubble-label-position.md) | Bubble label position: inside the circle | Accepted |
+| [0009](0009-aruco-markers.md) | Corner markers: ArUco DICT_6X6_50, IDs 0..3 in TL/TR/BR/BL order | Accepted |
+| [0010](0010-confidence-band.md) | Per-bubble fill measurement, decision bands, and confidence formula | Accepted |
