@@ -118,6 +118,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::scan::scan_grade_pdf,
+            commands::scan::regrade_sheet,
             commands::scan::rasterize_pdf_first_page,
             commands::export::export_results_xlsx,
             commands::pdf::pdf_generate_omr,
