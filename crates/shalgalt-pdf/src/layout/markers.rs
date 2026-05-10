@@ -10,12 +10,12 @@ use shalgalt_core::domain::{
     PaperSpec,
 };
 
-use crate::{coords, shapes};
+use crate::{canvas::Canvas, coords, shapes};
 
-/// Push the four marker draw ops onto `ops`. Markers may bleed outside the printable
+/// Push the four marker draw ops onto the canvas. Markers may bleed outside the printable
 /// margin, so positioning uses [`coords::to_page_mm`] (margin-agnostic).
-pub fn draw(ops: &mut Vec<Op>, markers: &[Marker; 4], paper: &PaperSpec) {
-    ops.push(Op::SetFillColor {
+pub fn draw(canvas: &mut Canvas, markers: &[Marker; 4], paper: &PaperSpec) {
+    canvas.push(Op::SetFillColor {
         col: Color::Rgb(Rgb {
             r: 0.0,
             g: 0.0,
@@ -34,7 +34,7 @@ pub fn draw(ops: &mut Vec<Op>, markers: &[Marker; 4], paper: &PaperSpec) {
         match marker.kind {
             // TODO(#P3-01): paint the actual 6×6 ArUco bit grid for better CV alignment.
             MarkerKind::Square | MarkerKind::Aruco6x6 { .. } => {
-                ops.push(Op::DrawPolygon {
+                canvas.push(Op::DrawPolygon {
                     polygon: shapes::square_polygon(cx, cy, half),
                 });
             }

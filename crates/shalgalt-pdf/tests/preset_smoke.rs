@@ -1,6 +1,7 @@
 //! Lightweight smoke test confirming the Mongolian-standard preset produces a valid PDF
-//! with 51 groups. `golden.rs` owns deterministic byte-level comparison; this file just
-//! checks the preset builder's shape (group count, marker count, single page).
+//! with the expected group count. `golden.rs` owns deterministic byte-level comparison;
+//! this file just checks the preset builder's shape (group count, marker count, single
+//! page).
 
 mod common;
 
@@ -9,12 +10,12 @@ use shalgalt_pdf::{render_template, PdfOptions};
 use crate::common::preset;
 
 #[test]
-fn preset_builds_51_groups() {
+fn preset_builds_107_groups() {
     let tmpl = preset::mongolian_standard("Шалгалт");
     assert_eq!(
         tmpl.groups.len(),
-        51,
-        "4 cipher + 1 variant + 30 questions + 16 numerics = 51"
+        107,
+        "4 cipher + 1 variant + 70 questions + 4×8 numerics = 107 (spec §6)"
     );
 }
 

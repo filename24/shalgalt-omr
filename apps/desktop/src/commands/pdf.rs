@@ -22,6 +22,17 @@ use tauri::State;
 
 use crate::state::AppState;
 
+/// Default САНАМЖ instruction text (Mongolian Cyrillic) injected into the top-right
+/// block of every rendered card. Hardcoded here pending the i18n table. Each numbered
+/// item lives on its own line — the renderer (`shalgalt_pdf::layout::sidebar`) splits
+/// on `\n` and word-wraps each paragraph to the column width.
+// TODO(P5): move to the i18n table once `shalgalt-i18n` lands.
+const DEFAULT_INSTRUCTIONS_MN: &str = "1. Хариултын хуудсын нугалж гэмтээж болохгүй.\n\
+    2. Та шалгалтын дэвтрийн хувилбар, хариултын хуудасны хувилбар таалч буй \
+    эсэхийг шалгана уу.\n\
+    3. Хариултын хуудсыг зөвхөн балын харандаа болон хар, цэнхэр өнгийн үзгэн, \
+    тосон балаар тод завсаргүй байдлаар бөглөнө үү.";
+
 /// Generate an OMR PDF from a serialized template and write it to `output_path`.
 ///
 /// `template_json` is the serialized [`OmrTemplate`] (Rule 3 unit). `variant`
@@ -92,6 +103,7 @@ pub async fn pdf_render_template_preview(
 async fn render_pdf_blocking(template: OmrTemplate, variant: Option<String>) -> AppResult<Vec<u8>> {
     let opts = PdfOptions {
         variant,
+        instructions: Some(DEFAULT_INSTRUCTIONS_MN.to_string()),
         ..PdfOptions::default()
     };
     tokio::task::spawn_blocking(move || render_template(&template, &opts))

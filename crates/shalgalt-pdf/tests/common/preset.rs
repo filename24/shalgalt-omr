@@ -13,35 +13,40 @@ use shalgalt_pdf::domain::{
     BubbleGroup, BubbleKind, Marker, MarkerKind, OmrTemplate, TemplatePoint,
 };
 
-const SHIFR_START_Y: f32 = 0.155;
-const SHIFR_ROW_SPACING: f32 = 0.024;
+// Locked layout — see `docs/MONGOLIAN_OMR_SPEC.md`. Touching these constants requires
+// updating the spec doc, the TS preset, and regenerating the golden in the same PR.
+
+const SHIFR_START_Y: f32 = 0.08;
+const SHIFR_ROW_SPACING: f32 = 0.025;
 const SHIFR_ROWS: usize = 4;
-const SHIFR_BUBBLE_START_X: f32 = 0.075;
-const SHIFR_BUBBLE_SPACING: f32 = 0.0255;
+const SHIFR_BUBBLE_START_X: f32 = 0.07;
+const SHIFR_BUBBLE_SPACING: f32 = 0.032;
 const SHIFR_BUBBLE_COUNT: usize = 10;
 
-const VARIANT_Y: f32 = 0.27;
-const VARIANT_START_X: f32 = 0.10;
-const VARIANT_SPACING: f32 = 0.026;
+const VARIANT_Y: f32 = 0.19;
+// Centred horizontally on the cipher block — see TS preset for the derivation.
+const VARIANT_START_X: f32 = 0.166;
+const VARIANT_SPACING: f32 = 0.032;
 const VARIANT_COUNT: usize = 4;
 
-const S1_COUNT: usize = 30;
-const S1_PER_COLUMN: usize = 15;
-const S1_ROW_SPACING: f32 = 0.02;
-const S1_START_Y: f32 = 0.36;
-const S1_LEFT_X: f32 = 0.36;
-const S1_RIGHT_X: f32 = 0.61;
-const S1_BUBBLE_SPACING: f32 = 0.03;
-const S1_BUBBLE_COUNT: usize = 4;
+const S1_COUNT: usize = 70;
+const S1_PER_COLUMN: usize = 35;
+const S1_ROW_SPACING: f32 = 0.020;
+const S1_START_Y: f32 = 0.27;
+const S1_LEFT_X: f32 = 0.07;
+const S1_RIGHT_X: f32 = 0.30;
+const S1_BUBBLE_SPACING: f32 = 0.032;
+const S1_BUBBLE_COUNT: usize = 5;
 
 const S2_ROWS: usize = 8;
-const S2_ROW_SPACING: f32 = 0.018;
-const S2_START_Y: f32 = 0.74;
+const S2_ROW_SPACING: f32 = 0.020;
+const S2_BLOCK_SPACING_Y: f32 = 0.180;
+const S2_START_Y: f32 = 0.27;
+const S2_START_X: f32 = 0.55;
 const S2_BUBBLE_COUNT: usize = 10;
-const S2_BUBBLE_SPACING: f32 = 0.026;
-const S2_LEFT_X: f32 = 0.07;
-const S2_RIGHT_X: f32 = 0.55;
+const S2_BUBBLE_SPACING: f32 = 0.032;
 
+const S2_BLOCKS: [&str; 4] = ["2.1", "2.2", "2.3", "2.4"];
 const ROW_LABELS_2: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 #[allow(clippy::too_many_arguments)]
@@ -77,7 +82,8 @@ fn shifr_rows() -> Vec<BubbleGroup> {
         .map(|r| {
             build_row(
                 &format!("shifr-{r}"),
-                &format!("Шифр-{}", r + 1),
+                // Cipher rows render with no row label — see TS preset for rationale.
+                "",
                 "Шифр",
                 BubbleKind::StudentId,
                 TemplatePoint {
@@ -95,8 +101,11 @@ fn shifr_rows() -> Vec<BubbleGroup> {
 fn variant_row() -> BubbleGroup {
     build_row(
         "variant",
-        "Вариант (A/B/C/D)",
-        "Вариант",
+        // Row label suppressed — the section header above already prints "Хувилбар".
+        "",
+        // Section name matches the TS preset (`STANDARD_SECTIONS.variant = "Хувилбар"`)
+        // so both renderers emit the same section header text.
+        "Хувилбар",
         BubbleKind::Question,
         TemplatePoint {
             x: VARIANT_START_X,
@@ -117,7 +126,7 @@ fn section1_questions() -> Vec<BubbleGroup> {
             let y = S1_START_Y + S1_ROW_SPACING * idx_in_col as f32;
             build_row(
                 &format!("q-{}", q + 1),
-                &format!("Q{}", q + 1),
+                &format!("{}", q + 1),
                 "1-Р ХЭСЭГ",
                 BubbleKind::Question,
                 TemplatePoint { x, y },
@@ -129,17 +138,18 @@ fn section1_questions() -> Vec<BubbleGroup> {
         .collect()
 }
 
-fn section2_block(id: &str, start_x: f32, section: &str) -> Vec<BubbleGroup> {
+fn section2_block(id: &str, block_index: usize, section: &str) -> Vec<BubbleGroup> {
+    let block_start_y = S2_START_Y + S2_BLOCK_SPACING_Y * block_index as f32;
     (0..S2_ROWS)
         .map(|r| {
             build_row(
                 &format!("{id}-{}", ROW_LABELS_2[r]),
-                &format!("{id}.{}", ROW_LABELS_2[r]),
+                ROW_LABELS_2[r],
                 section,
                 BubbleKind::Question,
                 TemplatePoint {
-                    x: start_x,
-                    y: S2_START_Y + S2_ROW_SPACING * r as f32,
+                    x: S2_START_X,
+                    y: block_start_y + S2_ROW_SPACING * r as f32,
                 },
                 S2_BUBBLE_COUNT,
                 S2_BUBBLE_SPACING,
@@ -149,7 +159,8 @@ fn section2_block(id: &str, start_x: f32, section: &str) -> Vec<BubbleGroup> {
         .collect()
 }
 
-/// Mongolian-standard 51-group preset.
+/// Mongolian-standard preset (67 groups: 4 Шифр + 1 variant + 30 Section-1 questions
+/// + 4×8 Section-2 numeric rows).
 pub fn mongolian_standard(title: &str) -> OmrTemplate {
     let marker = |id: &str, x: f32, y: f32| Marker {
         id: id.to_string(),
@@ -162,8 +173,9 @@ pub fn mongolian_standard(title: &str) -> OmrTemplate {
     groups.extend(shifr_rows());
     groups.push(variant_row());
     groups.extend(section1_questions());
-    groups.extend(section2_block("2.1", S2_LEFT_X, "2-Р ХЭСЭГ (2.1)"));
-    groups.extend(section2_block("2.2", S2_RIGHT_X, "2-Р ХЭСЭГ (2.2)"));
+    for (idx, id) in S2_BLOCKS.iter().enumerate() {
+        groups.extend(section2_block(id, idx, &format!("2-Р ХЭСЭГ ({id})")));
+    }
 
     OmrTemplate {
         version: OmrTemplate::CURRENT_VERSION,

@@ -24,6 +24,13 @@ shalgalt-core = { path = "../shalgalt-core" }
 anyhow = "1"
 thiserror = "2"
 
+# Serialize / Deserialize derives for `LayoutMap` — same workspace serde version as
+# shalgalt-core so the JSON round-trip is byte-identical between map producer (this
+# crate) and map consumer (`shalgalt-cv` grader, P3-02).
+serde = { version = "1", features = ["derive"] }
+
 [dev-dependencies]
 # PDF validity assertions in the smoke / Cyrillic-glyph tests.
 lopdf = "0.34"
+# JSON serialisation round-trip test for `LayoutMap`.
+serde_json = "1"

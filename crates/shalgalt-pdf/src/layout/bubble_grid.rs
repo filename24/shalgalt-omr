@@ -1,20 +1,30 @@
-//! Render a single [`BubbleGroup`] as one row of labelled circles.
+//! Render a single [`BubbleGroup`] as a row of labelled circles.
+//!
+//! Each bubble carries a 1-character label (A/B/C/D/E for multiple choice or 0–9 for
+//! digits) drawn INSIDE the circle. Real OMR cards do this so the meaning of every
+//! position is unambiguous to the student even if marker detection fails — see issue
+//! #75 follow-up.
+//!
+//! Filled bubbles (the student's answer) hide the inner label; empty bubbles show it.
+//! The CV pipeline thresholds the *fraction of dark pixels* inside a circle, so the
+//! small printed glyph does not register as a fill.
 //!
 //! Acceptance defaults:
-//! - 2.5 mm diameter, 0.4 mm outline, solid black.
-//! - One-character label (A/B/C/D/E or 0–9) painted to the right of each bubble.
+//! - 4.5 mm diameter, 0.3 mm outline, solid black.
 //! - Coordinates always go through [`crate::coords::project`] (margin-aware).
+//! - Per-bubble text emission lives in [`Canvas::text_centered_in_circle`], which wraps
+//!   each call in its own BT/ET so the text matrix never accumulates.
 
-use printpdf::{Color, FontId, Mm, Op, PaintMode, PdfFontHandle, Point, Pt, Rgb, TextItem};
+use printpdf::FontId;
 use shalgalt_core::domain::{template::BubbleGroup, PaperSpec};
 
-use crate::{coords, shapes, style::BubbleStyle};
+use crate::{canvas::Canvas, coords, style::BubbleStyle};
 
-/// Draw a circle at every `group.bubbles[i]`. When `labels[i]` is present, paint a
-/// single-character label to its right. Trailing bubbles whose label index is missing
-/// stay unlabelled; an empty `labels` slice skips the label pass entirely.
+/// Stroke an empty circle at every `group.bubbles[i]` and paint `labels[i]` centred
+/// inside the circle. An empty `labels` slice skips the label pass entirely (used by
+/// tests / future blank renders).
 pub fn draw(
-    ops: &mut Vec<Op>,
+    canvas: &mut Canvas,
     group: &BubbleGroup,
     paper: &PaperSpec,
     style: &BubbleStyle,
@@ -22,67 +32,22 @@ pub fn draw(
     font: &FontId,
 ) {
     let r_mm = style.diameter_mm * 0.5;
+    canvas.set_stroke_black(style.stroke_mm);
 
-    ops.push(Op::SetOutlineColor {
-        col: Color::Rgb(Rgb {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            icc_profile: None,
-        }),
-    });
-    ops.push(Op::SetOutlineThickness {
-        pt: Pt((style.stroke_mm * 72.0 / 25.4) as f32),
-    });
-
-    // 1) Stroke every bubble — empty circles for the student to fill in.
+    // 1) Stroke every circle.
     for bubble in &group.bubbles {
         let (cx_mm, cy_mm) = coords::project(bubble.x as f64, bubble.y as f64, paper);
-        ops.push(Op::DrawPolygon {
-            polygon: shapes::circle_polygon(
-                cx_mm.0 as f64,
-                cy_mm.0 as f64,
-                r_mm,
-                PaintMode::Stroke,
-            ),
-        });
+        canvas.circle_stroked(cx_mm.0 as f64, cy_mm.0 as f64, r_mm);
     }
 
-    // 2) Label pass.
     if labels.is_empty() {
         return;
     }
-    ops.push(Op::StartTextSection);
-    ops.push(Op::SetFillColor {
-        col: Color::Rgb(Rgb {
-            r: 0.0,
-            g: 0.0,
-            b: 0.0,
-            icc_profile: None,
-        }),
-    });
-    ops.push(Op::SetFont {
-        font: PdfFontHandle::External(font.clone()),
-        size: Pt(style.label_size_pt as f32),
-    });
 
-    for (i, bubble) in group.bubbles.iter().enumerate() {
-        let label = match labels.get(i) {
-            Some(c) => *c,
-            None => continue,
-        };
+    // 2) Centred label inside each bubble. Per-call BT/ET reset is owned by Canvas.
+    let limit = labels.len().min(group.bubbles.len());
+    for (i, bubble) in group.bubbles.iter().take(limit).enumerate() {
         let (cx_mm, cy_mm) = coords::project(bubble.x as f64, bubble.y as f64, paper);
-        // Place the label to the right of the bubble; nudge the baseline below the circle
-        // centre for legibility.
-        let label_x = cx_mm.0 as f64 + r_mm + style.label_offset_mm;
-        let label_y = cy_mm.0 as f64 - style.label_size_pt * 0.35 / 2.83465; // approximate pt → mm correction
-        ops.push(Op::SetTextCursor {
-            pos: Point::new(Mm(label_x as f32), Mm(label_y as f32)),
-        });
-        ops.push(Op::ShowText {
-            items: vec![TextItem::Text(label.to_string())],
-        });
+        canvas.text_centered_in_circle(cx_mm.0 as f64, cy_mm.0 as f64, r_mm, labels[i], font);
     }
-
-    ops.push(Op::EndTextSection);
 }

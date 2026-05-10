@@ -50,6 +50,8 @@ export const mn = {
         section1: "1-Р ХЭСЭГ",
         section21: "2.1",
         section22: "2.2",
+        section23: "2.3",
+        section24: "2.4",
         other: "Бусад",
       },
       labels: {

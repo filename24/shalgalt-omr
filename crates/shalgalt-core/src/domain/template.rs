@@ -58,7 +58,7 @@ pub struct Marker {
     pub kind: MarkerKind,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub enum BubbleKind {
