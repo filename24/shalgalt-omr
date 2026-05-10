@@ -34,3 +34,5 @@ reasoning*, not the prose volume.
 | [0004](0004-ts-rs-type-codegen.md) | Generate TypeScript bindings from Rust via `ts-rs` | Accepted |
 | [0005](0005-pdf-ipc-contract.md) | PDF generation IPC contract | Accepted |
 | [0006](0006-light-theme-and-comfort-typography.md) | Light-default theme + comfortable typography mode | Accepted |
+| [0007](0007-canvas-wrapper-and-layout-modules.md) | Canvas wrapper + per-element layout modules in `shalgalt-pdf` | Accepted |
+| [0008](0008-bubble-label-position.md) | Bubble label position: inside the circle | Accepted |
