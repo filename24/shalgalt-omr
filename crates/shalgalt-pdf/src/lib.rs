@@ -38,11 +38,13 @@ pub mod canvas;
 pub mod coords;
 mod error;
 pub mod layout;
+pub mod layout_map;
 pub mod shapes;
 pub mod style;
 
 pub use canvas::Canvas;
 pub use error::PdfError;
+pub use layout_map::{BubbleEntry, LayoutMap, MarkerEntry};
 pub use style::{BubbleStyle, HeaderText};
 
 /// Re-export the domain types this renderer consumes so callers do not need to depend on
@@ -111,10 +113,28 @@ impl Default for PdfOptions {
     }
 }
 
+/// Render the given [`OmrTemplate`] into a single-page PDF together with a
+/// [`LayoutMap`] sidecar describing every printed bubble and marker in PDF
+/// millimetres.
+///
+/// The grading pipeline (P3-02) reads coordinates from the [`LayoutMap`] rather than
+/// re-projecting from the template, so renderer rounding cannot silently desynchronise
+/// the grader from the printed sheet — see ADR 0007.
+pub fn render_template_with_map(
+    template: &OmrTemplate,
+    opts: &PdfOptions,
+) -> Result<(Vec<u8>, LayoutMap), PdfError> {
+    let bytes = render_template(template, opts)?;
+    let map = LayoutMap::from_template(template, opts);
+    Ok((bytes, map))
+}
+
 /// Render the given [`OmrTemplate`] into a single-page PDF.
 ///
 /// The returned `Vec<u8>` is a complete PDF byte stream from the `%PDF-` header through
-/// the `%%EOF` marker, ready to write to disk or stream over HTTP.
+/// the `%%EOF` marker, ready to write to disk or stream over HTTP. Use
+/// [`render_template_with_map`] when the caller also needs the printed-bubble
+/// coordinate sidecar (grading, scan correlation).
 pub fn render_template(template: &OmrTemplate, opts: &PdfOptions) -> Result<Vec<u8>, PdfError> {
     let mut doc = PdfDocument::new(&template.title);
 

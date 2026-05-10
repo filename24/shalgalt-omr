@@ -5293,6 +5293,8 @@ dependencies = [
  "anyhow",
  "lopdf 0.34.0",
  "printpdf",
+ "serde",
+ "serde_json",
  "shalgalt-core",
  "thiserror 2.0.18",
 ]
