@@ -78,7 +78,7 @@ fn detect_raw(gray: &Mat) -> AppResult<(Vector<Mat>, Mat)> {
         RefineParameters,
     };
 
-    let dictionary = get_predefined_dictionary(PredefinedDictionaryType::DICT_6X6_50 as i32)
+    let dictionary = get_predefined_dictionary(PredefinedDictionaryType::DICT_6X6_50)
         .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: dictionary: {e}")))?;
     let params = DetectorParameters::default()
         .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: params: {e}")))?;
