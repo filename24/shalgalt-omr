@@ -78,7 +78,6 @@ export const mn = {
       deleteSelected: "Сонгосныг устгах",
       undo: "Буцаах",
       redo: "Дахин хийх",
-      saveDisabledNoBackdrop: "Эхлээд зургийн дэвсгэр сонгоно уу",
       undoRedoDeferredHint: "P5 шатанд нэмэгдэнэ",
       exportPdf: "PDF болгож хадгалах",
       togglePreview: "Хэвлэх харагдац",
