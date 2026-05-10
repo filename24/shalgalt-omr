@@ -11,7 +11,8 @@
 //!
 //! Acceptance defaults:
 //! - 4.5 mm diameter, 0.3 mm outline, solid black.
-//! - Coordinates always go through [`crate::coords::project`] (margin-aware).
+//! - Coordinates always go through [`crate::coords::project`] (full-page mapping —
+//!   identical to [`crate::coords::to_page_mm`], see that module's notes).
 //! - Per-bubble text emission lives in [`Canvas::text_centered_in_circle`], which wraps
 //!   each call in its own BT/ET so the text matrix never accumulates.
 

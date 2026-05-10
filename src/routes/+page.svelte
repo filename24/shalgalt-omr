@@ -3,6 +3,7 @@
   import QuickActionsWidget from "$lib/components/widgets/QuickActionsWidget.svelte";
   import RecentExamsWidget from "$lib/components/widgets/RecentExamsWidget.svelte";
   import RecentResultsWidget from "$lib/components/widgets/RecentResultsWidget.svelte";
+  import RecentJobsWidget from "$lib/components/widgets/RecentJobsWidget.svelte";
 </script>
 
 <section class="container mx-auto space-y-6 p-6 lg:p-8">
@@ -12,6 +13,8 @@
   </header>
 
   <QuickActionsWidget />
+
+  <RecentJobsWidget />
 
   <div class="grid gap-4 lg:grid-cols-2">
     <RecentExamsWidget />

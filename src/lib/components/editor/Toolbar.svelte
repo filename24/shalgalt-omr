@@ -47,9 +47,12 @@
   let unsavedDialogOpen = $state(false);
   let pendingNewAction: (() => void) | null = null;
 
-  const canSave = $derived(
-    currentTemplate.draft !== null && currentTemplate.backdropPath !== null,
-  );
+  // The backdrop image is purely a visual editing aid — coordinates are
+  // normalized [0,1] against the page, the CV pipeline registers via ArUco
+  // markers, and the DB column is nullable. Save is unlocked as soon as a
+  // draft exists; presets like the Mongolian-standard layout work with no
+  // backdrop at all.
+  const canSave = $derived(currentTemplate.draft !== null);
 
   onMount(async () => {
     templates = await listTemplates();
@@ -137,7 +140,7 @@
   }
 
   function openSaveDialog(mode: "save" | "saveAs") {
-    if (!currentTemplate.draft || !currentTemplate.backdropPath) return;
+    if (!currentTemplate.draft) return;
     saveDialogMode = mode;
     saveDialogTitle =
       mode === "save" && currentTemplate.loadedFrom
@@ -147,7 +150,7 @@
   }
 
   async function handleSave() {
-    if (!currentTemplate.draft || !currentTemplate.backdropPath) return;
+    if (!currentTemplate.draft) return;
     if (saveDialogMode === "save" && currentTemplate.loadedFrom) {
       // Update existing row.
       currentTemplate.draft.title = saveDialogTitle;
@@ -299,7 +302,6 @@
     variant="ghost"
     size="sm"
     disabled={!canSave}
-    title={canSave ? "" : mn.editor.toolbar.saveDisabledNoBackdrop}
     onclick={() => openSaveDialog("save")}
   >
     <SaveIcon class="size-4" />

@@ -63,16 +63,29 @@ function buildRow(spec: RowSpec): BubbleGroup {
 
 // ─── Layout constants ──────────────────────────────────────────────────────
 //
-// The PDF inspiration uses A4 portrait; coordinates below are normalized [0,1]
-// against that page rect. Adjusting any constant updates every group derived
-// from it.
+// Coordinates are normalized [0,1] against the FULL A4-portrait page (matches
+// the editor canvas, the CV pipeline's perspective warp, and the PDF
+// renderer — see `crates/shalgalt-pdf/src/coords.rs`).
+//
+// Marker safe area: ArUco markers sit at template centres (0.04, 0.04) /
+// (0.96, 0.04) / (0.96, 0.96) / (0.04, 0.96) with `size = 0.04`. Marker half-
+// side projects to 4.2 mm on A4 (= 0.02 in normalized x, 0.014 in normalized y),
+// so each marker square occupies:
+//   x ∈ [0.02, 0.06] ∪ [0.94, 0.98]
+//   y ∈ [0.026, 0.054] ∪ [0.946, 0.974]
+// Bubble radius is 2.25 mm (= 0.011 in x, 0.008 in y). Every bubble centre
+// below is therefore kept at least 0.025 in x / 0.018 in y away from the
+// nearest marker edge so the printed circles never visually graze the
+// ArUco grid.
 
 const SHIFR = {
   section: STANDARD_SECTIONS.shifr,
   startY: 0.08,
   rowSpacing: 0.025,
   rows: 4,
-  bubbleStartX: 0.07,
+  // Was 0.07 → bubble left edge at 0.0593 vs marker right edge at 0.06
+  // (overlapping). Pushed right to clear the TL marker by ~5 mm.
+  bubbleStartX: 0.085,
   bubbleSpacing: 0.032,
   bubbleCount: 10
 } as const
@@ -80,10 +93,11 @@ const SHIFR = {
 const VARIANT = {
   section: STANDARD_SECTIONS.variant,
   y: 0.19,
-  // Centred horizontally on the cipher block (cipher span 0.07 – 0.358, midpoint
-  // 0.214). With 4 bubbles × 0.032 spacing, the variant's first bubble must sit at
-  // 0.214 − 1.5 × 0.032 = 0.166 so its 4 bubbles straddle the cipher midpoint.
-  startX: 0.166,
+  // Centred horizontally on the cipher block. Cipher span is now
+  // 0.085 – (0.085 + 9 × 0.032) = 0.085 – 0.373, midpoint 0.229. With 4
+  // bubbles × 0.032 spacing, the variant's first bubble sits at
+  // 0.229 − 1.5 × 0.032 = 0.181.
+  startX: 0.181,
   spacing: 0.032,
   count: 4
 } as const
@@ -92,18 +106,32 @@ const SECTION_1 = {
   section: STANDARD_SECTIONS.section1,
   count: 70,
   perColumn: 35,
-  rowSpacing: 0.02,
+  // Was 0.02 → 35 rows packed to y = 0.95, overlapping the bottom markers
+  // (top edge at y = 0.946). Tightened to 0.019 so the last row lands at
+  // y = 0.916 with ~6.5 mm clearance.
+  rowSpacing: 0.019,
   startY: 0.27,
-  leftColX: 0.07,
-  rightColX: 0.3,
+  // Both columns shifted right to clear the TL/BL markers; gap between
+  // columns preserved at 0.23 (was 0.07–0.30, now 0.085–0.315).
+  leftColX: 0.085,
+  rightColX: 0.315,
   bubbleSpacing: 0.032,
   bubbleCount: 5
 } as const
 
 const SECTION_2 = {
   rows: 8,
-  rowSpacing: 0.02,
-  blockSpacingY: 0.18,
+  // Was 0.020 — tightened to 0.019 to free room for the inter-block gap below
+  // without pushing the last block past the bottom marker. Each block is now
+  // 7 × 0.019 = 0.133 tall.
+  rowSpacing: 0.019,
+  // Was 0.18 → block 3 last row landed at y = 0.95, overlapping bottom
+  // markers. A naïve drop to 0.16 erased the visible inter-block gap (the
+  // "2.2"/"2.3"/"2.4" sub-headers ended up sitting on the previous block's
+  // last row). Locked at 0.17 so the gap between blocks = 0.17 − 7 × 0.019
+  // = 0.037 ≈ 11 mm — restores the visible separator while keeping block 3's
+  // last row at y = 0.913 (~7.5 mm clear of the BR marker top edge).
+  blockSpacingY: 0.17,
   startY: 0.27,
   startX: 0.55,
   bubbleCount: 10,

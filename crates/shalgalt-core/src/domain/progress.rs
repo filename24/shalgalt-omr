@@ -9,6 +9,9 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use super::parsed::ParsedSheet;
+use super::result::GradedSheet;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../src/lib/types/generated/")]
@@ -33,4 +36,19 @@ pub struct TaskProgress {
     /// Optional human-readable secondary message.
     #[serde(default)]
     pub message: Option<String>,
+}
+
+/// Per-page payload emitted on the `task-result` event after grading
+/// succeeds (P3-06). Carries everything `/grade` and `/review` need to render
+/// the sheet without a second IPC round-trip — including the absolute path to
+/// the page raster so it can be loaded via `asset://localhost/` (Rule 1).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "../../../src/lib/types/generated/")]
+pub struct TaskResult {
+    pub task_id: String,
+    pub page_index: u32,
+    /// Absolute filesystem path to the rasterized page image.
+    pub page_image_path: String,
+    pub parsed: ParsedSheet,
+    pub graded: GradedSheet,
 }

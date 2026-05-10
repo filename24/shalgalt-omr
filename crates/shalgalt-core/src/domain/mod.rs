@@ -15,7 +15,7 @@ pub mod template;
 pub use answer_key::{AnswerKey, AnswerKeyEntry};
 pub use paper::{Orientation, PaperSpec};
 pub use parsed::{BubbleReading, ParsedSheet};
-pub use progress::{TaskProgress, TaskStage};
+pub use progress::{TaskProgress, TaskResult, TaskStage};
 pub use result::{GradedAnswer, GradedSheet};
 pub use student::Student;
 pub use template::{BubbleGroup, BubbleKind, Marker, MarkerKind, OmrTemplate, TemplatePoint};

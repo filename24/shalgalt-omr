@@ -4,7 +4,8 @@
 //! and each variant carries its own [`AnswerKey`].
 //!
 //! Persisted in the `answer_keys.answers_json` column (see master plan §9.1
-//! migration `0003_exams_and_answer_keys.sql`, lands in P4-04).
+//! migration `0004_exams_and_answer_keys.sql`, lands in P4-04 — note that
+//! migration `0003_jobs.sql` ships first as part of P3-08).
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
