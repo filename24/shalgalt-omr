@@ -228,7 +228,13 @@ pub(crate) fn build_page_ops(
     if effective_header.title.is_none() && !template.title.is_empty() {
         effective_header.title = Some(template.title.clone());
     }
-    layout::header::draw(&mut canvas, &effective_header, &opts.paper, body_font_id);
+    layout::header::draw(
+        &mut canvas,
+        &effective_header,
+        &template.groups,
+        &opts.paper,
+        body_font_id,
+    );
 
     // 3) Handwriting-backup underlines for every student-ID row (Шифр backup). Drawn
     //    before the bubbles so any future overlay can paint on top.
