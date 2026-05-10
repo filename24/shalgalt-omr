@@ -9,11 +9,16 @@
 //! common reason a hand-photographed sheet fails grading. Callers translate
 //! `AppError::BadRequest("markers not found")` into a Mongolian "хуудас танигдсангүй"
 //! toast for the user.
+//!
+//! ## OpenCV version split
+//!
+//! OpenCV 4.7 moved ArUco from the contrib `cv::aruco` module into `cv::objdetect`
+//! and replaced the free function `detect_markers` with the `ArucoDetector` class.
+//! Ubuntu apt still ships 4.6; the Windows self-extractor and current Homebrew
+//! ship 4.8+. The two implementations below are selected at build time by `build.rs`
+//! via `opencv_aruco_legacy` / `opencv_aruco_modern` cfg flags.
 
-use opencv::aruco::{
-    self, get_predefined_dictionary_i32, DetectorParameters, Dictionary, DICT_6X6_50,
-};
-use opencv::core::{Mat, Point2f, Ptr, Size, Vector};
+use opencv::core::{Mat, Point2f, Size, Vector};
 use opencv::{core, imgproc, prelude::*};
 
 use shalgalt_core::error::{AppError, AppResult};
@@ -34,6 +39,17 @@ pub struct DetectedMarker {
 /// Detect ArUco DICT_6X6_50 markers in `gray` and return a `[TL, TR, BR, BL]`
 /// quadruple. Returns `BadRequest` if any of IDs 0..3 is missing.
 pub fn detect_corner_markers(gray: &Mat) -> AppResult<[DetectedMarker; 4]> {
+    let (corners, ids) = detect_raw(gray)?;
+    assemble_corner_set(&corners, &ids)
+}
+
+#[cfg(opencv_aruco_legacy)]
+fn detect_raw(gray: &Mat) -> AppResult<(Vector<Mat>, Mat)> {
+    use opencv::aruco::{
+        self, get_predefined_dictionary_i32, DetectorParameters, Dictionary, DICT_6X6_50,
+    };
+    use opencv::core::Ptr;
+
     let dictionary_ptr: Ptr<Dictionary> = get_predefined_dictionary_i32(DICT_6X6_50)
         .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: dictionary: {e}")))?;
     let params_ptr: Ptr<DetectorParameters> = DetectorParameters::create()
@@ -52,7 +68,37 @@ pub fn detect_corner_markers(gray: &Mat) -> AppResult<[DetectedMarker; 4]> {
         &mut rejected,
     )
     .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: detect: {e}")))?;
+    Ok((corners, ids))
+}
 
+#[cfg(opencv_aruco_modern)]
+fn detect_raw(gray: &Mat) -> AppResult<(Vector<Mat>, Mat)> {
+    use opencv::objdetect::{
+        get_predefined_dictionary, ArucoDetector, DetectorParameters, PredefinedDictionaryType,
+        RefineParameters,
+    };
+
+    let dictionary = get_predefined_dictionary(PredefinedDictionaryType::DICT_6X6_50 as i32)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: dictionary: {e}")))?;
+    let params = DetectorParameters::default()
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: params: {e}")))?;
+    let refine = RefineParameters::new(10.0, 3.0, true)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: refine params: {e}")))?;
+    let detector = ArucoDetector::new(&dictionary, &params, refine)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: detector: {e}")))?;
+
+    let mut corners: Vector<Mat> = Vector::new();
+    let mut ids: Mat = Mat::default();
+    let mut rejected: Vector<Mat> = Vector::new();
+    detector
+        .detect_markers(gray, &mut corners, &mut ids, &mut rejected)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("aruco: detect: {e}")))?;
+    Ok((corners, ids))
+}
+
+/// Assemble the `(corners, ids)` output of either ArUco backend into the
+/// `[TL, TR, BR, BL]` ordering the rest of the pipeline expects.
+fn assemble_corner_set(corners: &Vector<Mat>, ids: &Mat) -> AppResult<[DetectedMarker; 4]> {
     let count = ids.rows();
     if count < 4 {
         return Err(AppError::BadRequest(format!(

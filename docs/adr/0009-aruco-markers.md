@@ -65,12 +65,15 @@ Rationale:
   needed; if a future template requires them, the table must be regenerated from
   OpenCV's predefined dictionary using the helper described in the module-level
   comment.
-- `crates/shalgalt-cv/src/perspective.rs` uses the legacy `cv::aruco::detectMarkers`
-  binding rather than the newer `cv::objdetect::ArucoDetector`. The latter only
-  exists in OpenCV 4.7+; the former is in 4.6 which is what Ubuntu / Debian apt
-  and macOS Homebrew currently package. When the v1.0 distribution targets
-  upgrade past 4.6 the binding can switch — both APIs accept `DICT_6X6_50` so
-  the migration is mechanical.
+- `crates/shalgalt-cv/src/perspective.rs` carries both ArUco bindings behind
+  cfg gates: legacy `cv::aruco::detectMarkers` for OpenCV 4.6 (Ubuntu / Debian
+  apt, older Homebrew bottles) and modern `cv::objdetect::ArucoDetector` for
+  OpenCV 4.7+ (Windows self-extractor, current Homebrew, vcpkg).
+  `crates/shalgalt-cv/build.rs` probes the local OpenCV version and emits one
+  of `opencv_aruco_legacy` / `opencv_aruco_modern`. `OPENCV_FORCE_ARUCO=legacy
+  |modern` overrides the probe for environments where it cannot read the
+  version (e.g. Windows without pkg-config, vcpkg manifest mode). Both APIs
+  accept `DICT_6X6_50`; the assemble-corner-set logic is shared.
 - The marker side length on the Mongolian-standard preset bumps from `0.02` to
   `0.04` (normalized) so the printed marker has enough cells of margin to remain
   detectable after a copier round-trip.

@@ -23,16 +23,18 @@ opencv = { version = "0.94", default-features = false, features = [
     "clang-runtime",
     "imgcodecs",
     "imgproc",
-    # P3-01: ArUco marker detection. We bind the legacy `cv::aruco::detectMarkers`
-    # API because that is what ships with the OpenCV 4.6 packaged on the target
-    # distros (Ubuntu/Debian apt, macOS Homebrew). The newer
-    # `cv::objdetect::ArucoDetector` is only present in OpenCV 4.7+ which is not
-    # universally available yet. `objdetect` is still required because the legacy
-    # bindings reference `objdetect::Dictionary` and `objdetect::DetectorParameters`.
+    # P3-01: ArUco marker detection. The actual module path differs between
+    # OpenCV 4.6 (cv::aruco — Ubuntu apt, older Homebrew) and OpenCV 4.7+
+    # (cv::objdetect::ArucoDetector — Windows self-extractor, current Homebrew,
+    # vcpkg). `build.rs` probes the local version and emits one of
+    # `opencv_aruco_legacy` / `opencv_aruco_modern`; `src/perspective.rs` picks
+    # the import path at compile time. Override the probe with the
+    # `OPENCV_FORCE_ARUCO=legacy|modern` env var when auto-detection misses.
     "aruco",
     "objdetect",
-    # `aruco` references `calib3d::SolvePnPMethod` for board pose estimation; we
-    # don't use those code paths but the binding cross-references force the feature.
+    # The legacy `aruco` bindings reference `calib3d::SolvePnPMethod` for board
+    # pose estimation. We don't call those code paths, but the binding
+    # cross-references require the feature.
     "calib3d",
 ] }
 
