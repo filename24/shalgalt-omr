@@ -1,15 +1,26 @@
 //! Conversion between normalized template coordinates and millimetre page coordinates.
 //!
-//! Master plan §9.2: template coordinates live in `[0, 1]`. This module exposes two
-//! mappings:
+//! Master plan §9.2: template coordinates live in `[0, 1]` and map directly to the
+//! **full page**, not to a margin-inset rectangle. Both the editor canvas
+//! (`fitContainOrA4` on the full A4 backdrop) and the CV pipeline (which warps the
+//! ArUco-marked rectangle to the unit square) treat `[0, 1]` as the entire sheet —
+//! this crate must do the same so a PDF rendered here, then printed and scanned (or
+//! re-imported as a backdrop), keeps every bubble at the same normalized coordinate
+//! it had in the template.
 //!
-//! - [`to_page_mm`] — full-page mapping that ignores the margin. Used by anything that
-//!   may bleed outside the printable area (corner markers, page background).
-//! - [`project`] — margin-aware mapping into the **printable region**. Body content
-//!   (header, bubbles, sidebar) routes through this single entry point.
+//! The two helpers below therefore produce identical positions; only the return type
+//! differs to satisfy printpdf's `Mm` ops:
 //!
-//! Both helpers return PDF coordinates (origin at the bottom-left, y axis pointing up).
-//! Wrap the result in `printpdf::Mm` to feed it directly to drawing ops.
+//! - [`to_page_mm`] returns bare `(f64, f64)` — used where caller-side arithmetic
+//!   (e.g. marker corner offsets) is more convenient on raw mm.
+//! - [`project`] wraps the same numbers in [`printpdf::Mm`] for direct hand-off to
+//!   `printpdf` drawing operators.
+//!
+//! `PaperSpec::margin_mm` is **not** consumed here — it remains a hint used by
+//! decorative chrome (header banner, sidebar wrap width, manual-entry underline
+//! clamp) but never repositions template-bearing geometry. If you need a margin-
+//! inset region for any new chrome, derive it locally rather than reintroducing a
+//! second projection.
 
 use printpdf::Mm;
 use shalgalt_core::domain::PaperSpec;
@@ -17,7 +28,7 @@ use shalgalt_core::domain::PaperSpec;
 /// Map `(tx, ty)` template coordinates (top-left origin, y pointing down) to PDF page
 /// coordinates in millimetres (bottom-left origin, y pointing up).
 ///
-/// Margins are ignored. Corner markers and page-background elements use this mapping.
+/// Full-page mapping. `tx = 0.0` is the left edge, `tx = 1.0` is the right edge.
 pub fn to_page_mm(tx: f64, ty: f64, paper: &PaperSpec) -> (f64, f64) {
     let x_mm = tx * paper.width_mm;
     // Template y grows downward, PDF y grows upward — flip.
@@ -25,15 +36,11 @@ pub fn to_page_mm(tx: f64, ty: f64, paper: &PaperSpec) -> (f64, f64) {
     (x_mm, y_mm)
 }
 
-/// Map `(tx, ty)` template coordinates onto the margin-aware printable rectangle.
-///
-/// This is the single entry point for body content (header, bubbles, sidebar).
+/// Same mapping as [`to_page_mm`] but wrapped in [`printpdf::Mm`] so the result feeds
+/// drawing ops directly. Keep this as the single body-content entry point — it stays
+/// in lockstep with the editor's full-page coordinate space (master plan §9.2).
 pub fn project(tx: f64, ty: f64, paper: &PaperSpec) -> (Mm, Mm) {
-    let printable_w = paper.width_mm - 2.0 * paper.margin_mm;
-    let printable_h = paper.height_mm - 2.0 * paper.margin_mm;
-    let x_mm = paper.margin_mm + tx * printable_w;
-    // Flip y, then add the bottom margin.
-    let y_mm = paper.margin_mm + (1.0 - ty) * printable_h;
+    let (x_mm, y_mm) = to_page_mm(tx, ty, paper);
     (Mm(x_mm as f32), Mm(y_mm as f32))
 }
 
@@ -65,19 +72,45 @@ mod tests {
         assert!((y - paper.height_mm / 2.0).abs() < 1e-9);
     }
 
+    /// Regression for the P3-06 follow-up: `project` MUST agree with `to_page_mm`
+    /// on every input. Any divergence reintroduces the editor / PDF roundtrip
+    /// drift that mis-aligned bubbles by ~10 mm at the top-left of A4.
     #[test]
-    fn project_origin_is_top_left_inside_margin() {
+    fn project_matches_to_page_mm() {
         let paper = PaperSpec::A4_PORTRAIT;
-        let (x, y) = project(0.0, 0.0, &paper);
-        assert!((x.0 as f64 - paper.margin_mm).abs() < 1e-6);
-        assert!((y.0 as f64 - (paper.height_mm - paper.margin_mm)).abs() < 1e-6);
+        for &(tx, ty) in &[
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (0.5, 0.5),
+            (0.07, 0.27),
+            (0.55, 0.82),
+        ] {
+            let (px, py) = project(tx, ty, &paper);
+            let (mx, my) = to_page_mm(tx, ty, &paper);
+            assert!(
+                (px.0 as f64 - mx).abs() < 1e-3,
+                "x mismatch at ({tx}, {ty})"
+            );
+            assert!(
+                (py.0 as f64 - my).abs() < 1e-3,
+                "y mismatch at ({tx}, {ty})"
+            );
+        }
     }
 
     #[test]
-    fn project_one_one_is_bottom_right_inside_margin() {
+    fn project_origin_is_top_left_corner() {
+        let paper = PaperSpec::A4_PORTRAIT;
+        let (x, y) = project(0.0, 0.0, &paper);
+        assert!((x.0 as f64).abs() < 1e-3);
+        assert!((y.0 as f64 - paper.height_mm).abs() < 1e-3);
+    }
+
+    #[test]
+    fn project_one_one_is_bottom_right_corner() {
         let paper = PaperSpec::A4_PORTRAIT;
         let (x, y) = project(1.0, 1.0, &paper);
-        assert!((x.0 as f64 - (paper.width_mm - paper.margin_mm)).abs() < 1e-6);
-        assert!((y.0 as f64 - paper.margin_mm).abs() < 1e-6);
+        assert!((x.0 as f64 - paper.width_mm).abs() < 1e-3);
+        assert!((y.0 as f64).abs() < 1e-3);
     }
 }

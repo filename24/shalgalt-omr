@@ -46,7 +46,12 @@ pub fn draw(canvas: &mut Canvas, groups: &[BubbleGroup], paper: &PaperSpec, styl
         // gap a Section-1 row label uses), then runs `UNDERLINE_LENGTH_MM` to the left
         // — so its X envelope matches a typical row-label visual width.
         let line_end_x = cx_mm.0 as f64 - r_mm - UNDERLINE_BUBBLE_GAP_MM;
-        let line_start_x = (line_end_x - UNDERLINE_LENGTH_MM).max(paper.margin_mm);
+        // Body content uses full-page coordinates (see `coords.rs`) — clamp only
+        // against the page edge itself, not `paper.margin_mm`. Templates already
+        // place student-id bubbles far enough from the edge that the underline
+        // sits inside any printer-safe zone (Mongolian preset: x ≈ 14.7 mm,
+        // underline at ~5.95–10.95 mm).
+        let line_start_x = (line_end_x - UNDERLINE_LENGTH_MM).max(0.0);
         // Place the underline at the bubble's lower edge so the handwritten digit
         // baseline sits on the same row as the bubble centres.
         let line_y = cy_mm.0 as f64 - r_mm;
