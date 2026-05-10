@@ -23,6 +23,17 @@ opencv = { version = "0.94", default-features = false, features = [
     "clang-runtime",
     "imgcodecs",
     "imgproc",
+    # P3-01: ArUco marker detection. We bind the legacy `cv::aruco::detectMarkers`
+    # API because that is what ships with the OpenCV 4.6 packaged on the target
+    # distros (Ubuntu/Debian apt, macOS Homebrew). The newer
+    # `cv::objdetect::ArucoDetector` is only present in OpenCV 4.7+ which is not
+    # universally available yet. `objdetect` is still required because the legacy
+    # bindings reference `objdetect::Dictionary` and `objdetect::DetectorParameters`.
+    "aruco",
+    "objdetect",
+    # `aruco` references `calib3d::SolvePnPMethod` for board pose estimation; we
+    # don't use those code paths but the binding cross-references force the feature.
+    "calib3d",
 ] }
 
 # PDF rasterization.
@@ -46,3 +57,5 @@ serde = { version = "1", features = ["derive"] }
 # Dev-only — `shalgalt-pdf`'s runtime stays free of pdfium.
 shalgalt-pdf = { path = "../shalgalt-pdf" }
 tempfile = "3"
+# Deterministic noise / rotation jitter for synthetic fixtures (P3-09).
+rand = { version = "0.8", features = ["std_rng"] }
