@@ -141,12 +141,13 @@ function buildShifrRows(): BubbleGroup[] {
 }
 
 function buildVariantRow(): BubbleGroup {
-  // Row label is just "Хувилбар" — the (A/B/C/D) suffix would push the label too far
-  // left at 10 pt and crowd the cipher block. The bubble letters convey the choices.
+  // Row label is suppressed — the section header above the bubble row already prints
+  // "Хувилбар" (via section_headers.rs), so a row label would render the same word
+  // twice on the same line.
   void VARIANT_LABELS
   return buildRow({
     idPrefix: 'variant',
-    label: mn.editor.presets.labels.variant,
+    label: '',
     section: VARIANT.section,
     kind: 'question',
     origin: { x: VARIANT.startX, y: VARIANT.y },
@@ -166,7 +167,9 @@ function buildSection1Questions(): BubbleGroup[] {
     out.push(
       buildRow({
         idPrefix: `q-${q + 1}`,
-        label: `${mn.editor.presets.labels.question}${q + 1}`,
+        // Row label is just the question number ("1", "2", …, "70") — no "Q" prefix.
+        // Saves horizontal space at 10 pt and matches the real Mongolian-school card.
+        label: `${q + 1}`,
         section: SECTION_1.section,
         kind: 'question',
         origin: { x, y },

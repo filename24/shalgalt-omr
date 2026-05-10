@@ -35,8 +35,11 @@ const SUB_OFFSET_MM: f64 = 2.5;
 /// any sub-block label so the two are stacked when both are emitted at the same anchor.
 const PARENT_OFFSET_MM: f64 = 9.0;
 
-/// Sections that suppress the header entirely.
-const SUPPRESSED: &[&str] = &["Шифр", "Вариант"];
+/// Sections that suppress the header entirely. Шифр stays quiet because the cipher
+/// block (4 rows of 0–9 bubbles + handwriting underline) reads as "this is the cipher"
+/// at a glance. Хувилбар is **not** suppressed — the section header prints once above
+/// the variant row instead of being duplicated as a row label (see TS / Rust preset).
+const SUPPRESSED: &[&str] = &["Шифр"];
 
 /// Walk `groups` in order and emit one header (or stacked parent + sub) per unique
 /// section. The label is centred horizontally on the anchor group's bubble row so it

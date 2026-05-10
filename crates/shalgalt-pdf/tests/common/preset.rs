@@ -101,8 +101,11 @@ fn shifr_rows() -> Vec<BubbleGroup> {
 fn variant_row() -> BubbleGroup {
     build_row(
         "variant",
+        // Row label suppressed — the section header above already prints "Хувилбар".
+        "",
+        // Section name matches the TS preset (`STANDARD_SECTIONS.variant = "Хувилбар"`)
+        // so both renderers emit the same section header text.
         "Хувилбар",
-        "Вариант",
         BubbleKind::Question,
         TemplatePoint {
             x: VARIANT_START_X,
