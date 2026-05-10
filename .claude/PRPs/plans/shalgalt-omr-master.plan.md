@@ -144,12 +144,37 @@ shalgalt-omr/
 Rationale: the desktop app and the standalone server share `shalgalt-core`, so
 the HTTP contract is identical and zero-copy across deployments.
 
-### 6.2 PDF generation: `printpdf`
+### 6.2 PDF generation: `printpdf` + `Canvas` wrapper + locked Mongolian-standard layout
 
 Pure Rust, deterministic, embeds TTF for Cyrillic, supports vector primitives
 (circles, rectangles, lines, text) — exactly the OMR card vocabulary. We
 bundle Noto Sans / Noto Sans Mongolian at compile time via `include_bytes!`.
 Alternatives considered: `typst` (heavy, dynamic), webview `printToPdf` (non-deterministic across OSes), `wkhtmltopdf` (external dep).
+
+The renderer sits behind a thin `Canvas` wrapper (`crates/shalgalt-pdf/src/canvas.rs`)
+that owns BT/ET pairing, font handles, fill / stroke colour, and line width — see
+[ADR 0007](../../../docs/adr/0007-canvas-wrapper-and-layout-modules.md). Every layout
+submodule (`markers`, `header`, `bubble_grid`, `labels`, `manual_entry`,
+`numeric_block`, `section_headers`, `sidebar`) calls intent-shaped helpers
+(`canvas.text`, `canvas.text_centered_in_circle`, `canvas.circle_stroked`,
+`canvas.hline`) instead of emitting raw `printpdf::Op`. The wrapper mechanically
+prevents the four bug categories diagnosed during the P2-06 follow-up: text-cursor
+accumulation, font-fallback drift, in-circle digit centring, and row-label alignment.
+
+Bubble-label position is **inside the circle** (AMC convention, matches
+Mongolian-school cards) — auto-fitted to ≈ 65 % of bubble diameter, well below the
+0.35 fill threshold so a fully-inked answer dwarfs the printed glyph. See
+[ADR 0008](../../../docs/adr/0008-bubble-label-position.md).
+
+Sidebar instructions render as a **horizontal top-right** block (NOT rotated 90°) and
+use the body Latin-Cyrillic font; the Mongolian-script font stays embedded for future
+traditional-script support. Re-aligning to vertical rotation requires a new ADR.
+
+Card geometry, coordinates, font sizes, and the page-split ratio (25 % top zone /
+75 % body zone with 12 mm margins) are locked in
+[`docs/MONGOLIAN_OMR_SPEC.md`](../../../docs/MONGOLIAN_OMR_SPEC.md). Layout changes
+follow that doc's §7 procedure (issue → spec doc → TS preset + Rust fixture + golden
+regen, all in one PR).
 
 ### 6.3 Project-file format: `.shalgalt` (zip) + optional `age` encryption
 
