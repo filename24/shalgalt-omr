@@ -167,6 +167,15 @@ export const mn = {
     comfortOff: "Том үсэг тохируулах",
     comfortHint: "Үсэг болон товчийг томруулна",
   },
+  job: {
+    status: {
+      queued: "Хүлээж байна",
+      running: "Боловсруулж байна",
+      done: "Дууссан",
+      failed: "Амжилтгүй",
+      canceled: "Цуцлагдсан",
+    },
+  },
   dashboard: {
     title: "Хяналтын самбар",
     subtitle: "Шалгалт OMR — багшийн ажлын самбар",

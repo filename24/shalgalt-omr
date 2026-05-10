@@ -36,6 +36,7 @@ const DB_URL: &str = "sqlite:shalgalt-omr.sqlite";
 /// Migration SQL is kept in a sibling file and embedded at compile time.
 const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_0002: &str = include_str!("../migrations/0002_backdrop.sql");
+const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +53,12 @@ pub fn run() {
             version: 2,
             description: "add_templates_backdrop_path",
             sql: MIGRATION_0002,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 3,
+            description: "add_jobs_table",
+            sql: MIGRATION_0003,
             kind: MigrationKind::Up,
         },
     ];
