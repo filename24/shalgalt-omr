@@ -9,8 +9,25 @@ export type GradedSheet = {
  * SQLite `INTEGER` IDs are emitted as `number` in TS so the frontend can
  * keep using `number`-keyed objects (see `commands::results::ResultSummary`).
  */
-template_id: number, student_id: number | null, total_score: number, answers: Array<GradedAnswer>, 
+template_id: number, 
+/**
+ * Resolved `students.id` row, populated by the persistence layer after
+ * matching `student_id_text` against the roster.
+ */
+student_id: number | null, 
+/**
+ * Raw student identifier read off the bubble sheet (e.g. `"00123"`).
+ * `None` when the template has no `BubbleKind::StudentId` group or the
+ * CV pipeline could not recover a value.
+ */
+student_id_text?: string, total_score: number, answers: Array<GradedAnswer>, 
 /**
  * Absolute path to the result image, exposable via `asset://`.
  */
-image_path: string | null, };
+image_path?: string, 
+/**
+ * `true` when at least one [`GradedAnswer::Uncertain`] is present. The
+ * frontend mirrors this into `results.needs_review` and surfaces the
+ * sheet in the manual-review queue.
+ */
+needs_review: boolean, };
