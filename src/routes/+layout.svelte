@@ -20,7 +20,11 @@
     "/grade": mn.nav.grade,
     "/results": mn.nav.results,
   };
-  const pageTitle = $derived(titleByPath[page.url.pathname] ?? "");
+  // `/review/[job_id]` is dynamic — match the prefix instead of the exact path.
+  const pageTitle = $derived(
+    titleByPath[page.url.pathname] ??
+      (page.url.pathname.startsWith("/review/") ? mn.nav.review : ""),
+  );
 </script>
 
 <ModeWatcher defaultMode="light" />
