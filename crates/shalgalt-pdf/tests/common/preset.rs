@@ -19,28 +19,34 @@ use shalgalt_pdf::domain::{
 const SHIFR_START_Y: f32 = 0.08;
 const SHIFR_ROW_SPACING: f32 = 0.025;
 const SHIFR_ROWS: usize = 4;
-const SHIFR_BUBBLE_START_X: f32 = 0.07;
+// Pushed right from 0.07 to 0.085 so the bubble's left edge clears the
+// TL ArUco marker (right edge at norm x ≈ 0.06).
+const SHIFR_BUBBLE_START_X: f32 = 0.085;
 const SHIFR_BUBBLE_SPACING: f32 = 0.032;
 const SHIFR_BUBBLE_COUNT: usize = 10;
 
 const VARIANT_Y: f32 = 0.19;
-// Centred horizontally on the cipher block — see TS preset for the derivation.
-const VARIANT_START_X: f32 = 0.166;
+// Centred horizontally on the new cipher block — see TS preset for the derivation.
+const VARIANT_START_X: f32 = 0.181;
 const VARIANT_SPACING: f32 = 0.032;
 const VARIANT_COUNT: usize = 4;
 
 const S1_COUNT: usize = 70;
 const S1_PER_COLUMN: usize = 35;
-const S1_ROW_SPACING: f32 = 0.020;
+// Tightened from 0.020 so 35 rows clear the bottom markers (top edge at
+// norm y ≈ 0.946).
+const S1_ROW_SPACING: f32 = 0.019;
 const S1_START_Y: f32 = 0.27;
-const S1_LEFT_X: f32 = 0.07;
-const S1_RIGHT_X: f32 = 0.30;
+// Both columns shifted right; gap preserved at 0.23.
+const S1_LEFT_X: f32 = 0.085;
+const S1_RIGHT_X: f32 = 0.315;
 const S1_BUBBLE_SPACING: f32 = 0.032;
 const S1_BUBBLE_COUNT: usize = 5;
 
 const S2_ROWS: usize = 8;
 const S2_ROW_SPACING: f32 = 0.020;
-const S2_BLOCK_SPACING_Y: f32 = 0.180;
+// Tightened from 0.180 so block 3's last row clears the bottom markers.
+const S2_BLOCK_SPACING_Y: f32 = 0.160;
 const S2_START_Y: f32 = 0.27;
 const S2_START_X: f32 = 0.55;
 const S2_BUBBLE_COUNT: usize = 10;

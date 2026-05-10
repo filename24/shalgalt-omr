@@ -28,7 +28,8 @@ const SUB_FONT_SIZE_PT: f64 = 8.0;
 
 /// Vertical offset (mm) from the bubble top to the sub-block label baseline. Tuned so
 /// the visible glyph top stays clear of the previous block's last row when
-/// `blockSpacingY = 0.18` and `rowSpacing = 0.020`.
+/// `blockSpacingY = 0.16` and `rowSpacing = 0.020` (the locked Mongolian-standard
+/// values after the marker-clearance fix; previous regime was 0.18 / 0.020).
 const SUB_OFFSET_MM: f64 = 2.5;
 
 /// Vertical offset (mm) from the bubble top to the parent label baseline. Sits ABOVE
