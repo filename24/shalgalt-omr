@@ -44,9 +44,13 @@ const S1_BUBBLE_SPACING: f32 = 0.032;
 const S1_BUBBLE_COUNT: usize = 5;
 
 const S2_ROWS: usize = 8;
-const S2_ROW_SPACING: f32 = 0.020;
-// Tightened from 0.180 so block 3's last row clears the bottom markers.
-const S2_BLOCK_SPACING_Y: f32 = 0.160;
+// Tightened from 0.020 to 0.019 to free room for the inter-block gap.
+const S2_ROW_SPACING: f32 = 0.019;
+// Was 0.180; a drop to 0.160 erased the visual gap between blocks. Locked at
+// 0.170 so inter-block gap = 0.170 − 7 × 0.019 = 0.037 (~11 mm), keeping the
+// "2.2"/"2.3"/"2.4" sub-headers visibly separated from the previous block's
+// last row while staying clear of the BR marker.
+const S2_BLOCK_SPACING_Y: f32 = 0.170;
 const S2_START_Y: f32 = 0.27;
 const S2_START_X: f32 = 0.55;
 const S2_BUBBLE_COUNT: usize = 10;

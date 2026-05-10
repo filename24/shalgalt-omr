@@ -121,11 +121,17 @@ const SECTION_1 = {
 
 const SECTION_2 = {
   rows: 8,
-  rowSpacing: 0.02,
+  // Was 0.020 — tightened to 0.019 to free room for the inter-block gap below
+  // without pushing the last block past the bottom marker. Each block is now
+  // 7 × 0.019 = 0.133 tall.
+  rowSpacing: 0.019,
   // Was 0.18 → block 3 last row landed at y = 0.95, overlapping bottom
-  // markers. Reduced to 0.16 so the final block ends at y ≈ 0.89 with
-  // ~16 mm clearance — enough headroom for the section header label too.
-  blockSpacingY: 0.16,
+  // markers. A naïve drop to 0.16 erased the visible inter-block gap (the
+  // "2.2"/"2.3"/"2.4" sub-headers ended up sitting on the previous block's
+  // last row). Locked at 0.17 so the gap between blocks = 0.17 − 7 × 0.019
+  // = 0.037 ≈ 11 mm — restores the visible separator while keeping block 3's
+  // last row at y = 0.913 (~7.5 mm clear of the BR marker top edge).
+  blockSpacingY: 0.17,
   startY: 0.27,
   startX: 0.55,
   bubbleCount: 10,
