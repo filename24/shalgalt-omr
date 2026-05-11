@@ -203,7 +203,19 @@ jobs:
           "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
           # The DLL must be on PATH so the produced .exe can resolve it at runtime.
           "C:\tools\opencv\build\x64\vc16\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-
+          
+      - name: Copy OpenCV DLL into Tauri resources (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $libCode = "${{ env.OPENCV_VERSION }}" -replace '\.', ''
+          $dllName = "opencv_world$libCode.dll"
+          $src = "C:\tools\opencv\build\x64\vc16\bin\$dllName"
+          $dest = "apps/desktop/resources/$dllName"
+          New-Item -ItemType Directory -Force -Path apps/desktop/resources | Out-Null
+          Copy-Item $src -Destination $dest
+          Write-Host "Copied $dllName to $dest"
+          
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
