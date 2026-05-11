@@ -215,6 +215,15 @@ jobs:
           New-Item -ItemType Directory -Force -Path apps/desktop/resources | Out-Null
           Copy-Item $src -Destination $dest
           Write-Host "Copied $dllName to $dest"
+
+      - name: Download pdfium (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $url = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-windows-x64.tgz"
+          Invoke-WebRequest -Uri $url -OutFile pdfium.tgz
+          tar -xzf pdfium.tgz -C C:\tools\pdfium
+          Copy-Item "C:\tools\pdfium\bin\pdfium.dll" -Destination "apps/desktop/resources/"
           
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
