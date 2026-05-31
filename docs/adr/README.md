@@ -38,3 +38,5 @@ reasoning*, not the prose volume.
 | [0008](0008-bubble-label-position.md) | Bubble label position: inside the circle | Accepted |
 | [0009](0009-aruco-markers.md) | Corner markers: ArUco DICT_6X6_50, IDs 0..3 in TL/TR/BR/BL order | Accepted |
 | [0010](0010-confidence-band.md) | Per-bubble fill measurement, decision bands, and confidence formula | Accepted |
+| [0011](0011-shalgalt-file-format.md) | `.shalgalt` project file: zip container with a plaintext manifest | Accepted |
+| [0012](0012-age-encryption.md) | Optional `.shalgalt` encryption: `age` passphrase recipients, ASCII-armored | Accepted |
