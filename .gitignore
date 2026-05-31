@@ -19,3 +19,6 @@ vite.config.ts.timestamp-*
 .claude/PRPs/plans/*.ko.md
 .claude/PRPs/plans/issues/P*.md
 .claude/PRPs/plans/issues/M-*.md
+
+# Per-session agent worktrees (working copies; embedded git repos). Never commit.
+.claude/worktrees/
