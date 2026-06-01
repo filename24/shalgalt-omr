@@ -4,9 +4,11 @@ Read/write the `.shalgalt` project-file format: a zip container with optional `a
 passphrase encryption. Used to share entire exam projects (template + answer key +
 graded sheets + roster) between teachers across machines.
 
-> Status: **placeholder**. The current `src/lib.rs` is one comment; the real
-> implementation lands in P4 per the master plan §10. This file documents the locked
-> decisions so the implementer in P4 has a clear contract to honor.
+> Status: **implemented** (P4-01/02). The crate streams a zip container with optional `age`
+> passphrase encryption. Decisions are recorded in
+> [`docs/adr/0011-shalgalt-file-format.md`](../../docs/adr/0011-shalgalt-file-format.md) and
+> [`docs/adr/0012-age-encryption.md`](../../docs/adr/0012-age-encryption.md). The Tauri command
+> wiring (`project_open` / `project_save` / `project_export`) lands separately in P4-03.
 
 > Repo-level rules, language conventions, and locked decisions live in
 > [`/AGENTS.md`](../../AGENTS.md). This file describes only what is specific to this crate.
@@ -25,23 +27,41 @@ graded sheets + roster) between teachers across machines.
 - **Versioning**: `manifest.json` carries a `format_version` integer. Loaders MUST refuse
   versions newer than they understand and emit `AppError { code: "fileformat.version_too_new" }`.
 
-## Expected Module Layout (P4)
+## Module Layout (as implemented, P4-01/02)
 
 ```
 src/
-  lib.rs              — `ProjectFile::open(path, passphrase) -> ProjectFile`
-                        and `ProjectFile::write(path, …)` entry points.
-  manifest.rs         — `Manifest { format_version, title, created_at, sheet_count, encrypted }`.
-  reader.rs           — Streaming zip reader. Decrypts entries on demand via age.
-  writer.rs           — Streaming zip writer. Encrypts entries when a passphrase is set.
-  crypto.rs           — Thin wrapper over `age` so the rest of the crate stays
-                        crypto-library-agnostic.
-  error.rs            — `FileFormatError` (thiserror).
+  lib.rs              — Module re-exports + `FORMAT_VERSION` / `MANIFEST_ENTRY` consts.
+                        Public surface: free functions `open` / `open_manifest_only` / `write`
+                        plus `Manifest`, `ReadHandle`, `EntryIter`, `FileFormatError`. There is
+                        no `ProjectFile` facade — the free functions cover every caller and the
+                        command layer (P4-03) builds its own domain helpers on top.
+  manifest.rs         — `Manifest { format_version, title, created_at, sheet_count, encrypted,
+                        exam_id?, hint? }` + `from_reader` (runs the version gate).
+  reader.rs           — Streaming zip reader. `open` parses the manifest, then `EntryIter`'s
+                        lending `next_entry()` yields one borrowed `ReadHandle` at a time,
+                        decrypting on demand. (Not `impl Iterator`: `Item` cannot hold the
+                        per-entry archive borrow.)
+  writer.rs           — Streaming zip writer. Manifest first (plaintext), then each entry
+                        age-wrapped on the fly when a passphrase is set.
+  crypto.rs           — `pub(crate)` thin wrapper over `age` (the ONLY module that touches the
+                        age API) so the rest of the crate stays crypto-library-agnostic.
+  error.rs            — `FileFormatError` (thiserror) + a public `code() -> &'static str`.
 tests/
-  roundtrip.rs        — Write → read → assert content equality (encrypted + plaintext).
-  bad_passphrase.rs   — Wrong passphrase → `FileFormatError::AuthenticationFailed`.
-  forward_compat.rs   — `format_version = 999` → refused with the right error code.
+  roundtrip.rs        — Write → read → assert content equality (encrypted + plaintext), 1 MiB
+                        streamed-from-path entry, deterministic order, manifest-no-PII.
+  bad_passphrase.rs   — Wrong / missing passphrase → `FileFormatError::BadPassphrase`; manifest
+                        still readable without a passphrase.
+  forward_compat.rs   — `format_version = 999` → refused with `fileformat.version_too_new`,
+                        before any decryption.
 ```
+
+### Stable error codes (locked — the desktop string-table keys to them)
+
+`FileFormatError::code()` returns one of: `fileformat.version_too_new`,
+`fileformat.bad_passphrase`, `fileformat.malformed`, `fileformat.io`, `fileformat.serde`. The
+wrong-passphrase variant is `BadPassphrase` (fieldless, never leaks age internals) — note this
+supersedes the earlier draft name `AuthenticationFailed`.
 
 ## Critical Rules — fileformat
 
