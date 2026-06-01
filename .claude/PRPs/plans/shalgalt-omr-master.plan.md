@@ -334,7 +334,7 @@ resolver = "2"
 | `shalgalt-core` | (only `serde`, `thiserror`, `anyhow`, `axum`, `tower-http`) | `domain::*`, `grading::engine::Grader`, `export::xlsx::*`, `api::router(state) -> Router`. |
 | `shalgalt-pdf` | `printpdf`, `shalgalt-core::domain` | `pub fn render_template(&Template, &PdfOptions) -> Result<Vec<u8>>`. |
 | `shalgalt-cv` | `opencv`, `pdfium-render`, `shalgalt-core::domain` | `pub fn process_pdf(path, template) -> Result<Vec<ParsedSheet>>` with progress callback. |
-| `shalgalt-fileformat` | `zip`, `age`, `serde_json`, `shalgalt-core::domain` | `read(path, passphrase?) -> Result<Project>`, `write(path, &Project, &WriteOptions) -> Result<()>`. |
+| `shalgalt-fileformat` | `zip`, `age`, `serde`, `serde_json`, `chrono`, `thiserror` (deliberately **not** `shalgalt-core` — streams opaque named blobs, stays domain-agnostic; see ADR 0011) | `open(path, passphrase?) -> Result<(Manifest, EntryIter)>`, `open_manifest_only(path) -> Result<Manifest>`, `write(path, &Manifest, entries, passphrase?) -> Result<()>`, plus `Manifest` / `ReadHandle` / `FileFormatError`. |
 | `apps/desktop` | all crates above, tauri 2 | Boot Tauri, register plugins, embed `shalgalt-core::api::router`. |
 | `apps/server` | `shalgalt-core` only | Standalone CLI: `shalgalt-server --bind 0.0.0.0:8080 --db file.sqlite`. |
 
