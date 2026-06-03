@@ -1,7 +1,5 @@
 <script lang="ts">
   import { toast } from "svelte-sonner";
-  import { open as openDialog } from "@tauri-apps/plugin-dialog";
-  import { readTextFile } from "@tauri-apps/plugin-fs";
 
   import { mn } from "$lib/i18n";
   import { getExamById, updateExam } from "$lib/db/exams";
@@ -18,18 +16,18 @@
     type AnswerKeyRecord,
   } from "$lib/types/exam";
   import type { AnswerKeyEntry } from "$lib/types/generated/AnswerKeyEntry";
+  import type { BubbleGroup } from "$lib/types/template";
 
+  import AnswerKeyEditor from "$lib/components/exams/AnswerKeyEditor.svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
-  import * as Tabs from "$lib/components/ui/tabs";
   import * as Dialog from "$lib/components/ui/dialog";
   import SaveIcon from "@lucide/svelte/icons/save";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
-  import FileJsonIcon from "@lucide/svelte/icons/file-json";
 
   import type { PageData } from "./$types";
 
@@ -39,6 +37,9 @@
 
   let exam = $state<Exam | null>(null);
   let templateTitle = $state("");
+  // The exam's template groups, loaded once. `null` means the template was
+  // deleted out from under the exam (variant add/edit must be disabled).
+  let templateGroups = $state<BubbleGroup[] | null>(null);
   let keys = $state<AnswerKeyRecord[]>([]);
   let loadFailed = $state<string | null>(null);
 
@@ -50,10 +51,12 @@
   let formOpen = $state(false);
   let editingId = $state<number | null>(null);
   let variantDraft = $state("");
-  let answerMode = $state<"paste" | "file">("paste");
-  let answerJson = $state("");
-  let pickedPath = $state<string | null>(null);
+  // Bound to the AnswerKeyEditor: one entry per question group (empty selections
+  // included so we can detect incompleteness on save).
+  let draftAnswers = $state<AnswerKeyEntry[]>([]);
   let savingVariant = $state(false);
+
+  const templateMissing = $derived(templateGroups === null);
 
   // Delete-variant state.
   let deleteTarget = $state<AnswerKeyRecord | null>(null);
@@ -87,6 +90,7 @@
       keys = await listAnswerKeysByExam(examId);
       const tpl = await getTemplate(e.template_id);
       templateTitle = tpl?.title ?? "";
+      templateGroups = tpl ? tpl.schema.groups : null;
     } catch (err) {
       loadFailed = String(err);
     }
@@ -107,60 +111,29 @@
   }
 
   function openAdd(): void {
+    if (templateMissing) return;
     editingId = null;
     variantDraft = "";
-    answerMode = "paste";
-    answerJson = "";
-    pickedPath = null;
+    // Start empty; the user can seed from template defaults inside the editor.
+    draftAnswers = [];
     formOpen = true;
   }
 
   function openEdit(rec: AnswerKeyRecord): void {
+    if (templateMissing) return;
     editingId = rec.id;
     variantDraft = rec.variant;
-    answerMode = "paste";
-    answerJson = JSON.stringify(rec.answers, null, 2);
-    pickedPath = null;
+    // Initialize from the stored answers; the editor fills in any question
+    // groups missing from the record as empty selections.
+    draftAnswers = rec.answers.map((a) => ({
+      group_id: a.group_id,
+      correct_indices: [...a.correct_indices],
+    }));
     formOpen = true;
   }
 
   function cancelForm(): void {
     formOpen = false;
-  }
-
-  async function pickAnswerFile(): Promise<void> {
-    try {
-      const picked = await openDialog({
-        multiple: false,
-        directory: false,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (typeof picked !== "string") return;
-      pickedPath = picked;
-      answerJson = await readTextFile(picked);
-    } catch (e) {
-      toast.error(mn.grade.answerKey.readFailed, { description: String(e) });
-    }
-  }
-
-  function validateAnswers(): {
-    ok: boolean;
-    answers?: AnswerKeyEntry[];
-    message?: string;
-  } {
-    if (answerJson.trim() === "") {
-      return { ok: false, message: mn.grade.errors.answerKeyRequired };
-    }
-    try {
-      const parsed = JSON.parse(answerJson) as unknown;
-      const answers = answersSchema.parse(parsed);
-      return { ok: true, answers };
-    } catch (e) {
-      return {
-        ok: false,
-        message: e instanceof Error ? e.message : mn.grade.errors.jsonInvalid,
-      };
-    }
   }
 
   async function saveVariant(): Promise<void> {
@@ -172,10 +145,27 @@
       });
       return;
     }
-    const validation = validateAnswers();
-    if (!validation.ok || !validation.answers) {
+
+    // Every question group must have at least one correct index.
+    const incomplete = draftAnswers.some(
+      (entry) => entry.correct_indices.length === 0,
+    );
+    if (incomplete) {
+      toast.error(mn.exams.answerKey.incomplete);
+      return;
+    }
+
+    // Persist only entries with a selection so the stored array satisfies
+    // `answersSchema` (each entry requires >= 1 correct index).
+    const answers = draftAnswers.filter(
+      (entry) => entry.correct_indices.length > 0,
+    );
+    let validated: AnswerKeyEntry[];
+    try {
+      validated = answersSchema.parse(answers);
+    } catch (e) {
       toast.error(mn.exams.detail.validateFailed, {
-        description: validation.message,
+        description: e instanceof Error ? e.message : undefined,
       });
       return;
     }
@@ -188,7 +178,7 @@
       await upsertAnswerKey({
         exam_id: exam.id,
         variant,
-        answers: validation.answers,
+        answers: validated,
       });
       if (editingId !== null) {
         const prior = keys.find((k) => k.id === editingId);
@@ -254,7 +244,13 @@
         </div>
         <div class="space-y-1.5">
           <Label>{mn.exams.detail.templateLabel}</Label>
-          <p class="text-muted-foreground text-sm">{templateTitle}</p>
+          {#if templateMissing}
+            <p class="text-destructive text-sm">
+              {mn.exams.answerKey.templateMissing}
+            </p>
+          {:else}
+            <p class="text-muted-foreground text-sm">{templateTitle}</p>
+          {/if}
         </div>
       </Card.Content>
     </Card.Root>
@@ -267,7 +263,7 @@
             {mn.exams.detail.variantsHint}
           </Card.Description>
         </div>
-        <Button size="sm" onclick={openAdd}>
+        <Button size="sm" onclick={openAdd} disabled={templateMissing}>
           <PlusIcon />
           {mn.exams.detail.addVariant}
         </Button>
@@ -290,6 +286,7 @@
                     variant="ghost"
                     size="sm"
                     onclick={() => openEdit(key)}
+                    disabled={templateMissing}
                   >
                     {mn.exams.detail.edit}
                   </Button>
@@ -332,31 +329,9 @@
       </div>
       <div class="space-y-1.5">
         <Label>{mn.grade.answerKey.label}</Label>
-        <Tabs.Root bind:value={answerMode} class="mt-1">
-          <Tabs.List>
-            <Tabs.Trigger value="paste">{mn.grade.answerKey.tabPaste}</Tabs.Trigger>
-            <Tabs.Trigger value="file">{mn.grade.answerKey.tabFile}</Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="paste" class="mt-2">
-            <textarea
-              bind:value={answerJson}
-              placeholder={mn.grade.answerKey.paste}
-              rows="8"
-              class="border-input bg-background text-foreground focus-visible:ring-ring min-h-40 w-full rounded-md border px-3 py-2 font-mono text-xs shadow-sm focus-visible:ring-1 focus-visible:outline-none"
-            ></textarea>
-          </Tabs.Content>
-          <Tabs.Content value="file" class="mt-2 space-y-2">
-            <Button type="button" variant="outline" onclick={pickAnswerFile}>
-              <FileJsonIcon />
-              {mn.grade.answerKey.pickFile}
-            </Button>
-            {#if pickedPath}
-              <p class="text-muted-foreground text-xs">
-                {mn.grade.answerKey.pickedFile}: {pickedPath}
-              </p>
-            {/if}
-          </Tabs.Content>
-        </Tabs.Root>
+        {#if templateGroups}
+          <AnswerKeyEditor groups={templateGroups} bind:value={draftAnswers} />
+        {/if}
       </div>
     </div>
     <Dialog.Footer>

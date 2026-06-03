@@ -282,7 +282,7 @@ export const mn = {
       rename: "Нэр хадгалах",
       templateLabel: "Загвар",
       variantsTitle: "Хувилбарууд",
-      variantsHint: "Бөмбөлгийг дарж сонгох хэлбэрийн оруулга дараагийн шатанд (P4-05) нэмэгдэнэ. Одоогоор JSON оруулна.",
+      variantsHint: "Хувилбар бүрд асуулт тус бүрийн зөв хариултыг сонгоно.",
       addVariant: "Хувилбар нэмэх",
       variantLabel: "Хувилбарын нэр",
       variantPlaceholder: "Жишээ: A",
@@ -299,6 +299,14 @@ export const mn = {
         confirm: "Устгах",
         cancel: "Болих",
       },
+    },
+    answerKey: {
+      optionsHeading: "Зөв хариултыг сонгоно уу",
+      seedFromTemplate: "Загвараас бөглөх",
+      noQuestions: "Энэ загварт асуулт алга байна.",
+      required: "Шаардлагатай",
+      incomplete: "Асуулт бүрт дор хаяж нэг зөв хариулт сонгоно уу.",
+      templateMissing: "Загвар устсан байна. Хувилбар нэмэх боломжгүй.",
     },
     deleteExam: "Сорил устгах",
     deleteExamConfirm: {
