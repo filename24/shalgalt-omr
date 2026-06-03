@@ -33,8 +33,17 @@ shalgalt-cv = { path = "../../crates/shalgalt-cv" }
 # Used by `commands::pdf` (P2-07/08) — generate to disk + render preview.
 shalgalt-pdf = { path = "../../crates/shalgalt-pdf" }
 
+# --- Project file format (P4-03) ---
+# `.shalgalt` zip container + optional `age` passphrase encryption. Used by
+# `commands::project` — save/export an exam project to disk and open it back into a
+# cache-dir workspace. Streams entries one at a time (Rule 1).
+shalgalt-fileformat = { path = "../../crates/shalgalt-fileformat" }
+
 # Stable cache filename for the preview pipeline (hash of the serialized template).
 sha2 = "0.10"
+
+# RFC 3339 timestamps for the project-file `Manifest`. Built by `commands::project`.
+chrono = { version = "0.4", features = ["serde"] }
 
 # --- Tauri ---
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -84,6 +93,10 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 # --- Misc ---
 uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+# Temp dirs / files for the `commands::project` free-helper round-trip tests.
+tempfile = "3"
 
 [features]
 default = []

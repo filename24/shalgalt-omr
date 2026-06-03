@@ -123,6 +123,9 @@ pub fn run() {
             commands::export::export_results_xlsx,
             commands::pdf::pdf_generate_omr,
             commands::pdf::pdf_render_template_preview,
+            commands::project::project_open,
+            commands::project::project_save,
+            commands::project::project_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

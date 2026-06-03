@@ -9,4 +9,5 @@
 
 pub mod export;
 pub mod pdf;
+pub mod project;
 pub mod scan;

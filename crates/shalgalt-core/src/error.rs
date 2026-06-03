@@ -27,6 +27,14 @@ pub enum AppError {
 
     #[error("pdfium dynamic library unavailable")]
     PdfiumUnavailable,
+
+    /// A `.shalgalt` file-format error surfaced across the IPC boundary. The desktop command
+    /// layer maps `shalgalt_fileformat::FileFormatError` into this variant, preserving the
+    /// crate's stable `fileformat.*` `code` so the frontend string-table keys on it directly.
+    /// Carried as a `&'static str` + owned message so `shalgalt-core` need not depend on the
+    /// fileformat crate.
+    #[error("{message}")]
+    FileFormat { code: &'static str, message: String },
 }
 
 /// Serialization-safe representation sent to the IPC frontend.
@@ -45,6 +53,7 @@ impl AppError {
             AppError::NotFound(_) => "not_found",
             AppError::Internal(_) => "internal",
             AppError::PdfiumUnavailable => "pdfium_unavailable",
+            AppError::FileFormat { code, .. } => code,
         }
     }
 }
