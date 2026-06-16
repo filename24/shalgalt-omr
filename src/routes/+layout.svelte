@@ -6,13 +6,22 @@
   import { Toaster } from "$lib/components/ui/sonner";
   import AppSidebar from "$lib/components/shell/AppSidebar.svelte";
   import StatusBar from "$lib/components/shell/StatusBar.svelte";
+  import { onMount } from "svelte";
   import { page } from "$app/state";
   import { mn } from "$lib/i18n";
   // Eagerly hydrate the comfort store so its constructor mirrors the
   // persisted choice onto `<html data-comfort="…">` before first paint.
   import "$lib/stores/comfortMode.svelte";
+  import { openWithFile } from "$lib/stores/openWithFile.svelte";
 
   let { children } = $props();
+
+  // P4-07 — start the "open with" listener once the router is ready so a
+  // double-clicked `.shalgalt` file navigates straight to the import flow.
+  onMount(() => {
+    void openWithFile.start();
+    return () => openWithFile.stop();
+  });
 
   const titleByPath: Record<string, string> = {
     "/": mn.nav.dashboard,

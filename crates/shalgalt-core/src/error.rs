@@ -28,6 +28,22 @@ pub enum AppError {
     #[error("pdfium dynamic library unavailable")]
     PdfiumUnavailable,
 
+    /// Answer-key scan was given a multi-page PDF. The canonical answer sheet must be a
+    /// single page (P4-06). Carries no detail — the message is fixed and user-facing copy
+    /// is keyed off the stable `code()`.
+    #[error("answer key sheet must be a single page")]
+    AnswerKeyMultiPage,
+
+    /// Answer-key scan could not locate the four ArUco corner markers, so the page cannot
+    /// be aligned to the template (P4-06). The string is diagnostic only.
+    #[error("answer key markers not detected: {0}")]
+    AnswerKeyMarkerMissing(String),
+
+    /// The scanned sheet does not match the template it was read against — e.g. the
+    /// template defines no question groups to read (P4-06). Diagnostic string only.
+    #[error("answer key does not match template: {0}")]
+    AnswerKeyTemplateMismatch(String),
+
     /// A `.shalgalt` file-format error surfaced across the IPC boundary. The desktop command
     /// layer maps `shalgalt_fileformat::FileFormatError` into this variant, preserving the
     /// crate's stable `fileformat.*` `code` so the frontend string-table keys on it directly.
@@ -53,6 +69,9 @@ impl AppError {
             AppError::NotFound(_) => "not_found",
             AppError::Internal(_) => "internal",
             AppError::PdfiumUnavailable => "pdfium_unavailable",
+            AppError::AnswerKeyMultiPage => "answer_key_multi_page",
+            AppError::AnswerKeyMarkerMissing(_) => "answer_key_marker_missing",
+            AppError::AnswerKeyTemplateMismatch(_) => "answer_key_template_mismatch",
             AppError::FileFormat { code, .. } => code,
         }
     }
