@@ -37,6 +37,7 @@ const DB_URL: &str = "sqlite:shalgalt-omr.sqlite";
 const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_0002: &str = include_str!("../migrations/0002_backdrop.sql");
 const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
+const MIGRATION_0004: &str = include_str!("../migrations/0004_exams.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -59,6 +60,12 @@ pub fn run() {
             version: 3,
             description: "add_jobs_table",
             sql: MIGRATION_0003,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "add_exams_answer_keys",
+            sql: MIGRATION_0004,
             kind: MigrationKind::Up,
         },
     ];
@@ -123,6 +130,9 @@ pub fn run() {
             commands::export::export_results_xlsx,
             commands::pdf::pdf_generate_omr,
             commands::pdf::pdf_render_template_preview,
+            commands::project::project_open,
+            commands::project::project_save,
+            commands::project::project_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

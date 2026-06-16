@@ -5705,6 +5705,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "chrono",
  "futures",
  "log",
  "serde",
@@ -5712,6 +5713,7 @@ dependencies = [
  "sha2",
  "shalgalt-core",
  "shalgalt-cv",
+ "shalgalt-fileformat",
  "shalgalt-pdf",
  "tauri",
  "tauri-build",
@@ -5722,6 +5724,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-sql",
  "tauri-plugin-window-state",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tower",

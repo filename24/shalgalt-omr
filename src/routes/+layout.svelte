@@ -18,12 +18,18 @@
     "/": mn.nav.dashboard,
     "/editor": mn.nav.editor,
     "/grade": mn.nav.grade,
+    "/exams": mn.nav.exams,
     "/results": mn.nav.results,
   };
-  // `/review/[job_id]` is dynamic — match the prefix instead of the exact path.
+  // `/review/[job_id]` and `/exams/[exam_id]` are dynamic — match the prefix
+  // instead of the exact path.
   const pageTitle = $derived(
     titleByPath[page.url.pathname] ??
-      (page.url.pathname.startsWith("/review/") ? mn.nav.review : ""),
+      (page.url.pathname.startsWith("/review/")
+        ? mn.nav.review
+        : page.url.pathname.startsWith("/exams/")
+          ? mn.nav.exams
+          : ""),
   );
 </script>
 

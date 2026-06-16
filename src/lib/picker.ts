@@ -42,3 +42,30 @@ export async function pickPdfSavePath(defaultName: string): Promise<string | nul
   });
   return typeof selected === "string" ? selected : null;
 }
+
+/**
+ * Open a native file picker for a single `.shalgalt` project file and return
+ * its absolute path. Same Rule 1 invariant as `pickPdf` — we hand the path to
+ * `project_open`, never the bytes.
+ */
+export async function pickShalgalt(): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "Shalgalt project", extensions: ["shalgalt"] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/**
+ * Open the native "Save As" dialog seeded with `defaultName` and return the
+ * absolute `.shalgalt` output path, or `null` when the user cancels. Same
+ * save-dialog scope semantics as `pickPdfSavePath`.
+ */
+export async function pickShalgaltSavePath(defaultName: string): Promise<string | null> {
+  const selected = await save({
+    defaultPath: defaultName,
+    filters: [{ name: "Shalgalt project", extensions: ["shalgalt"] }],
+  });
+  return typeof selected === "string" ? selected : null;
+}

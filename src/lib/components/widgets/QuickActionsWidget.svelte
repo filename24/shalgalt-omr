@@ -26,7 +26,7 @@
       <Button
         variant="default"
         class="h-auto flex-col items-start gap-1 px-4 py-4 text-left"
-        onclick={() => goto("/editor")}
+        onclick={() => goto("/exams")}
       >
         <span class="flex items-center gap-2">
           <FilePlusIcon class="size-5" />

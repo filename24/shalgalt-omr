@@ -7,3 +7,4 @@
 export * from "./scan";
 export * from "./export";
 export * from "./pdf";
+export * from "./project";
