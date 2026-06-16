@@ -7,6 +7,10 @@
 //!
 //! Decision tree per group (locked by ADR `0006-confidence-band`):
 //!
+//! 0. No answer-key entry for the group → the question is **not part of this
+//!    exam**. It is skipped entirely: not graded, not scored, and absent from
+//!    `GradedSheet::answers`. This lets one physical template (e.g. 80 rows)
+//!    back a shorter exam — the answer key defines which questions count.
 //! 1. Any reading uncertain (`fill ∈ [0.35, 0.65]`) → [`GradedAnswer::Uncertain`].
 //!    Score = 0. Sheet-level `needs_review = true`.
 //! 2. No filled bubbles → [`GradedAnswer::Blank`]. Score = 0.
@@ -24,12 +28,16 @@
 use std::collections::BTreeSet;
 
 use crate::domain::{AnswerKey, BubbleKind, GradedAnswer, GradedSheet, OmrTemplate, ParsedSheet};
-use crate::error::{AppError, AppResult};
+use crate::error::AppResult;
 
 /// Grade one parsed sheet against the template's `Question` groups using the
-/// supplied answer key. Returns an error when the answer key is missing an
-/// entry for any `Question` group — that is a configuration bug, not a
-/// runtime input error, and the caller should fix the data before retrying.
+/// supplied answer key.
+///
+/// The answer key defines which questions belong to the exam: a `Question` group
+/// with no entry in the key is treated as *not part of this exam* and skipped
+/// entirely (not graded, absent from `GradedSheet::answers`). This is what lets a
+/// single physical template back a shorter exam. The result is always `Ok`; the
+/// `AppResult` return is retained for forward compatibility.
 pub fn grade(
     template: &OmrTemplate,
     parsed: &ParsedSheet,
@@ -43,6 +51,14 @@ pub fn grade(
         if !matches!(group.kind, BubbleKind::Question) {
             continue;
         }
+
+        // The answer key is the source of truth for the exam's question set. A
+        // group with no entry is outside this exam — skip before any scoring so it
+        // never shows up as Blank/Wrong noise in the results.
+        let correct = match answer_key.correct_for(&group.id) {
+            Some(c) => sorted_unique(c.to_vec()),
+            None => continue,
+        };
 
         let group_readings: Vec<_> = parsed
             .readings
@@ -77,14 +93,6 @@ pub fn grade(
             });
             continue;
         }
-
-        let correct = answer_key.correct_for(&group.id).ok_or_else(|| {
-            AppError::BadRequest(format!(
-                "answer key has no entry for question group '{}'",
-                group.id
-            ))
-        })?;
-        let correct: Vec<u32> = sorted_unique(correct.to_vec());
 
         let (graded, awarded) = classify_question(&group.id, group.score, &filled, &correct);
         total_score += awarded;
@@ -593,7 +601,9 @@ mod tests {
     }
 
     #[test]
-    fn missing_answer_key_entry_returns_bad_request() {
+    fn question_without_answer_key_entry_is_skipped() {
+        // q1 is marked on the sheet but absent from the key ⇒ not part of this
+        // exam. It must be skipped entirely rather than scored or flagged.
         let tpl = template_with(vec![question("q1", 4, Some(0), 1.0)]);
         let p = parsed(vec![
             reading("q1", 0, 0.92),
@@ -603,9 +613,51 @@ mod tests {
         ]);
         let key = answer_key(vec![]);
 
-        let err = grade(&tpl, &p, &key).unwrap_err();
-        assert!(matches!(err, AppError::BadRequest(_)));
-        assert!(err.to_string().contains("q1"));
+        let result = grade(&tpl, &p, &key).unwrap();
+        assert!(
+            result.answers.is_empty(),
+            "an unkeyed question must not appear in the results"
+        );
+        assert_eq!(result.total_score, 0.0);
+        assert!(!result.needs_review);
+    }
+
+    #[test]
+    fn subset_answer_key_only_grades_keyed_questions() {
+        // 3-question physical template, but the exam includes only q1 and q3.
+        let tpl = template_with(vec![
+            question("q1", 4, Some(0), 1.0),
+            question("q2", 4, Some(1), 1.0),
+            question("q3", 4, Some(2), 1.0),
+        ]);
+        let p = parsed(vec![
+            // q1 correct
+            reading("q1", 0, 0.92),
+            reading("q1", 1, 0.05),
+            reading("q1", 2, 0.05),
+            reading("q1", 3, 0.05),
+            // q2 has an uncertain mark, but it is NOT in the exam ⇒ ignored,
+            // and must not trip sheet-level needs_review.
+            reading("q2", 0, 0.05),
+            reading("q2", 1, 0.50),
+            reading("q2", 2, 0.05),
+            reading("q2", 3, 0.05),
+            // q3 correct
+            reading("q3", 0, 0.05),
+            reading("q3", 1, 0.05),
+            reading("q3", 2, 0.92),
+            reading("q3", 3, 0.05),
+        ]);
+        let key = answer_key(vec![key_single("q1", 0), key_single("q3", 2)]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.answers.len(), 2, "only keyed questions are graded");
+        assert_eq!(result.total_score, 2.0);
+        assert!(
+            !result.needs_review,
+            "an uncertain mark on an unkeyed question must not flag review"
+        );
     }
 
     // ---- small helpers / hygiene --------------------------------------------
