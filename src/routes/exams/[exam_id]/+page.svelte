@@ -1,5 +1,6 @@
 <script lang="ts">
   import { toast } from "svelte-sonner";
+  import { goto } from "$app/navigation";
 
   import { mn } from "$lib/i18n";
   import { getExamById, updateExam } from "$lib/db/exams";
@@ -28,6 +29,7 @@
   import SaveIcon from "@lucide/svelte/icons/save";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
+  import ScanLineIcon from "@lucide/svelte/icons/scan-line";
 
   import type { PageData } from "./$types";
 
@@ -214,6 +216,12 @@
   function formatAnswerCount(count: number): string {
     return mn.exams.detail.answerCount.replace("{count}", String(count));
   }
+
+  // Navigate to the scan-to-answer-key screen for one variant (P4-06).
+  function gotoScan(v: string): void {
+    if (!exam) return;
+    void goto(`/exams/${exam.id}/answer-key/${encodeURIComponent(v)}/scan`);
+  }
 </script>
 
 {#if loadFailed}
@@ -282,6 +290,15 @@
                   </span>
                 </div>
                 <div class="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => gotoScan(key.variant)}
+                    disabled={templateMissing}
+                  >
+                    <ScanLineIcon class="size-4" />
+                    {mn.exams.answerKey.scan.action}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
