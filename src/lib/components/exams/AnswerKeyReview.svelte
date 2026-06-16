@@ -91,12 +91,24 @@
     reviewed = new Set([...reviewed, ...uncertainIds]);
   }
 
-  const hasBlank = $derived(questionGroups.some((g) => isEmpty(g.id)));
+  // A question with at least one selected option is "in this exam". Unselected
+  // questions are excluded — the grading engine skips groups absent from the key.
+  const answeredCount = $derived(
+    questionGroups.filter((g) => !isEmpty(g.id)).length,
+  );
+  const countLabel = $derived(
+    mn.exams.answerKey.selectedCount.replace("{count}", String(answeredCount)),
+  );
+  // Only block on uncertain readings that are still part of the exam (selected).
+  // If the teacher excludes an uncertain question (leaves it blank), its
+  // uncertainty no longer matters.
   const pendingUncertain = $derived(
-    [...uncertainIds].some((id) => id && !reviewed.has(id)),
+    questionGroups.some(
+      (g) => uncertainIds.has(g.id) && !isEmpty(g.id) && !reviewed.has(g.id),
+    ),
   );
   const allAccepted = $derived(!pendingUncertain);
-  const canSave = $derived(!saving && !hasBlank && !pendingUncertain);
+  const canSave = $derived(!saving && answeredCount > 0 && !pendingUncertain);
 
   function rowLabel(g: BubbleGroup): string {
     return g.section ? `${g.section} · ${g.label}` : g.label;
@@ -104,12 +116,17 @@
 
   function save(): void {
     if (!canSave) return;
-    const entries: AnswerKeyEntry[] = questionGroups.map((g) => ({
-      group_id: g.id,
-      correct_indices: Array.from(selection[g.id] ?? new Set<number>()).sort(
-        (a, b) => a - b,
-      ),
-    }));
+    // Emit only the questions that are part of the exam (have a selection);
+    // unselected ones are excluded and must not reach the key (each entry
+    // requires >= 1 correct index).
+    const entries: AnswerKeyEntry[] = questionGroups
+      .filter((g) => !isEmpty(g.id))
+      .map((g) => ({
+        group_id: g.id,
+        correct_indices: Array.from(selection[g.id] ?? new Set<number>()).sort(
+          (a, b) => a - b,
+        ),
+      }));
     onSave(entries);
   }
 </script>
@@ -131,10 +148,13 @@
 
   <!-- Read answers -->
   <div class="space-y-3">
-    <div class="flex items-center justify-between gap-3">
-      <p class="text-muted-foreground text-sm font-medium">
-        {mn.exams.answerKey.scan.answersHeading}
-      </p>
+    <div class="flex items-start justify-between gap-3">
+      <div class="space-y-0.5">
+        <p class="text-muted-foreground text-sm font-medium">
+          {mn.exams.answerKey.scan.answersHeading}
+        </p>
+        <p class="text-foreground text-xs font-medium">{countLabel}</p>
+      </div>
       {#if uncertainIds.size > 0}
         <Button
           type="button"
@@ -196,8 +216,8 @@
               {/each}
             </div>
             {#if isEmpty(group.id)}
-              <Badge variant="secondary" class="text-xs">
-                {mn.exams.answerKey.scan.blank}
+              <Badge variant="outline" class="text-muted-foreground text-xs">
+                {mn.exams.answerKey.excluded}
               </Badge>
             {/if}
           </li>

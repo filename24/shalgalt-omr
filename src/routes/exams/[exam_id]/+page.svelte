@@ -148,20 +148,16 @@
       return;
     }
 
-    // Every question group must have at least one correct index.
-    const incomplete = draftAnswers.some(
-      (entry) => entry.correct_indices.length === 0,
-    );
-    if (incomplete) {
-      toast.error(mn.exams.answerKey.incomplete);
-      return;
-    }
-
-    // Persist only entries with a selection so the stored array satisfies
-    // `answersSchema` (each entry requires >= 1 correct index).
+    // The answer key defines which questions are in this exam: keep only the
+    // questions the teacher actually answered. Unselected questions are excluded
+    // and the grading engine skips them. At least one must be selected.
     const answers = draftAnswers.filter(
       (entry) => entry.correct_indices.length > 0,
     );
+    if (answers.length === 0) {
+      toast.error(mn.exams.answerKey.noneSelected);
+      return;
+    }
     let validated: AnswerKeyEntry[];
     try {
       validated = answersSchema.parse(answers);

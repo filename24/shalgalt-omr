@@ -35,7 +35,8 @@ pub struct AnswerKey {
 impl AnswerKey {
     /// Look up the correct indices for a `BubbleGroup.id`, or `None` when the
     /// key has no entry for that group. The grading engine treats a missing
-    /// entry as a configuration error.
+    /// entry as "this question is not part of the exam" and skips the group, so
+    /// one physical template can back exams with fewer questions.
     pub fn correct_for(&self, group_id: &str) -> Option<&[u32]> {
         self.answers
             .iter()

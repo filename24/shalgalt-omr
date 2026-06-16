@@ -105,16 +105,31 @@
   function rowLabel(g: BubbleGroup): string {
     return g.section ? `${g.section} · ${g.label}` : g.label;
   }
+
+  // Questions with at least one selected option count as "in this exam". Unselected
+  // questions are excluded (the grading engine skips groups with no answer key).
+  const selectedCount = $derived(
+    questionGroups.filter((g) => !isEmpty(g.id)).length,
+  );
+  const countLabel = $derived(
+    mn.exams.answerKey.selectedCount.replace("{count}", String(selectedCount)),
+  );
 </script>
 
 {#if questionGroups.length === 0}
   <p class="text-muted-foreground text-sm">{mn.exams.answerKey.noQuestions}</p>
 {:else}
   <div class="space-y-3">
-    <div class="flex items-center justify-between gap-3">
-      <p class="text-muted-foreground text-sm">
-        {mn.exams.answerKey.optionsHeading}
-      </p>
+    <div class="flex items-start justify-between gap-3">
+      <div class="space-y-1">
+        <p class="text-muted-foreground text-sm">
+          {mn.exams.answerKey.optionsHeading}
+        </p>
+        <p class="text-muted-foreground/80 text-xs">
+          {mn.exams.answerKey.optionsHint}
+        </p>
+        <p class="text-foreground text-xs font-medium">{countLabel}</p>
+      </div>
       <Button type="button" variant="outline" size="sm" onclick={seedFromTemplate}>
         {mn.exams.answerKey.seedFromTemplate}
       </Button>
@@ -142,8 +157,8 @@
             {/each}
           </div>
           {#if isEmpty(group.id)}
-            <span class="text-destructive text-xs">
-              {mn.exams.answerKey.required}
+            <span class="text-muted-foreground/70 text-xs italic">
+              {mn.exams.answerKey.excluded}
             </span>
           {/if}
         </li>
