@@ -2,8 +2,6 @@
   import { onMount } from "svelte";
   import { goto, beforeNavigate } from "$app/navigation";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-  import { open as openDialog } from "@tauri-apps/plugin-dialog";
-  import { readTextFile } from "@tauri-apps/plugin-fs";
   import { toast } from "svelte-sonner";
 
   import { progress } from "$lib/stores/progress.svelte";
@@ -11,8 +9,10 @@
   import { gradePdf, TASK_RESULT_EVENT } from "$lib/ipc/scan";
   import { pickPdf } from "$lib/picker";
   import { listTemplates } from "$lib/db/templates";
+  import { listExams } from "$lib/db/exams";
+  import { listAnswerKeysByExam } from "$lib/db/answerKeys";
   import { createJob, completeJob, updateJobProgress } from "$lib/db/jobs";
-  import { answerKeySchema } from "$lib/schemas/answerKey";
+  import { toAnswerKey } from "$lib/types/exam";
   import { mn } from "$lib/i18n";
 
   import { Button } from "$lib/components/ui/button";
@@ -20,23 +20,22 @@
   import { Label } from "$lib/components/ui/label";
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
-  import * as Tabs from "$lib/components/ui/tabs";
   import { Progress } from "$lib/components/ui/progress";
   import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
   import PlayIcon from "@lucide/svelte/icons/play";
-  import FileJsonIcon from "@lucide/svelte/icons/file-json";
 
   import type { TemplateSummary } from "$lib/types/template";
+  import type { ExamSummary, AnswerKeyRecord } from "$lib/types/exam";
   import type { TaskResult } from "$lib/types/generated/TaskResult";
   import type { TaskStage } from "$lib/types/generated/TaskStage";
   import type { GradedJobSheet } from "$lib/types/job";
 
   let pdfPath = $state(session.lastPdfPath ?? "");
-  let templateId = $state<number | null>(session.lastOpenedTemplateId);
   let templates = $state<TemplateSummary[]>([]);
-  let answerKeyMode = $state<"paste" | "file">("paste");
-  let answerKeyJson = $state("");
-  let answerKeyPickedPath = $state<string | null>(null);
+  let exams = $state<ExamSummary[]>([]);
+  let examId = $state<number | null>(null);
+  let answerKeys = $state<AnswerKeyRecord[]>([]);
+  let variant = $state<string | null>(null);
   let busy = $state(false);
   let activeTaskId = $state<string | null>(null);
   let activeJobId = $state<number | null>(null);
@@ -59,14 +58,24 @@
       ? Math.round((last.processed / last.total) * 100)
       : 0,
   );
+  const selectedExam = $derived(exams.find((e) => e.id === examId) ?? null);
+  // An exam owns its template; grading needs the template's schema for the
+  // Rust round-trip, so resolve it from the already-loaded template list.
   const selectedTemplate = $derived(
-    templates.find((t) => t.id === templateId) ?? null,
+    selectedExam
+      ? (templates.find((t) => t.id === selectedExam.template_id) ?? null)
+      : null,
+  );
+  const selectedAnswerKey = $derived(
+    variant !== null
+      ? (answerKeys.find((k) => k.variant === variant) ?? null)
+      : null,
   );
 
   let unlistenResult: UnlistenFn | null = null;
 
   onMount(() => {
-    void loadTemplates();
+    void loadPickers();
     void registerResultListener();
     return () => {
       unlistenResult?.();
@@ -74,16 +83,35 @@
     };
   });
 
-  async function loadTemplates(): Promise<void> {
+  async function loadPickers(): Promise<void> {
     try {
-      templates = await listTemplates();
-      // Default to the most recently opened template, or the first one.
-      if (templateId === null && templates.length > 0) {
-        templateId = templates[0]!.id;
+      [templates, exams] = await Promise.all([listTemplates(), listExams()]);
+      // Default to the first exam and eagerly load its variants.
+      if (examId === null && exams.length > 0) {
+        examId = exams[0]!.id;
+        await loadAnswerKeys(examId);
       }
     } catch (e) {
       toast.error(mn.errors.unknown, { description: String(e) });
     }
+  }
+
+  async function loadAnswerKeys(forExamId: number): Promise<void> {
+    try {
+      answerKeys = await listAnswerKeysByExam(forExamId);
+      // Default to the single key, otherwise force an explicit choice.
+      variant = answerKeys.length === 1 ? answerKeys[0]!.variant : null;
+    } catch (e) {
+      answerKeys = [];
+      variant = null;
+      toast.error(mn.errors.unknown, { description: String(e) });
+    }
+  }
+
+  function onExamChange(): void {
+    variant = null;
+    answerKeys = [];
+    if (examId !== null) void loadAnswerKeys(examId);
   }
 
   async function registerResultListener(): Promise<void> {
@@ -103,39 +131,6 @@
     }
   }
 
-  async function pickAnswerKeyFile(): Promise<void> {
-    try {
-      const picked = await openDialog({
-        multiple: false,
-        directory: false,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (typeof picked !== "string") return;
-      answerKeyPickedPath = picked;
-      const content = await readTextFile(picked);
-      answerKeyJson = content;
-    } catch (e) {
-      toast.error(mn.grade.answerKey.readFailed, { description: String(e) });
-    }
-  }
-
-  function validateAnswerKey(): { ok: boolean; message?: string } {
-    if (answerKeyJson.trim() === "") {
-      return { ok: false, message: mn.grade.errors.answerKeyRequired };
-    }
-    try {
-      const parsed = JSON.parse(answerKeyJson) as unknown;
-      answerKeySchema.parse(parsed);
-      return { ok: true };
-    } catch (e) {
-      return {
-        ok: false,
-        message:
-          e instanceof Error ? e.message : mn.grade.errors.jsonInvalid,
-      };
-    }
-  }
-
   async function start(): Promise<void> {
     if (busy) {
       toast.error(mn.grade.errors.jobAlreadyRunning);
@@ -145,17 +140,23 @@
       toast.error(mn.grade.errors.pdfRequired);
       return;
     }
-    if (templateId === null || !selectedTemplate) {
-      toast.error(mn.grade.errors.templateRequired);
+    if (examId === null || !selectedExam) {
+      toast.error(mn.grade.errors.examRequired);
       return;
     }
-    const validation = validateAnswerKey();
-    if (!validation.ok) {
-      toast.error(mn.grade.answerKey.validateFailed, {
-        description: validation.message,
-      });
+    if (variant === null || !selectedAnswerKey) {
+      toast.error(mn.grade.errors.variantRequired);
       return;
     }
+    if (!selectedTemplate) {
+      toast.error(mn.grade.errors.templateMissing);
+      return;
+    }
+
+    // The exam picker guarantees a well-formed key, so no JSON validation is
+    // needed — project it to the `AnswerKey` domain shape grading consumes.
+    const answerKeyJson = JSON.stringify(toAnswerKey(selectedAnswerKey));
+    const templateId = selectedExam.template_id;
 
     busy = true;
     terminalState = "running";
@@ -250,6 +251,25 @@
     void goto("/results");
   }
 
+  function gotoExams(): void {
+    void goto("/exams");
+  }
+
+  function gotoExam(): void {
+    if (examId === null) return;
+    void goto(`/exams/${examId}`);
+  }
+
+  function formatExamTemplate(title: string): string {
+    return mn.grade.examTemplate.replace("{title}", title);
+  }
+
+  function formatVariantOption(variantName: string, count: number): string {
+    return mn.grade.variantOption
+      .replace("{variant}", variantName)
+      .replace("{count}", String(count));
+  }
+
   beforeNavigate((nav) => {
     if (busy && nav.to?.url.pathname !== "/grade") {
       const ok = window.confirm(mn.grade.errors.jobAlreadyRunning);
@@ -298,55 +318,64 @@
       </div>
 
       <div class="space-y-1.5">
-        <Label for="template-id">{mn.grade.templateLabel}</Label>
-        {#if templates.length === 0}
-          <p class="text-muted-foreground text-sm">{mn.grade.templateEmpty}</p>
+        <Label for="exam-id">{mn.grade.examLabel}</Label>
+        {#if exams.length === 0}
+          <p class="text-muted-foreground text-sm">{mn.grade.examEmpty}</p>
+          <Button type="button" variant="outline" size="sm" onclick={gotoExams}>
+            {mn.grade.examEmptyCta}
+          </Button>
         {:else}
           <select
-            id="template-id"
-            bind:value={templateId}
+            id="exam-id"
+            bind:value={examId}
+            onchange={onExamChange}
             class="border-input bg-background text-foreground focus-visible:ring-ring h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:outline-none"
           >
-            <option value={null} disabled>{mn.grade.templatePlaceholder}</option>
-            {#each templates as t (t.id)}
-              <option value={t.id}>{t.title}</option>
+            <option value={null} disabled>{mn.grade.examPlaceholder}</option>
+            {#each exams as e (e.id)}
+              <option value={e.id}>{e.name}</option>
             {/each}
           </select>
+          {#if selectedExam}
+            <p class="text-muted-foreground text-xs">
+              {formatExamTemplate(selectedExam.template_title)}
+            </p>
+          {/if}
         {/if}
       </div>
 
       <div class="space-y-1.5">
-        <Label>{mn.grade.answerKey.label}</Label>
-        <p class="text-muted-foreground text-xs">{mn.grade.answerKey.help}</p>
-        <Tabs.Root bind:value={answerKeyMode} class="mt-2">
-          <Tabs.List>
-            <Tabs.Trigger value="paste">{mn.grade.answerKey.tabPaste}</Tabs.Trigger>
-            <Tabs.Trigger value="file">{mn.grade.answerKey.tabFile}</Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="paste" class="mt-2">
-            <textarea
-              bind:value={answerKeyJson}
-              placeholder={mn.grade.answerKey.paste}
-              rows="6"
-              class="border-input bg-background text-foreground focus-visible:ring-ring min-h-32 w-full rounded-md border px-3 py-2 font-mono text-xs shadow-sm focus-visible:ring-1 focus-visible:outline-none"
-            ></textarea>
-          </Tabs.Content>
-          <Tabs.Content value="file" class="mt-2 space-y-2">
-            <Button type="button" variant="outline" onclick={pickAnswerKeyFile}>
-              <FileJsonIcon />
-              {mn.grade.answerKey.pickFile}
-            </Button>
-            {#if answerKeyPickedPath}
-              <p class="text-muted-foreground text-xs">
-                {mn.grade.answerKey.pickedFile}: {answerKeyPickedPath}
-              </p>
-            {/if}
-          </Tabs.Content>
-        </Tabs.Root>
+        <Label for="variant-id">{mn.grade.variantLabel}</Label>
+        {#if examId === null}
+          <p class="text-muted-foreground text-sm">
+            {mn.grade.variantPickExamFirst}
+          </p>
+        {:else if answerKeys.length === 0}
+          <p class="text-muted-foreground text-sm">{mn.grade.variantEmpty}</p>
+          <Button type="button" variant="outline" size="sm" onclick={gotoExam}>
+            {mn.grade.variantEmptyCta}
+          </Button>
+        {:else}
+          <select
+            id="variant-id"
+            bind:value={variant}
+            class="border-input bg-background text-foreground focus-visible:ring-ring h-9 w-full rounded-md border px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:outline-none"
+          >
+            <option value={null} disabled>{mn.grade.variantPlaceholder}</option>
+            {#each answerKeys as k (k.id)}
+              <option value={k.variant}>
+                {formatVariantOption(k.variant, k.answers.length)}
+              </option>
+            {/each}
+          </select>
+        {/if}
       </div>
     </Card.Content>
     <Card.Footer class="flex items-center justify-between">
-      <Button onclick={start} disabled={busy || !pdfPath || templateId === null}>
+      <Button
+        onclick={start}
+        disabled={busy || !pdfPath || examId === null || variant === null}
+      >
         <PlayIcon />
         {busy ? mn.grade.starting : mn.grade.start}
       </Button>

@@ -341,7 +341,7 @@
         />
       </div>
       <div class="space-y-1.5">
-        <Label>{mn.grade.answerKey.label}</Label>
+        <Label>{mn.exams.answerKey.label}</Label>
         {#if templateGroups}
           <AnswerKeyEditor groups={templateGroups} bind:value={draftAnswers} />
         {/if}
