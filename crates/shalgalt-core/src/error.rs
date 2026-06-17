@@ -87,4 +87,28 @@ impl Serialize for AppError {
     }
 }
 
+/// HTTP rendering for the `/v1/` REST surface (P5). The same `{ code, message }` envelope
+/// the IPC layer already serializes is reused as the JSON body; only the status line is
+/// derived here, so REST clients and the Tauri frontend read identical error shapes.
+///
+/// `BadRequest` → 400 (also the read-only-mode write rejection), `NotFound` → 404;
+/// everything else is an internal fault → 500. Free-form context stays in logs, never in
+/// the body beyond the stable `code`.
+impl axum::response::IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+
+        let status = match &self {
+            AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            AppError::NotFound(_) => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        let body = axum::Json(AppErrorPayload {
+            code: self.code(),
+            message: self.to_string(),
+        });
+        (status, body).into_response()
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;
