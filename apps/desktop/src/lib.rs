@@ -79,6 +79,7 @@ const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_0002: &str = include_str!("../migrations/0002_backdrop.sql");
 const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
 const MIGRATION_0004: &str = include_str!("../migrations/0004_exams.sql");
+const MIGRATION_0005: &str = include_str!("../migrations/0005_results_exam.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -107,6 +108,12 @@ pub fn run() {
             version: 4,
             description: "add_exams_answer_keys",
             sql: MIGRATION_0004,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 5,
+            description: "add_results_exam_id",
+            sql: MIGRATION_0005,
             kind: MigrationKind::Up,
         },
     ];
