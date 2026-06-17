@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Context;
+use axum::http::HeaderValue;
 use axum::Router;
 use clap::Parser;
 use shalgalt_core::api::{auth, cors, router, AppState};
@@ -51,16 +52,42 @@ pub struct Cli {
 /// preflight `OPTIONS` (which carries no `Authorization`) before the auth guard runs.
 pub fn build_app(state: AppState, allow_origins: &[String], token: Option<String>) -> Router {
     let mut app = router(state);
-    if let Some(token) = token.filter(|t| !t.is_empty()) {
-        app = auth::with_bearer(app, token);
-        info!("bearer auth enabled");
-    } else {
-        warn!("{TOKEN_ENV} not set — the API is UNAUTHENTICATED");
+
+    // Distinguish "absent" from "present-but-empty" — `SHALGALT_API_TOKEN=` (a common Docker
+    // mistake) must not be mistaken for "unset" in the log.
+    match token {
+        Some(t) if !t.is_empty() => {
+            app = auth::with_bearer(app, t);
+            info!("bearer auth enabled");
+        }
+        Some(_) => warn!("{TOKEN_ENV} is set but empty — the API is UNAUTHENTICATED"),
+        None => warn!("{TOKEN_ENV} not set — the API is UNAUTHENTICATED"),
     }
+
     if allow_origins.is_empty() {
         warn!("no --allow-origin given — cross-origin browser requests will be blocked");
     }
+    // Surface origins the CORS layer will accept into its list but can never actually match,
+    // so a misconfiguration is not invisible. A browser `Origin:` header is scheme + host +
+    // optional port with no path/query, and tower-http compares it byte-exactly — so an
+    // entry that fails to parse as a header value, or carries a path/query, is dead config.
+    for origin in allow_origins.iter().filter(|o| !is_matchable_origin(o)) {
+        warn!("--allow-origin {origin:?} can never match a browser Origin header (bad value or has a path); it will never grant access");
+    }
+
     app.layer(cors::allow_list(allow_origins))
+}
+
+/// Whether `origin` could ever equal a real browser `Origin:` header: a valid header value,
+/// `scheme://authority`, with nothing after the authority.
+fn is_matchable_origin(origin: &str) -> bool {
+    if origin.parse::<HeaderValue>().is_err() {
+        return false;
+    }
+    match origin.split_once("://") {
+        Some((scheme, rest)) => !scheme.is_empty() && !rest.is_empty() && !rest.contains('/'),
+        None => false,
+    }
 }
 
 /// Open + migrate the database, build the app, and serve until SIGINT/SIGTERM.
@@ -119,4 +146,23 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
     info!("shutdown signal received");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_matchable_origin;
+
+    #[test]
+    fn accepts_scheme_host_port_origins() {
+        assert!(is_matchable_origin("http://localhost:5173"));
+        assert!(is_matchable_origin("https://app.example.com"));
+    }
+
+    #[test]
+    fn rejects_origins_with_a_path_or_no_scheme() {
+        assert!(!is_matchable_origin("https://app.example.com/path"));
+        assert!(!is_matchable_origin("https://app.example.com/"));
+        assert!(!is_matchable_origin("app.example.com"));
+        assert!(!is_matchable_origin(""));
+    }
 }

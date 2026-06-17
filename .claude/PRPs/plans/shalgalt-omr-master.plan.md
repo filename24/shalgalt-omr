@@ -332,7 +332,7 @@ resolver = "2"
 
 | Crate | Depends on | Public surface |
 | --- | --- | --- |
-| `shalgalt-core` | (only `serde`, `thiserror`, `anyhow`, `axum`, `tower-http`, `utoipa`) | `domain::*`, `grading::engine::Grader`, `export::xlsx::*`, `api::router(state) -> Router`, `api::{DataStore, AppState}` + DTOs + OpenAPI (`ApiDoc`). DB-free. |
+| `shalgalt-core` | (only `serde`, `thiserror`, `anyhow`, `axum`, `tower-http`, `utoipa`, `tracing`, `constant_time_eq`) | `domain::*`, `grading::engine::Grader`, `export::xlsx::*`, `api::router(state) -> Router`, `api::{DataStore, AppState}` + DTOs + OpenAPI (`ApiDoc`). DB-free. |
 | `shalgalt-store` | `rusqlite` (`bundled`), `shalgalt-core` | `SqliteStore` (read-only / read-write) + `DeferredReadOnlyStore`, implementing `shalgalt-core::api::DataStore`. The one place a second SQLite connection lives (see ADR 0014). |
 | `shalgalt-pdf` | `printpdf`, `shalgalt-core::domain` | `pub fn render_template(&Template, &PdfOptions) -> Result<Vec<u8>>`. |
 | `shalgalt-cv` | `opencv`, `pdfium-render`, `shalgalt-core::domain` | `pub fn process_pdf(path, template) -> Result<Vec<ParsedSheet>>` with progress callback. |

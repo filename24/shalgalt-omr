@@ -27,6 +27,14 @@ anyhow = "1"
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 
+# Structured logging for the `/v1/` error path: internal (500) details are logged here and
+# kept out of the HTTP body. Macros-only; the host installs the subscriber.
+tracing = "0.1"
+
+# Branch-free, length-independent comparison for the bearer token (P5-04). Avoids leaking
+# the token's bytes *or* its length through response timing.
+constant_time_eq = "0.3"
+
 # TypeScript binding generation (P2-04). Domain types derive `TS` and emit
 # `.ts` interfaces into `src/lib/types/generated/` whenever `cargo test -p
 # shalgalt-core` runs (frontend `pnpm generate-types` wraps that). Required at

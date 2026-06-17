@@ -80,3 +80,12 @@ binding a socket. Layer order: auth inside CORS, so the CORS preflight (`OPTIONS
 
 - A bundled Release asset for `shalgalt-server` lands in P6 (`release.yml`).
 - Token rotation for server mode is documented but not yet automated.
+- **Blocking I/O on the async executor.** `DataStore` methods are synchronous and run
+  directly inside the axum handlers, and `SqliteStore` serializes them through one
+  `Mutex<Connection>`. For the desktop (single user) and a small-school LAN server (low
+  concurrency, WAL reads) this is acceptable. If concurrency grows, offload the calls with
+  `tokio::task::spawn_blocking` (or make `DataStore` async) and/or use a connection pool so
+  a slow query cannot park a worker thread. Deferred until measured load justifies it.
+- **Pagination.** List endpoints are currently unbounded (see ADR 0013 — the desktop
+  browser paginates client-side). A server-enforced page-size cap on `/v1/results` lands
+  when result volumes warrant it.

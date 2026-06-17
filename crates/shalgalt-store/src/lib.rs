@@ -84,32 +84,52 @@ impl SqliteStore {
         })
     }
 
-    /// Bootstrap the schema for a freshly created database. No-op when the core tables
-    /// already exist (a desktop-managed file, or a prior server run) — schema evolution on
-    /// an existing file stays owned by the desktop's plugin-sql migrations, never this
-    /// path.
+    /// Bring the schema up to date, tracking progress in `PRAGMA user_version` (the epoch =
+    /// number of applied migrations). Only unapplied steps run, so adding a migration and
+    /// restarting the server upgrades an existing server-owned database in place.
+    ///
+    /// One exception: a database whose `templates` table exists but whose `user_version` is
+    /// still 0 is an *externally managed* file — `tauri-plugin-sql` tracks its own
+    /// migrations in `_sqlx_migrations` and never sets `user_version`. We leave it
+    /// untouched: the desktop registers the same migration files, so the file is already at
+    /// the latest schema, and running our DDL over it would fail on `CREATE TABLE`.
     pub fn migrate(&self) -> AppResult<()> {
-        let conn = self.conn.lock().expect("store poisoned");
-        let already: bool = conn
+        let conn = self.lock();
+
+        let has_templates = conn
             .query_row(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'templates'",
                 [],
-                |_| Ok(true),
+                |_| Ok(()),
             )
             .optional()
             .map_err(to_app)?
-            .unwrap_or(false);
-        if already {
+            .is_some();
+        let user_version: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .map_err(to_app)?;
+
+        if has_templates && user_version == 0 {
             return Ok(());
         }
-        for sql in MIGRATIONS {
-            conn.execute_batch(sql).map_err(to_app)?;
+
+        for (i, sql) in MIGRATIONS.iter().enumerate() {
+            let version = (i + 1) as i64;
+            if user_version < version {
+                conn.execute_batch(sql).map_err(to_app)?;
+            }
         }
+        conn.pragma_update(None, "user_version", MIGRATIONS.len() as i64)
+            .map_err(to_app)?;
         Ok(())
     }
 
+    /// Acquire the connection, recovering from a poisoned `Mutex` rather than panicking. A
+    /// handler that panicked mid-query would otherwise poison the lock and cascade the panic
+    /// into every subsequent request; the connection state itself is fine to reuse for the
+    /// next caller.
     fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().expect("store poisoned")
+        self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
@@ -299,11 +319,16 @@ impl DeferredReadOnlyStore {
     }
 
     /// `None` until the database file exists; afterwards a read-only handle to it.
+    ///
+    /// The open is attempted first and only on failure is existence checked, so there is no
+    /// check-then-open (TOCTOU) window: a genuine "not created yet" reports empty, while a
+    /// real open error against an existing file propagates as a 500.
     fn reader(&self) -> AppResult<Option<SqliteStore>> {
-        if !self.path.exists() {
-            return Ok(None);
+        match SqliteStore::open_read_only(&self.path) {
+            Ok(store) => Ok(Some(store)),
+            Err(_) if !self.path.exists() => Ok(None),
+            Err(e) => Err(e),
         }
-        Ok(Some(SqliteStore::open_read_only(&self.path)?))
     }
 }
 
@@ -367,9 +392,51 @@ mod tests {
     #[test]
     fn migrate_is_idempotent() {
         let (_f, store) = fresh_store();
-        // Second migrate sees the tables and does nothing.
+        // Second migrate sees user_version already at the latest epoch and does nothing.
         store.migrate().unwrap();
         assert!(store.list_exams().unwrap().is_empty());
+    }
+
+    #[test]
+    fn migrate_applies_a_newly_added_step_to_an_existing_server_db() {
+        // Simulate a server DB bootstrapped at an earlier epoch (before 0005 existed):
+        // tables present, user_version pinned below MIGRATIONS.len(), exam_id absent.
+        let file = NamedTempFile::new().unwrap();
+        {
+            let conn = rusqlite::Connection::open(file.path()).unwrap();
+            for sql in &MIGRATIONS[..4] {
+                conn.execute_batch(sql).unwrap();
+            }
+            conn.pragma_update(None, "user_version", 4).unwrap();
+            // The pre-0005 results table has no exam_id column.
+            assert!(conn.prepare("SELECT exam_id FROM results").is_err());
+        }
+
+        // Restarting with the full MIGRATIONS array must apply only step 5.
+        let store = SqliteStore::open_read_write(file.path()).unwrap();
+        store.migrate().unwrap();
+        // A filtered read now succeeds because results.exam_id exists.
+        assert!(store
+            .list_results(ResultFilter { exam_id: Some(1) })
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn migrate_leaves_externally_managed_db_untouched() {
+        // A plugin-sql-style DB: tables exist but user_version is still 0. migrate() must
+        // not try to re-run CREATE TABLE over it.
+        let file = NamedTempFile::new().unwrap();
+        {
+            let conn = rusqlite::Connection::open(file.path()).unwrap();
+            for sql in MIGRATIONS {
+                conn.execute_batch(sql).unwrap();
+            }
+            // Deliberately leave user_version at 0, as tauri-plugin-sql does.
+        }
+        let store = SqliteStore::open_read_write(file.path()).unwrap();
+        store.migrate().unwrap(); // no-op, no error
+        assert!(store.list_templates().unwrap().is_empty());
     }
 
     #[test]

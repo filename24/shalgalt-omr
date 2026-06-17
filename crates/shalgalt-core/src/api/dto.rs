@@ -79,6 +79,10 @@ pub struct NewResult {
     pub total_score: f64,
     /// Opaque JSON string mirroring [`ResultDto::detail_answers`].
     pub detail_answers: String,
+    /// Caller-controlled, untrusted opaque string. The API stores it verbatim and never
+    /// touches the filesystem with it; any consumer that turns it into a path (e.g. the
+    /// desktop loading it via `asset://`) MUST sanitize it against directory traversal
+    /// first — it is not validated here.
     pub image_path: Option<String>,
 }
 
