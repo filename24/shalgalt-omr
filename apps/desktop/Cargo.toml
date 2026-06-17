@@ -25,7 +25,7 @@ shalgalt-core = { path = "../../crates/shalgalt-core" }
 # --- HTTP API data store (P5) ---
 # Read-only `rusqlite` reader over the plugin-sql SQLite file, injected into the embedded
 # axum router so the `/v1/` surface serves real data. Writes stay owned by plugin-sql; the
-# injected `DeferredReadOnlyStore` never writes (see ADR 0010).
+# injected `DeferredReadOnlyStore` never writes (see ADR 0014).
 shalgalt-store = { path = "../../crates/shalgalt-store" }
 
 # --- CV pipeline (P2-03) ---

@@ -24,7 +24,7 @@ and `apps/server`, the concrete reader/writer lives here once and both hosts dep
 The desktop opens the *same* SQLite file `tauri-plugin-sql` writes, read-only, so the
 embedded API can never race the plugin-sql writer — plugin-sql stays the single source of
 truth for writes (the desktop's "no DB writes in Rust" rule is preserved; this is a pure
-reader). See ADR 0010.
+reader). See ADR 0014.
 
 ## Schema source of truth
 

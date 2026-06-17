@@ -104,7 +104,7 @@ boundaries clean and removes the question "which side has the up-to-date row?".
 `app_config_dir` — where `tauri-plugin-sql` actually writes, not `app_data_dir`). It opens
 `SQLITE_OPEN_READ_ONLY` and never issues a write, so plugin-sql remains the single writer
 and the "which side has the up-to-date row?" question is untouched. This is a pure reader,
-not "DB code": all SQL lives in `crates/shalgalt-store`. See ADR 0010 for the rationale.
+not "DB code": all SQL lives in `crates/shalgalt-store`. See ADR 0014 for the rationale.
 
 ### Migrations
 

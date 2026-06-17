@@ -320,6 +320,7 @@ members = [
     "apps/desktop",
     "apps/server",
     "crates/shalgalt-core",
+    "crates/shalgalt-store",
     "crates/shalgalt-pdf",
     "crates/shalgalt-cv",
     "crates/shalgalt-fileformat",
@@ -331,12 +332,13 @@ resolver = "2"
 
 | Crate | Depends on | Public surface |
 | --- | --- | --- |
-| `shalgalt-core` | (only `serde`, `thiserror`, `anyhow`, `axum`, `tower-http`) | `domain::*`, `grading::engine::Grader`, `export::xlsx::*`, `api::router(state) -> Router`. |
+| `shalgalt-core` | (only `serde`, `thiserror`, `anyhow`, `axum`, `tower-http`, `utoipa`) | `domain::*`, `grading::engine::Grader`, `export::xlsx::*`, `api::router(state) -> Router`, `api::{DataStore, AppState}` + DTOs + OpenAPI (`ApiDoc`). DB-free. |
+| `shalgalt-store` | `rusqlite` (`bundled`), `shalgalt-core` | `SqliteStore` (read-only / read-write) + `DeferredReadOnlyStore`, implementing `shalgalt-core::api::DataStore`. The one place a second SQLite connection lives (see ADR 0014). |
 | `shalgalt-pdf` | `printpdf`, `shalgalt-core::domain` | `pub fn render_template(&Template, &PdfOptions) -> Result<Vec<u8>>`. |
 | `shalgalt-cv` | `opencv`, `pdfium-render`, `shalgalt-core::domain` | `pub fn process_pdf(path, template) -> Result<Vec<ParsedSheet>>` with progress callback. |
 | `shalgalt-fileformat` | `zip`, `age`, `serde`, `serde_json`, `chrono`, `thiserror` (deliberately **not** `shalgalt-core` — streams opaque named blobs, stays domain-agnostic; see ADR 0011) | `open(path, passphrase?) -> Result<(Manifest, EntryIter)>`, `open_manifest_only(path) -> Result<Manifest>`, `write(path, &Manifest, entries, passphrase?) -> Result<()>`, plus `Manifest` / `ReadHandle` / `FileFormatError`. |
-| `apps/desktop` | all crates above, tauri 2 | Boot Tauri, register plugins, embed `shalgalt-core::api::router`. |
-| `apps/server` | `shalgalt-core` only | Standalone CLI: `shalgalt-server --bind 0.0.0.0:8080 --db file.sqlite`. |
+| `apps/desktop` | all crates above + `shalgalt-store`, tauri 2 | Boot Tauri, register plugins, embed `shalgalt-core::api::router` over a read-only `shalgalt-store`. |
+| `apps/server` | `shalgalt-core`, `shalgalt-store` | Standalone CLI: `shalgalt-server --bind 0.0.0.0:8080 --db file.sqlite --allow-origin …`. |
 
 ### 8.3 Frontend layout (additions)
 
