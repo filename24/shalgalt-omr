@@ -4,23 +4,33 @@ Headless `shalgalt-server` binary that exposes the same REST surface as the desk
 embedded axum server, intended for school-server deployments where grading happens on a
 shared machine and clients connect over the LAN.
 
-> Status: **placeholder**. The real binary lands in P5-05 per the master plan §10. The
-> current `src/main.rs` is a `println!` stub that keeps the workspace member resolvable
-> for `cargo check`.
+> Status: **implemented** (P5-05). `src/lib.rs` assembles the app; `src/main.rs` parses the
+> CLI and serves. The split keeps the auth path integration-testable (`tests/auth.rs`).
 
 > Repo-level rules, language conventions, and locked decisions live in
 > [`/AGENTS.md`](../../AGENTS.md). This file describes only what is specific to this app.
 
 ## Role
 
-`apps/server` reuses `shalgalt_core::api::routes` — the same `Router` builder consumed by
-`apps/desktop` — and adds:
+`apps/server` reuses `shalgalt_core::api::router(state)` — the same `Router` consumed by
+`apps/desktop` — over a read-write `shalgalt_store::SqliteStore`, and adds:
 
 - bearer-token auth from `SHALGALT_API_TOKEN` (Server mode requirement, master plan §6.6)
-- CORS allow-list (configured via env var, never `Any`)
-- bind address: `0.0.0.0` (vs. the desktop's `127.0.0.1`)
+- CORS allow-list from `--allow-origin` (never `Any`)
+- bind address from `--bind` (default `0.0.0.0:8080`, vs. the desktop's `127.0.0.1`)
 - structured `tracing` to stdout for systemd / Docker journals
 - (Eventually) a small admin-token rotation endpoint behind the same auth
+
+## CLI
+
+```text
+shalgalt-server --db PATH [--bind 0.0.0.0:8080] [--allow-origin ORIGIN]...
+SHALGALT_API_TOKEN=…   # optional; when set, every request needs `Authorization: Bearer …`
+```
+
+`--db` is created and migrated (via `shalgalt-store`) if absent. When `SHALGALT_API_TOKEN`
+is unset the API serves unauthenticated with a loud warning — fine on a trusted LAN, never
+on an open network.
 
 The crate has **no Tauri dependency** on the path. That guarantee is enforced by the
 workspace dependency graph: pulling in `tauri` here would also pull it into
@@ -36,37 +46,31 @@ to completion and shutdown is via SIGTERM / SIGINT only.
 
 What does **not** change between the two apps:
 
-- The router is built by `shalgalt_core::api::routes::build()`. Do not fork it.
-- The CORS layer comes from `shalgalt_core::api::cors`. Server mode passes an explicit
-  allow-list `Vec<String>` (read from env). Never `Any`.
+- The router is built by `shalgalt_core::api::router(state)`. Do not fork it.
+- The CORS layer comes from `shalgalt_core::api::cors::allow_list(&origins)`. Never `Any`.
 - Versioned under `/v1/`. Breaking changes require a bump (`/v2/`) and an ADR.
 
-### Auth (P5)
+The app is assembled by `build_app(state, allow_origins, token)` in `src/lib.rs`. Layer
+order is deliberate: auth is applied **inside** CORS, so the CORS layer is outermost and
+answers the preflight `OPTIONS` (which carries no `Authorization`) before the bearer guard
+runs.
 
-Server mode is the only place where auth is enforced. The desktop app binds to
-`127.0.0.1` and skips bearer checks because the only client that can reach it is the
-local webview.
+### Auth
+
+Server mode is the only place where auth is enforced. The desktop binds to `127.0.0.1` and
+skips bearer checks because the only client that can reach it is the local webview.
 
 ```text
 Authorization: Bearer <SHALGALT_API_TOKEN>
 ```
 
-Missing or mismatched token → `401 Unauthorized`. The token comes from the environment
-on startup; rotation is documented but not yet automated.
+Missing or mismatched token → `401 Unauthorized` (constant-time compare, in
+`shalgalt_core::api::auth`). The token is read from the environment at startup; rotation is
+documented but not yet automated.
 
-## When implementing P5-05
+## Layout
 
-The implementation order that keeps `cargo check` green at every step:
-
-1. Add `tokio` (`rt-multi-thread`, `signal`, `macros`) and `axum`, `tower`, `tower-http`
-   to `Cargo.toml`.
-2. Wire `tracing-subscriber` (`fmt` + `EnvFilter`) — match `apps/desktop`'s subscriber
-   shape.
-3. Read `SHALGALT_API_TOKEN`, `SHALGALT_BIND_ADDR` (default `0.0.0.0:8080`),
-   `SHALGALT_CORS_ALLOW_ORIGINS` (comma-separated). Fail fast if any required value is
-   missing.
-4. Build the router with `shalgalt_core::api::routes::build()` and layer the auth
-   middleware + CORS allow-list on top.
-5. `axum::serve(...).with_graceful_shutdown(shutdown_signal()).await`.
-6. Add an integration test under `tests/` that boots the server on an ephemeral port,
-   issues a request without `Authorization`, and asserts `401`.
+- `src/lib.rs` — `Cli` (clap), `build_app`, `serve`, `init_tracing`, `shutdown_signal`.
+- `src/main.rs` — parses `Cli`, calls `serve`.
+- `tests/auth.rs` — `oneshot` checks: missing/wrong token → 401, correct token → 200,
+  no-token mode serves unauthenticated.
