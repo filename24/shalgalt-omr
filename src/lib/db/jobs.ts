@@ -109,6 +109,80 @@ export async function listRecentJobs(limit = 25): Promise<Job[]> {
   return rows.map(rowToJob);
 }
 
+/**
+ * One completed grading job as surfaced in the results browser (P5-02). Joins
+ * the template title and keeps the lightweight counters — no `graded_sheets_json`
+ * blob, so the list view never carries page payloads across the wire.
+ */
+export interface ResultJobRow {
+  id: number;
+  template_id: number;
+  template_title: string;
+  total_pages: number | null;
+  processed_pages: number;
+  needs_review_count: number;
+  created_at: string;
+}
+
+export interface ResultJobFilter {
+  /** Restrict to one template, or `null`/omitted for all templates. */
+  templateId?: number | null;
+  /** Only jobs with at least one sheet still flagged for review. */
+  needsReviewOnly?: boolean;
+  limit: number;
+  offset: number;
+}
+
+/** Shared WHERE clause + bound params for the results-browser queries. */
+function resultJobWhere(filter: ResultJobFilter): {
+  clause: string;
+  params: (string | number)[];
+} {
+  const conditions = ["j.status = 'done'"];
+  const params: (string | number)[] = [];
+  if (filter.templateId != null) {
+    params.push(filter.templateId);
+    conditions.push(`j.template_id = $${params.length}`);
+  }
+  if (filter.needsReviewOnly) {
+    conditions.push("j.needs_review_count > 0");
+  }
+  return { clause: conditions.join(" AND "), params };
+}
+
+/** Page of completed jobs for the results browser, newest first. */
+export async function listResultJobs(
+  filter: ResultJobFilter,
+): Promise<ResultJobRow[]> {
+  const db = await getDb();
+  const { clause, params } = resultJobWhere(filter);
+  const limitIdx = params.length + 1;
+  const offsetIdx = params.length + 2;
+  return db.select<ResultJobRow[]>(
+    `SELECT j.id, j.template_id, COALESCE(t.title, '') AS template_title,
+            j.total_pages, j.processed_pages, j.needs_review_count, j.created_at
+     FROM jobs j
+     LEFT JOIN templates t ON t.id = j.template_id
+     WHERE ${clause}
+     ORDER BY j.created_at DESC, j.id DESC
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    [...params, filter.limit, filter.offset],
+  );
+}
+
+/** Total count for pagination, honoring the same filter. */
+export async function countResultJobs(
+  filter: ResultJobFilter,
+): Promise<number> {
+  const db = await getDb();
+  const { clause, params } = resultJobWhere(filter);
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM jobs j WHERE ${clause}`,
+    params,
+  );
+  return rows[0]?.n ?? 0;
+}
+
 export interface JobProgressUpdate {
   processed_pages: number;
   total_pages: number | null;
