@@ -32,8 +32,11 @@ pub const TOKEN_ENV: &str = "SHALGALT_API_TOKEN";
     about = "Standalone shalgalt-omr HTTP API"
 )]
 pub struct Cli {
-    /// Address to bind, e.g. `0.0.0.0:8080`.
-    #[arg(long, default_value = "0.0.0.0:8080")]
+    /// Address to bind, e.g. `0.0.0.0:22345`. The default port matches the desktop's
+    /// embedded API (ADR 0015) and stays out of the crowded 8080/8000/3000 dev range.
+    /// Unlike the desktop, the server does NOT auto-fall-back: a busy port is a hard error
+    /// so operators notice and pick another explicitly.
+    #[arg(long, default_value = "0.0.0.0:22345")]
     pub bind: SocketAddr,
 
     /// Path to the SQLite database file (created and migrated if absent).

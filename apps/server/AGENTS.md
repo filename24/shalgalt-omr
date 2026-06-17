@@ -17,14 +17,16 @@ shared machine and clients connect over the LAN.
 
 - bearer-token auth from `SHALGALT_API_TOKEN` (Server mode requirement, master plan §6.6)
 - CORS allow-list from `--allow-origin` (never `Any`)
-- bind address from `--bind` (default `0.0.0.0:8080`, vs. the desktop's `127.0.0.1`)
+- bind address from `--bind` (default `0.0.0.0:22345` — ADR 0015, vs. the desktop's
+  `127.0.0.1`). Unlike the desktop, the server does **not** auto-fall-back: a busy port is a
+  hard error so the operator picks another `--bind` explicitly.
 - structured `tracing` to stdout for systemd / Docker journals
 - (Eventually) a small admin-token rotation endpoint behind the same auth
 
 ## CLI
 
 ```text
-shalgalt-server --db PATH [--bind 0.0.0.0:8080] [--allow-origin ORIGIN]...
+shalgalt-server --db PATH [--bind 0.0.0.0:22345] [--allow-origin ORIGIN]...
 SHALGALT_API_TOKEN=…   # optional; when set, every request needs `Authorization: Bearer …`
 ```
 

@@ -22,7 +22,7 @@ exposes a background HTTP API for optional integrations.
 | Native shell | Tauri 2.0 + plugins: sql, dialog, fs, opener, log, single-instance, window-state |
 | Core         | Rust — opencv-rust, pdfium-render, rust_xlsxwriter, printpdf          |
 | Persistence  | `tauri-plugin-sql` + SQLite (single file in Tauri's `app_data_dir`)   |
-| Bg API       | axum on `127.0.0.1:8080` (CORS permissive, oneshot graceful shutdown) |
+| Bg API       | axum on `127.0.0.1:22345` (default; auto-fallback if busy — ADR 0015. CORS permissive, oneshot graceful shutdown) |
 | Async        | tokio (`full`)                                                        |
 
 ## Workspace Layout

@@ -196,6 +196,7 @@ pub fn run() {
             commands::project::project_open,
             commands::project::project_save,
             commands::project::project_export,
+            commands::api::api_info,
             take_pending_open_file,
         ])
         .build(tauri::generate_context!())
@@ -241,13 +242,28 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
     commands::pdf::prune_old_previews(&dirs.cache_dir);
 
     let db_path = dirs.db_path();
+    let data_dir = dirs.data_dir.clone();
     let state = AppState::new(dirs);
 
-    // Rule 4: the axum server lives in its own task. Storing the handle via `manage` means
-    // it is dropped (and shut down gracefully) when the Tauri app exits. It serves the
-    // `/v1/` REST surface read-only over the same SQLite file plugin-sql owns.
-    let api: ApiHandle = api::spawn(db_path).await?;
-    app.manage(api);
+    // Rule 4 + port hardening (ADR 0015): the embedded API is an OPTIONAL integration
+    // surface. A bind failure must never brick IPC, so `state` is always managed and the
+    // API handle is added only when the server actually started. Auto-fallback inside
+    // `api::spawn` handles the common case of the default port being busy on a teacher's
+    // machine; the port it lands on is advertised via `write_endpoint_file` so external
+    // integrations can still find it. The `ApiHandle`, when present, is dropped (and shut
+    // down gracefully) when the Tauri app exits.
+    match api::spawn(db_path).await {
+        Ok(api) => {
+            let port = api.port();
+            api::write_endpoint_file(&data_dir, port);
+            app.manage(commands::api::ApiInfo::running(port));
+            app.manage(api);
+        }
+        Err(e) => {
+            tracing::error!("embedded API server did not start (app continues without it): {e:?}");
+            app.manage(commands::api::ApiInfo::disabled());
+        }
+    }
     app.manage(state);
 
     Ok(())

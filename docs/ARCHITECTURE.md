@@ -128,7 +128,7 @@ src-tauri/
     │   └── xlsx.rs                # rust_xlsxwriter
     ├── api/                       # axum background server (Rule 4 — independent task)
     │   ├── mod.rs
-    │   ├── server.rs              # tokio::spawn on 8080, oneshot graceful shutdown
+    │   ├── server.rs              # tokio::spawn on 127.0.0.1:22345 (auto-fallback, ADR 0015), oneshot shutdown
     │   ├── routes.rs              # GET /healthz, etc.
     │   └── cors.rs                # tower_http::cors policy
     └── commands/                  # tauri::command thin layer — IPC entry points

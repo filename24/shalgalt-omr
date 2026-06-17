@@ -217,8 +217,12 @@ Scan pipeline gains:
 
 ### 6.6 Auth strategy for the HTTP API
 
-- **Local mode** (default, used by Tauri): bound to `127.0.0.1`, no auth.
-- **Server mode**: bound to `0.0.0.0`, requires a Bearer token from env var
+- **Local mode** (default, used by Tauri): bound to `127.0.0.1:22345` (ADR 0015 — moved off
+  the contended 8080; auto-falls-back to the next free port if busy and advertises the
+  bound port via `app_data_dir/api-endpoint.json` + the `api_info` IPC command), no auth.
+  `SHALGALT_API_PORT` overrides the starting port for developers.
+- **Server mode**: bound to `0.0.0.0:22345` by default (configurable via `--bind`; no
+  fallback — a busy port is a hard error), requires a Bearer token from env var
   `SHALGALT_API_TOKEN`. CORS is allow-list driven from a config file.
 
 ### 6.7 Theming: light default, dark optional, no high-contrast
@@ -338,7 +342,7 @@ resolver = "2"
 | `shalgalt-cv` | `opencv`, `pdfium-render`, `shalgalt-core::domain` | `pub fn process_pdf(path, template) -> Result<Vec<ParsedSheet>>` with progress callback. |
 | `shalgalt-fileformat` | `zip`, `age`, `serde`, `serde_json`, `chrono`, `thiserror` (deliberately **not** `shalgalt-core` — streams opaque named blobs, stays domain-agnostic; see ADR 0011) | `open(path, passphrase?) -> Result<(Manifest, EntryIter)>`, `open_manifest_only(path) -> Result<Manifest>`, `write(path, &Manifest, entries, passphrase?) -> Result<()>`, plus `Manifest` / `ReadHandle` / `FileFormatError`. |
 | `apps/desktop` | all crates above + `shalgalt-store`, tauri 2 | Boot Tauri, register plugins, embed `shalgalt-core::api::router` over a read-only `shalgalt-store`. |
-| `apps/server` | `shalgalt-core`, `shalgalt-store` | Standalone CLI: `shalgalt-server --bind 0.0.0.0:8080 --db file.sqlite --allow-origin …`. |
+| `apps/server` | `shalgalt-core`, `shalgalt-store` | Standalone CLI: `shalgalt-server --bind 0.0.0.0:22345 --db file.sqlite --allow-origin …` (default port per ADR 0015). |
 
 ### 8.3 Frontend layout (additions)
 

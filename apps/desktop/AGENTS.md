@@ -44,8 +44,10 @@ of the critical rules:
 8. `tauri-plugin-sql` with the migrations vec attached to the `sqlite:shalgalt-omr.sqlite`
    URL.
 9. `setup` callback spawns `bootstrap(handle)` on `tauri::async_runtime` — resolves
-   `AppDirs`, prunes old PDF previews, then `api::spawn().await` and `app.manage(...)`
-   the resulting `ApiHandle` + `AppState`.
+   `AppDirs`, prunes old PDF previews, then `api::spawn().await`. The API is OPTIONAL
+   (ADR 0015): on success it manages the `ApiHandle` + `ApiInfo::running(port)` and writes
+   `api-endpoint.json`; on failure it logs and manages `ApiInfo::disabled()`. Either way
+   `AppState` is always managed, so a port collision never bricks IPC.
 10. `invoke_handler` registers the `tauri::generate_handler!` macro list.
 11. `run(tauri::generate_context!())`.
 
@@ -80,9 +82,14 @@ This crate is the **only** boundary that processes large user files. Every comma
 
 ### Rule 4 — axum Server Independence
 
-- `api::spawn(db_path)` returns an `ApiHandle` holding the oneshot shutdown sender. The
-  handle is `app.manage(...)`-ed so the server is shut down gracefully when the Tauri app
-  exits.
+- `api::spawn(db_path)` returns an `ApiHandle` holding the oneshot shutdown sender plus the
+  port actually bound (`ApiHandle::port()`). The handle is `app.manage(...)`-ed so the
+  server is shut down gracefully when the Tauri app exits.
+- **Port hardening (ADR 0015).** The default loopback port is `22345`, not 8080. If it is
+  busy, `api::spawn` auto-falls-back to the next free port in `[desired, desired+16)`; the
+  bound port is advertised via `app_data_dir/api-endpoint.json` and the `api_info` IPC
+  command. `SHALGALT_API_PORT` overrides the starting port for developers. A bind failure
+  is isolated — it must never skip `app.manage(state)` (the bug ADR 0015 fixes).
 - The router itself is built in `shalgalt_core::api::router(state)` — this crate only owns
   the spawn / port-binding / shutdown wiring plus the injected `DataStore`. `apps/server`
   (P5) reuses the same router with a read-write store.
@@ -124,6 +131,7 @@ not "DB code": all SQL lives in `crates/shalgalt-store`. See ADR 0014 for the ra
 | `pdf_generate_omr`                   | `commands/pdf.rs`        | `shalgalt-pdf` → file on disk.        |
 | `pdf_render_template_preview`        | `commands/pdf.rs`        | Cached preview via SHA-256 of template.|
 | `export_results_xlsx`                | `commands/export.rs`     | `shalgalt-core::export::xlsx`.        |
+| `api_info`                           | `commands/api.rs`        | Live embedded-API `{ running, port, base_url }` (ADR 0015). |
 
 Every command body is a thin shim: validate input → delegate to a workspace crate →
 convert anything that escapes to `AppError`. No business logic lives here.
