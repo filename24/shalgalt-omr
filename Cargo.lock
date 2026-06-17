@@ -5775,6 +5775,7 @@ dependencies = [
  "shalgalt-cv",
  "shalgalt-fileformat",
  "shalgalt-pdf",
+ "shalgalt-store",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

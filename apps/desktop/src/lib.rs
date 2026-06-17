@@ -240,11 +240,13 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
     // Drop preview cache files older than 24h before the editor opens.
     commands::pdf::prune_old_previews(&dirs.cache_dir);
 
+    let db_path = dirs.db_path();
     let state = AppState::new(dirs);
 
     // Rule 4: the axum server lives in its own task. Storing the handle via `manage` means
-    // it is dropped (and shut down gracefully) when the Tauri app exits.
-    let api: ApiHandle = api::spawn().await?;
+    // it is dropped (and shut down gracefully) when the Tauri app exits. It serves the
+    // `/v1/` REST surface read-only over the same SQLite file plugin-sql owns.
+    let api: ApiHandle = api::spawn(db_path).await?;
     app.manage(api);
     app.manage(state);
 

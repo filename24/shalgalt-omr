@@ -5,10 +5,12 @@
 //! so `apps/server` (P5-05) can reuse it without pulling in any Tauri code.
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use shalgalt_core::api::{cors::permissive, router, AppState, MemoryStore};
+use shalgalt_core::api::{cors::permissive, router, AppState};
 use shalgalt_core::error::{AppError, AppResult};
+use shalgalt_store::DeferredReadOnlyStore;
 use tokio::sync::oneshot;
 use tracing::{error, info};
 
@@ -33,12 +35,13 @@ impl Drop for ApiHandle {
 
 /// Bind the axum server on `127.0.0.1:8080` (Blueprint §2).
 ///
-/// The router is fed a read-only `DataStore`. P5 wires this to a `rusqlite` reader over the
-/// plugin-sql SQLite file; until that lands it serves an empty `MemoryStore` so the
-/// `/healthz` and `/v1/` surface is reachable without a database.
-pub async fn spawn() -> AppResult<ApiHandle> {
+/// `db_path` is the plugin-sql SQLite file. The router is fed a [`DeferredReadOnlyStore`]
+/// over it: the desktop's HTTP surface reads real exam/template/result data but never
+/// writes (plugin-sql owns writes — Rule: no DB writes in Rust). The store degrades to
+/// empty reads until plugin-sql lazily creates the file on the frontend's first query.
+pub async fn spawn(db_path: PathBuf) -> AppResult<ApiHandle> {
     let addr: SocketAddr = "127.0.0.1:8080".parse().expect("hardcoded addr");
-    let state = AppState::new(Arc::new(MemoryStore::read_only()));
+    let state = AppState::new(Arc::new(DeferredReadOnlyStore::new(db_path)));
     let app = router(state).layer(permissive());
 
     let listener = tokio::net::TcpListener::bind(addr)

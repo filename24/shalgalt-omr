@@ -15,7 +15,7 @@
 //! identical DDL `tauri-plugin-sql` runs — there is exactly one source of truth for the
 //! schema (`apps/desktop/migrations/`).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -281,6 +281,77 @@ impl DataStore for SqliteStore {
     }
 }
 
+/// A read-only `DataStore` that opens a fresh read-only connection per request and reports
+/// an empty database until the file exists.
+///
+/// The desktop needs this because `tauri-plugin-sql` creates the SQLite file lazily (on the
+/// frontend's first `Database.load`), which happens *after* the embedded HTTP server boots.
+/// A persistent connection would fail to open at boot; this defers the open to first use
+/// and degrades to empty reads while the file is still absent. Writes are always rejected.
+/// Traffic is local and low-volume, so per-request connection setup is acceptable.
+pub struct DeferredReadOnlyStore {
+    path: PathBuf,
+}
+
+impl DeferredReadOnlyStore {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into() }
+    }
+
+    /// `None` until the database file exists; afterwards a read-only handle to it.
+    fn reader(&self) -> AppResult<Option<SqliteStore>> {
+        if !self.path.exists() {
+            return Ok(None);
+        }
+        Ok(Some(SqliteStore::open_read_only(&self.path)?))
+    }
+}
+
+impl DataStore for DeferredReadOnlyStore {
+    fn list_exams(&self) -> AppResult<Vec<ExamDto>> {
+        match self.reader()? {
+            Some(s) => s.list_exams(),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    fn get_exam(&self, id: i64) -> AppResult<Option<ExamDto>> {
+        match self.reader()? {
+            Some(s) => s.get_exam(id),
+            None => Ok(None),
+        }
+    }
+
+    fn list_templates(&self) -> AppResult<Vec<TemplateSummaryDto>> {
+        match self.reader()? {
+            Some(s) => s.list_templates(),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    fn get_template(&self, id: i64) -> AppResult<Option<TemplateDto>> {
+        match self.reader()? {
+            Some(s) => s.get_template(id),
+            None => Ok(None),
+        }
+    }
+
+    fn list_results(&self, filter: ResultFilter) -> AppResult<Vec<ResultDto>> {
+        match self.reader()? {
+            Some(s) => s.list_results(filter),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    fn create_exam(&self, _input: NewExam) -> AppResult<ExamDto> {
+        Err(read_only())
+    }
+
+    fn create_result(&self, _input: NewResult) -> AppResult<ResultDto> {
+        Err(read_only())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,6 +420,34 @@ mod tests {
             .unwrap();
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].total_score, 12.5);
+    }
+
+    #[test]
+    fn deferred_store_is_empty_until_file_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("missing.sqlite");
+        let store = DeferredReadOnlyStore::new(path.clone());
+
+        // No file yet: reads are empty, writes rejected.
+        assert!(store.list_exams().unwrap().is_empty());
+        assert!(store.get_exam(1).unwrap().is_none());
+        assert!(matches!(
+            store
+                .create_exam(NewExam {
+                    name: "X".into(),
+                    template_id: 1,
+                })
+                .unwrap_err(),
+            AppError::BadRequest(_)
+        ));
+
+        // Once the file is bootstrapped, the same store reads through to it.
+        SqliteStore::open_read_write(&path)
+            .unwrap()
+            .migrate()
+            .unwrap();
+        assert!(store.list_exams().unwrap().is_empty());
+        assert!(store.get_template(1).unwrap().is_none());
     }
 
     #[test]

@@ -80,13 +80,15 @@ This crate is the **only** boundary that processes large user files. Every comma
 
 ### Rule 4 — axum Server Independence
 
-- `api::spawn()` returns an `ApiHandle` holding the oneshot shutdown sender. The handle
-  is `app.manage(...)`-ed so the server is shut down gracefully when the Tauri app exits.
-- The router itself is built in `shalgalt_core::api::routes` — this crate only owns the
-  spawn / port-binding / shutdown wiring. `apps/server` (P5) reuses the same router.
-- CORS is currently permissive (`Any` origin/method/header). P5-04 tightens it to an
-  allow-list before any production release. Server-mode bearer-token auth lands in the
-  same phase.
+- `api::spawn(db_path)` returns an `ApiHandle` holding the oneshot shutdown sender. The
+  handle is `app.manage(...)`-ed so the server is shut down gracefully when the Tauri app
+  exits.
+- The router itself is built in `shalgalt_core::api::router(state)` — this crate only owns
+  the spawn / port-binding / shutdown wiring plus the injected `DataStore`. `apps/server`
+  (P5) reuses the same router with a read-write store.
+- CORS stays permissive (`Any`) here because the socket is bound to `127.0.0.1` and only
+  the local webview can reach it. The allow-list + bearer auth posture is for `apps/server`
+  (Server mode, master plan §6.6), layered there, not here.
 
 ## Database Access Policy
 
@@ -96,6 +98,13 @@ talks to it via `@tauri-apps/plugin-sql`. Rust commands NEVER call into the DB.
 If a Rust task produces data that needs to land in SQLite (e.g., grading results), it
 emits an event and the frontend persists it. This keeps backend/frontend ownership
 boundaries clean and removes the question "which side has the up-to-date row?".
+
+**One carve-out (P5):** the embedded HTTP API reads SQLite through a *read-only*
+`shalgalt_store::DeferredReadOnlyStore` opened on `AppDirs::db_path()` (which resolves to
+`app_config_dir` — where `tauri-plugin-sql` actually writes, not `app_data_dir`). It opens
+`SQLITE_OPEN_READ_ONLY` and never issues a write, so plugin-sql remains the single writer
+and the "which side has the up-to-date row?" question is untouched. This is a pure reader,
+not "DB code": all SQL lives in `crates/shalgalt-store`. See ADR 0010 for the rationale.
 
 ### Migrations
 
