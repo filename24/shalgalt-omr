@@ -16,6 +16,7 @@
     type Exam,
     type AnswerKeyRecord,
   } from "$lib/types/exam";
+  import { variantNameSchema } from "$lib/schemas/answerKey";
   import type { AnswerKeyEntry } from "$lib/types/generated/AnswerKeyEntry";
   import type { BubbleGroup } from "$lib/types/template";
 
@@ -141,10 +142,10 @@
   async function saveVariant(): Promise<void> {
     if (!exam) return;
     const variant = variantDraft.trim();
-    if (variant === "") {
-      toast.error(mn.exams.detail.validateFailed, {
-        description: mn.exams.detail.variantLabel,
-      });
+    // Variant names must be the single printed letter (A/B/C…) so /grade
+    // auto-detection can match a scanned sheet's bubble to this key.
+    if (!variantNameSchema.safeParse(variant).success) {
+      toast.error(mn.exams.detail.variantInvalid);
       return;
     }
 

@@ -16,6 +16,17 @@ export const answerKeyEntrySchema = z.object({
   correct_indices: z.array(z.number().int().min(0)).min(1),
 });
 
+/**
+ * A variant name must be a single uppercase letter (A, B, C, …) — the exact
+ * letter printed on the sheet's variant bubble. `/grade` auto-detection maps a
+ * scanned sheet's variant mark to its answer key by string equality, so the
+ * stored name has to match the printed label or the sheet falls to review.
+ */
+export const variantNameSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Z]$/u, "variant must be a single uppercase letter A–Z");
+
 export const answerKeySchema = z.object({
   exam_id: z.number().int(),
   variant: z.string().min(1),

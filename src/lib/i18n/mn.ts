@@ -366,6 +366,7 @@ export const mn = {
       addVariant: "Хувилбар нэмэх",
       variantLabel: "Хувилбарын нэр",
       variantPlaceholder: "Жишээ: A",
+      variantInvalid: "Хувилбарын нэр нэг том үсэг байх ёстой (A, B, C…)",
       answerCount: "{count} хариулт",
       edit: "Засах",
       validateOk: "Хариултын түлхүүр зөв",
