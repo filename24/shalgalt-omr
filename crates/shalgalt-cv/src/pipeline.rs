@@ -331,11 +331,16 @@ fn process_one_page(
     // `None` when the code is blank or ambiguous, leaving the frontend to fall back
     // to a generated label.
     let student_id_text = shalgalt_core::decode_student_id(template, &readings);
+    // Decode which exam form the student bubbled so a mixed-variant batch can be
+    // graded sheet-by-sheet. `None` (no variant row, blank, or ambiguous mark)
+    // leaves variant selection to the grading orchestrator's fallback.
+    let variant = shalgalt_core::decode_variant(template, &readings);
 
     Ok(ParsedSheet {
         template_id,
         page_index: 0,
         student_id_text,
+        variant,
         readings,
     })
 }

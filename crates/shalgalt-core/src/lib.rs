@@ -14,5 +14,7 @@ pub mod error;
 pub mod export;
 pub mod grading;
 pub mod student_id;
+pub mod variant;
 
 pub use student_id::decode_student_id;
+pub use variant::decode_variant;

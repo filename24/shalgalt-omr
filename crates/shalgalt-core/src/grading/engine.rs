@@ -288,6 +288,7 @@ mod tests {
             template_id: 42,
             page_index: 0,
             student_id_text: None,
+            variant: None,
             readings,
         }
     }
@@ -558,6 +559,7 @@ mod tests {
             template_id: 7,
             page_index: 0,
             student_id_text: Some("00123".into()),
+            variant: None,
             readings: vec![
                 reading("sid", 0, 0.92),
                 reading("q1", 0, 0.92),

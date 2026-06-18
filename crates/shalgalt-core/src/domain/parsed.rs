@@ -68,5 +68,12 @@ pub struct ParsedSheet {
     /// resolution to the `students` table row id is the persistence layer's job.
     #[ts(optional, type = "string")]
     pub student_id_text: Option<String>,
+    /// Exam-form variant decoded from the `BubbleKind::Variant` row, as the
+    /// printed letter (`"A"`, `"B"`, …). `None` when the template has no variant
+    /// row, or the mark is blank/ambiguous. The grading orchestrator uses this to
+    /// pick the matching answer key for a mixed-variant batch; an unresolved
+    /// variant flags the sheet for manual review.
+    #[ts(optional, type = "string")]
+    pub variant: Option<String>,
     pub readings: Vec<BubbleReading>,
 }

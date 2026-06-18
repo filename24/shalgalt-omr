@@ -15,4 +15,12 @@ page_index: number,
  * [`GradedSheet::student_id_text`](super::result::GradedSheet::student_id_text);
  * resolution to the `students` table row id is the persistence layer's job.
  */
-student_id_text?: string, readings: Array<BubbleReading>, };
+student_id_text?: string, 
+/**
+ * Exam-form variant decoded from the `BubbleKind::Variant` row, as the
+ * printed letter (`"A"`, `"B"`, …). `None` when the template has no variant
+ * row, or the mark is blank/ambiguous. The grading orchestrator uses this to
+ * pick the matching answer key for a mixed-variant batch; an unresolved
+ * variant flags the sheet for manual review.
+ */
+variant?: string, readings: Array<BubbleReading>, };
