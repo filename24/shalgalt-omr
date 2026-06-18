@@ -66,6 +66,10 @@ pub enum BubbleKind {
     StudentId,
     /// Regular question.
     Question,
+    /// Exam-variant selector ("Хувилбар"). Marked by the student to declare which
+    /// form they sat, but never graded — treated like [`BubbleKind::StudentId`]:
+    /// excluded from the answer key and skipped by the scoring engine.
+    Variant,
 }
 
 /// A group of bubbles that share semantics (e.g. "question 1", "tens digit of student id").
@@ -114,4 +118,38 @@ fn current_version() -> u32 {
 
 impl OmrTemplate {
     pub const CURRENT_VERSION: u32 = 1;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bubble_kind_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&BubbleKind::StudentId).unwrap(),
+            "\"student_id\""
+        );
+        assert_eq!(
+            serde_json::to_string(&BubbleKind::Question).unwrap(),
+            "\"question\""
+        );
+        assert_eq!(
+            serde_json::to_string(&BubbleKind::Variant).unwrap(),
+            "\"variant\""
+        );
+    }
+
+    #[test]
+    fn bubble_kind_round_trips() {
+        for kind in [
+            BubbleKind::StudentId,
+            BubbleKind::Question,
+            BubbleKind::Variant,
+        ] {
+            let json = serde_json::to_string(&kind).unwrap();
+            let back: BubbleKind = serde_json::from_str(&json).unwrap();
+            assert_eq!(kind, back);
+        }
+    }
 }

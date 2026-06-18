@@ -243,6 +243,23 @@ mod tests {
         }
     }
 
+    fn variant_group(id: &str, options: u32) -> BubbleGroup {
+        BubbleGroup {
+            id: id.to_string(),
+            kind: BubbleKind::Variant,
+            label: id.to_string(),
+            bubbles: (0..options)
+                .map(|i| TemplatePoint {
+                    x: 0.1 + i as f32 * 0.05,
+                    y: 0.2,
+                })
+                .collect(),
+            answer_index: None,
+            score: 1.0,
+            section: None,
+        }
+    }
+
     fn template_with(groups: Vec<BubbleGroup>) -> OmrTemplate {
         OmrTemplate {
             version: OmrTemplate::CURRENT_VERSION,
@@ -559,6 +576,42 @@ mod tests {
         assert_eq!(result.answers.len(), 1, "student_id group is not graded");
         assert!(matches!(result.answers[0], GradedAnswer::Correct { .. }));
         assert_eq!(result.total_score, 1.0);
+    }
+
+    #[test]
+    fn variant_groups_are_never_scored_even_with_a_key_entry() {
+        // The variant row identifies which exam form the sheet is; it is marked by
+        // the student but must never be graded. Even if a stray answer-key entry
+        // exists for the variant group id, the engine skips it: no score, no answer.
+        let tpl = template_with(vec![
+            variant_group("variant", 5),
+            question("q1", 4, Some(0), 1.0),
+        ]);
+        let p = parsed(vec![
+            // Student marked variant "A" (index 0).
+            reading("variant", 0, 0.92),
+            reading("variant", 1, 0.05),
+            reading("variant", 2, 0.05),
+            reading("variant", 3, 0.05),
+            reading("variant", 4, 0.05),
+            // q1 correct.
+            reading("q1", 0, 0.92),
+            reading("q1", 1, 0.05),
+            reading("q1", 2, 0.05),
+            reading("q1", 3, 0.05),
+        ]);
+        // A defensive key entry for the variant group must not cause it to score.
+        let key = answer_key(vec![key_single("variant", 0), key_single("q1", 0)]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.answers.len(), 1, "variant group is not graded");
+        assert!(matches!(result.answers[0], GradedAnswer::Correct { .. }));
+        assert_eq!(
+            result.total_score, 1.0,
+            "only q1 contributes; the variant mark awards nothing"
+        );
+        assert!(!result.needs_review);
     }
 
     #[test]

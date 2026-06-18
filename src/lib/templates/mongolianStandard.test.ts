@@ -6,9 +6,11 @@ import {
 } from "./mongolianStandard";
 
 describe("createMongolianStandardTemplate", () => {
-  test("produces 51 groups in the expected sectional layout", () => {
+  test("produces 107 groups in the expected sectional layout", () => {
     const t = createMongolianStandardTemplate();
-    expect(t.groups).toHaveLength(51);
+    // 4 cipher rows + 1 variant row + 70 multi-choice questions + 4×8 numeric
+    // digit rows = 107 (matches the module-level inventory comment).
+    expect(t.groups).toHaveLength(107);
 
     const bySection = new Map<string, number>();
     for (const g of t.groups) {
@@ -18,7 +20,7 @@ describe("createMongolianStandardTemplate", () => {
 
     expect(bySection.get(STANDARD_SECTIONS.shifr)).toBe(4);
     expect(bySection.get(STANDARD_SECTIONS.variant)).toBe(1);
-    expect(bySection.get(STANDARD_SECTIONS.section1)).toBe(30);
+    expect(bySection.get(STANDARD_SECTIONS.section1)).toBe(70);
     expect(bySection.get(STANDARD_SECTIONS.section21)).toBe(8);
     expect(bySection.get(STANDARD_SECTIONS.section22)).toBe(8);
   });
@@ -46,14 +48,25 @@ describe("createMongolianStandardTemplate", () => {
     }
   });
 
-  test("Section 1 questions have 4 bubbles each (A/B/C/D options)", () => {
+  test("Section 1 questions have 5 bubbles each (A/B/C/D/E options)", () => {
     const t = createMongolianStandardTemplate();
     const sec1 = t.groups.filter((g) => g.section === STANDARD_SECTIONS.section1);
-    expect(sec1).toHaveLength(30);
+    expect(sec1).toHaveLength(70);
     for (const g of sec1) {
-      expect(g.bubbles).toHaveLength(4);
+      expect(g.bubbles).toHaveLength(5);
       expect(g.kind).toBe("question");
     }
+  });
+
+  test("variant row is kind 'variant' so it is never graded", () => {
+    const t = createMongolianStandardTemplate();
+    const variantRows = t.groups.filter(
+      (g) => g.section === STANDARD_SECTIONS.variant,
+    );
+    expect(variantRows).toHaveLength(1);
+    // Must NOT be a graded question — the variant selector identifies the exam
+    // form and is excluded from the answer key and the scoring engine.
+    expect(variantRows[0]!.kind).toBe("variant");
   });
 
   test("cipher rows are student_id with 10 digit bubbles each", () => {

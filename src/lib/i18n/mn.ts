@@ -105,6 +105,7 @@ export const mn = {
     groups: {
       kindStudentId: "Сурагчийн дугаар",
       kindQuestion: "Асуулт",
+      kindVariant: "Хувилбар",
       defaultLabel: "Шинэ бүлэг",
     },
     layers: {

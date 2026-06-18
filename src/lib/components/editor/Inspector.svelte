@@ -5,6 +5,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import { expand, infer, type GroupLayout } from "$lib/components/editor/groupLayout";
+  import type { BubbleKind } from "$lib/types/template";
 
   const selectedIndex = $derived.by(() => {
     if (!currentTemplate.draft || !editorSelection.selectedGroupId) return -1;
@@ -90,12 +91,13 @@
           if (currentTemplate.draft && selectedIndex >= 0) {
             currentTemplate.draft.groups[selectedIndex].kind = (
               e.target as HTMLSelectElement
-            ).value as "student_id" | "question";
+            ).value as BubbleKind;
           }
         }}
       >
         <option value="question">{mn.editor.groups.kindQuestion}</option>
         <option value="student_id">{mn.editor.groups.kindStudentId}</option>
+        <option value="variant">{mn.editor.groups.kindVariant}</option>
       </select>
     </section>
 
