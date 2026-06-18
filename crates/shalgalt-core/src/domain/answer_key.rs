@@ -18,6 +18,12 @@ use ts_rs::TS;
 pub struct AnswerKeyEntry {
     pub group_id: String,
     pub correct_indices: Vec<u32>,
+    /// Points this question is worth *in this exam*. `None` falls back to the
+    /// template's [`BubbleGroup::score`](super::template::BubbleGroup::score), so
+    /// one template can back exams that weight the same question differently and
+    /// pre-existing keys (authored before per-exam scoring) keep their behavior.
+    #[ts(optional, type = "number")]
+    pub score: Option<f32>,
 }
 
 /// Answer key for one variant of one exam.
@@ -42,5 +48,14 @@ impl AnswerKey {
             .iter()
             .find(|e| e.group_id == group_id)
             .map(|e| e.correct_indices.as_slice())
+    }
+
+    /// The per-exam points for a `BubbleGroup.id`, when this key overrides the
+    /// template default. `None` means "use the template's `BubbleGroup.score`".
+    pub fn score_for(&self, group_id: &str) -> Option<f32> {
+        self.answers
+            .iter()
+            .find(|e| e.group_id == group_id)
+            .and_then(|e| e.score)
     }
 }

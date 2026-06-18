@@ -12,6 +12,7 @@
    */
   import { mn } from "$lib/i18n";
   import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
   import type { BubbleGroup } from "$lib/types/template";
   import type { AnswerKeyEntry } from "$lib/types/generated/AnswerKeyEntry";
 
@@ -30,34 +31,45 @@
   // A plain reassigned object keeps Svelte 5 reactivity simple (we replace the
   // whole map on every mutation rather than mutating Sets in place).
   let selection = $state<Record<string, Set<number>>>({});
+  // Per-question points: group.id -> score. Seeded from the stored key's score
+  // when present, else the template's `BubbleGroup.score` default.
+  let scores = $state<Record<string, number>>({});
 
   // Initialize internal selection from the incoming `value`. Runs whenever the
   // parent assigns a new `value` (e.g. opening the edit dialog for a variant) or
   // the group set changes. We seed every question group so the map is complete.
   $effect(() => {
-    const next: Record<string, Set<number>> = {};
+    const nextSel: Record<string, Set<number>> = {};
+    const nextScores: Record<string, number> = {};
     for (const g of questionGroups) {
-      next[g.id] = new Set<number>();
+      nextSel[g.id] = new Set<number>();
+      nextScores[g.id] = g.score;
     }
     for (const entry of value) {
-      if (entry.group_id in next) {
-        next[entry.group_id] = new Set<number>(entry.correct_indices);
+      if (entry.group_id in nextSel) {
+        nextSel[entry.group_id] = new Set<number>(entry.correct_indices);
+        if (entry.score != null) nextScores[entry.group_id] = entry.score;
       }
     }
-    selection = next;
+    selection = nextSel;
+    scores = nextScores;
   });
 
   /**
    * Rebuild `value` from the current internal selection: one entry per question
-   * group, indices sorted ascending. Empty selections are intentionally kept so
-   * the parent can flag incomplete answer keys.
+   * group, indices sorted ascending and the question's points. Empty selections
+   * are intentionally kept so the parent can flag incomplete answer keys.
    */
-  function syncValue(next: Record<string, Set<number>>): void {
+  function syncValue(
+    nextSel: Record<string, Set<number>>,
+    nextScores: Record<string, number>,
+  ): void {
     const entries: AnswerKeyEntry[] = questionGroups.map((g) => ({
       group_id: g.id,
-      correct_indices: Array.from(next[g.id] ?? new Set<number>()).sort(
+      correct_indices: Array.from(nextSel[g.id] ?? new Set<number>()).sort(
         (a, b) => a - b,
       ),
+      score: nextScores[g.id] ?? g.score,
     }));
     value = entries;
     onChange?.(entries);
@@ -73,7 +85,13 @@
     }
     const next = { ...selection, [groupId]: updated };
     selection = next;
-    syncValue(next);
+    syncValue(next, scores);
+  }
+
+  function setScore(groupId: string, value: number): void {
+    const next = { ...scores, [groupId]: Math.max(0, value) };
+    scores = next;
+    syncValue(selection, next);
   }
 
   function isSelected(groupId: string, index: number): boolean {
@@ -98,7 +116,7 @@
           : new Set<number>();
     }
     selection = next;
-    syncValue(next);
+    syncValue(next, scores);
   }
 
   // Prefer "section · label" when a section grouping is present.
@@ -156,6 +174,18 @@
               </Button>
             {/each}
           </div>
+          <label class="text-muted-foreground flex items-center gap-1.5 text-xs">
+            {mn.exams.answerKey.points}
+            <Input
+              type="number"
+              min="0"
+              step="0.5"
+              class="h-8 w-16"
+              value={scores[group.id] ?? group.score}
+              oninput={(e) =>
+                setScore(group.id, Number((e.target as HTMLInputElement).value))}
+            />
+          </label>
           {#if isEmpty(group.id)}
             <span class="text-muted-foreground/70 text-xs italic">
               {mn.exams.answerKey.excluded}

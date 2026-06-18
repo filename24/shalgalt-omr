@@ -94,7 +94,9 @@ pub fn grade(
             continue;
         }
 
-        let (graded, awarded) = classify_question(&group.id, group.score, &filled, &correct);
+        // Per-exam score overrides the template default when the key carries one.
+        let group_score = answer_key.score_for(&group.id).unwrap_or(group.score);
+        let (graded, awarded) = classify_question(&group.id, group_score, &filled, &correct);
         total_score += awarded;
         answers.push(graded);
     }
@@ -302,6 +304,7 @@ mod tests {
         AnswerKeyEntry {
             group_id: group_id.to_string(),
             correct_indices: vec![correct],
+            score: None,
         }
     }
 
@@ -309,6 +312,7 @@ mod tests {
         AnswerKeyEntry {
             group_id: group_id.to_string(),
             correct_indices: correct,
+            score: None,
         }
     }
 
@@ -345,6 +349,46 @@ mod tests {
                 marked_indices: vec![2],
             }
         );
+    }
+
+    #[test]
+    fn per_exam_score_overrides_the_template_default() {
+        // Template says this question is worth 1.0, but the exam's answer key
+        // weights it 5.0 — a correct answer must earn the key's score, not the
+        // template's.
+        let tpl = template_with(vec![question("q1", 4, Some(2), 1.0)]);
+        let p = parsed(vec![
+            reading("q1", 0, 0.05),
+            reading("q1", 1, 0.10),
+            reading("q1", 2, 0.92),
+            reading("q1", 3, 0.08),
+        ]);
+        let key = answer_key(vec![AnswerKeyEntry {
+            group_id: "q1".into(),
+            correct_indices: vec![2],
+            score: Some(5.0),
+        }]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.total_score, 5.0);
+    }
+
+    #[test]
+    fn missing_key_score_falls_back_to_template_score() {
+        // No per-exam score on the entry → the template's 2.5 is used.
+        let tpl = template_with(vec![question("q1", 4, Some(2), 2.5)]);
+        let p = parsed(vec![
+            reading("q1", 0, 0.05),
+            reading("q1", 1, 0.10),
+            reading("q1", 2, 0.92),
+            reading("q1", 3, 0.08),
+        ]);
+        let key = answer_key(vec![key_single("q1", 2)]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.total_score, 2.5);
     }
 
     #[test]

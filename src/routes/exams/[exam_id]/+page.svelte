@@ -131,6 +131,7 @@
     draftAnswers = rec.answers.map((a) => ({
       group_id: a.group_id,
       correct_indices: [...a.correct_indices],
+      score: a.score,
     }));
     formOpen = true;
   }

@@ -50,6 +50,7 @@ mod tests {
             answers: vec![AnswerKeyEntry {
                 group_id: "q1".into(),
                 correct_indices: vec![0],
+                score: None,
             }],
         }
     }

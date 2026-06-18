@@ -14,6 +14,9 @@ import { z } from "zod";
 export const answerKeyEntrySchema = z.object({
   group_id: z.string().min(1),
   correct_indices: z.array(z.number().int().min(0)).min(1),
+  // Per-exam points for this question. Optional — absent means "use the
+  // template's BubbleGroup.score" (mirrors `AnswerKeyEntry.score: Option<f32>`).
+  score: z.number().nonnegative().optional(),
 });
 
 /**

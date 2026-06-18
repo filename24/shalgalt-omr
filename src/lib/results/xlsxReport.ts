@@ -23,19 +23,21 @@ export interface BuildReportInput {
 }
 
 /**
- * Resolve a `BubbleGroup.id` to its display label and max score, falling back to
- * the id and zero. The breakdown sheet needs the per-question max score to turn a
- * graded outcome into earned points.
+ * Resolve one answer-key entry to its display label and effective max score. The
+ * label comes from the template group (fallback: the id). The score prefers the
+ * entry's per-exam score and falls back to the template's `BubbleGroup.score` —
+ * the same precedence the grading engine applies — so the breakdown sheet's
+ * earned points always agree with the totals.
  */
 function questionColumnFor(
   template: OmrTemplate,
-  groupId: string,
+  entry: { group_id: string; score?: number },
 ): { group_id: string; label: string; score: number } {
-  const group = template.groups.find((g) => g.id === groupId);
+  const group = template.groups.find((g) => g.id === entry.group_id);
   return {
-    group_id: groupId,
-    label: group?.label?.trim() ? group.label : groupId,
-    score: group?.score ?? 0,
+    group_id: entry.group_id,
+    label: group?.label?.trim() ? group.label : entry.group_id,
+    score: entry.score ?? group?.score ?? 0,
   };
 }
 
@@ -57,7 +59,7 @@ function studentLabel(
  */
 export function buildXlsxReport(input: BuildReportInput): XlsxReport {
   const questions = input.answerKey.answers.map((entry) =>
-    questionColumnFor(input.template, entry.group_id),
+    questionColumnFor(input.template, entry),
   );
 
   const rows = input.sheets.map((sheet, i) => ({

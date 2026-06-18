@@ -67,6 +67,22 @@ describe("buildXlsxReport", () => {
     ]);
   });
 
+  test("prefers the answer key's per-exam score over the template default", () => {
+    const report = buildXlsxReport({
+      title: "Сорил",
+      template: template([{ id: "q1", label: "1", score: 1 }]),
+      // The exam weights q1 at 5 points, overriding the template's 1.
+      answerKey: {
+        exam_id: 1,
+        variant: "A",
+        answers: [{ group_id: "q1", correct_indices: [0], score: 5 }],
+      },
+      sheets: [],
+      studentFallback: "Сурагч",
+    });
+    expect(report.questions[0]).toEqual({ group_id: "q1", label: "1", score: 5 });
+  });
+
   test("falls back to group id and zero score when the template has no match", () => {
     const report = buildXlsxReport({
       title: "Сорил",
