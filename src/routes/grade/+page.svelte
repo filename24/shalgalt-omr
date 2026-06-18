@@ -13,6 +13,7 @@
   import { listAnswerKeysByExam } from "$lib/db/answerKeys";
   import { createJob, completeJob, updateJobProgress } from "$lib/db/jobs";
   import { toAnswerKey } from "$lib/types/exam";
+  import { answerKeyMatchesTemplate } from "$lib/grade/validateAnswerKey";
   import { mn } from "$lib/i18n";
 
   import { Button } from "$lib/components/ui/button";
@@ -153,9 +154,20 @@
       return;
     }
 
+    // Guard against a silent total-skip: grading drops any question group the
+    // answer key does not target, so a key that matches *zero* of the template's
+    // question groups (stale ids after a template edit, or sheets printed from a
+    // different template) would yield empty results with no explanation. Refuse
+    // to start and tell the teacher to check the key instead.
+    const answerKey = toAnswerKey(selectedAnswerKey);
+    if (!answerKeyMatchesTemplate(selectedTemplate.schema, answerKey)) {
+      toast.error(mn.grade.errors.answerKeyMismatch);
+      return;
+    }
+
     // The exam picker guarantees a well-formed key, so no JSON validation is
     // needed — project it to the `AnswerKey` domain shape grading consumes.
-    const answerKeyJson = JSON.stringify(toAnswerKey(selectedAnswerKey));
+    const answerKeyJson = JSON.stringify(answerKey);
     const templateId = selectedExam.template_id;
 
     busy = true;
