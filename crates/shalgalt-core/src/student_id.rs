@@ -7,22 +7,33 @@
 //! crate where it is testable without OpenCV.
 //!
 //! Decoding contract:
-//! - Each `BubbleKind::StudentId` group contributes exactly one digit. The digit
-//!   is the **index** of the group's confidently-filled bubble
-//!   (`BubbleReading::is_filled`, i.e. `fill > 0.65`). Templates must order the
-//!   bubbles `0, 1, 2, …` so the index equals the printed digit value.
-//! - When a group has more than one filled bubble (an erasure, a double mark),
-//!   the darkest one (highest `fill`) wins.
-//! - The decode is **all-or-nothing**: if any StudentId group is blank or has no
-//!   confidently-filled bubble, the positional code cannot be trusted, so the
-//!   whole read returns `None` and the caller falls back to a generated label.
+//! - Each `BubbleKind::StudentId` group contributes exactly one digit. Because a
+//!   cipher row is a "select exactly one of 0–9" structure, the digit is the
+//!   **index of the unambiguously darkest bubble** in the row — selected
+//!   *relative* to its row-mates, not against the absolute `is_filled` (`> 0.65`)
+//!   band used for grading. Real scans of photocopied sheets routinely land a
+//!   genuinely-marked cipher bubble right at ~0.65; demanding `> 0.65` made the
+//!   whole code unreadable whenever one digit grazed the boundary. Templates must
+//!   order the bubbles `0, 1, 2, …` so the index equals the printed digit value.
+//! - A row is accepted only when its darkest bubble (a) clears the
+//!   confidently-unfilled band (`> 0.35`, so a blank row is rejected) and (b)
+//!   leads the runner-up by at least [`MIN_SEPARATION`] (so an erasure or a
+//!   genuine double-mark is rejected as ambiguous rather than guessed).
+//! - The decode is **all-or-nothing**: if any StudentId row is blank or
+//!   ambiguous, the positional code cannot be trusted, so the whole read returns
+//!   `None` and the caller falls back to a generated label.
 //! - A template with no StudentId group returns `None`.
 
 use crate::domain::{BubbleKind, BubbleReading, OmrTemplate};
 
+/// Minimum fill gap between a cipher row's darkest bubble and its runner-up for
+/// the darkest to count as the selected digit. Below this the row reads as an
+/// erasure / double-mark and the whole code is rejected as untrustworthy.
+const MIN_SEPARATION: f32 = 0.15;
+
 /// Decode the student id text from `readings` against `template`.
 ///
-/// Returns `Some(code)` only when every `StudentId` group yields a confident
+/// Returns `Some(code)` only when every `StudentId` group yields an unambiguous
 /// digit; otherwise `None`. See the module docs for the full contract.
 pub fn decode_student_id(template: &OmrTemplate, readings: &[BubbleReading]) -> Option<String> {
     let mut code = String::new();
@@ -34,7 +45,7 @@ pub fn decode_student_id(template: &OmrTemplate, readings: &[BubbleReading]) -> 
         }
         saw_student_id_group = true;
 
-        let digit = best_filled_index(&group.id, readings)?;
+        let digit = best_marked_index(&group.id, readings)?;
         code.push_str(&digit.to_string());
     }
 
@@ -44,14 +55,25 @@ pub fn decode_student_id(template: &OmrTemplate, readings: &[BubbleReading]) -> 
     Some(code)
 }
 
-/// The index of the confidently-filled bubble with the highest fill for `group_id`,
-/// or `None` when no reading for the group clears the filled band.
-fn best_filled_index(group_id: &str, readings: &[BubbleReading]) -> Option<u32> {
-    readings
-        .iter()
-        .filter(|r| r.group_id == group_id && r.is_filled())
-        .max_by(|a, b| a.fill.total_cmp(&b.fill))
-        .map(|r| r.bubble_index)
+/// The index of the unambiguously darkest bubble for `group_id`, or `None` when
+/// the row is blank (darkest still reads as empty paper) or ambiguous (the two
+/// darkest bubbles are within [`MIN_SEPARATION`]).
+fn best_marked_index(group_id: &str, readings: &[BubbleReading]) -> Option<u32> {
+    let mut row: Vec<&BubbleReading> = readings.iter().filter(|r| r.group_id == group_id).collect();
+    row.sort_by(|a, b| b.fill.total_cmp(&a.fill));
+
+    let darkest = row.first()?;
+    // Blank row: even its darkest bubble sits in the confidently-unfilled band, so
+    // there is no mark to read.
+    if darkest.fill <= BubbleReading::FILL_UNFILLED_MAX {
+        return None;
+    }
+    // Ambiguous row: a second bubble is nearly as dark (erasure / double-mark).
+    let runner_up = row.get(1).map_or(0.0, |r| r.fill);
+    if darkest.fill - runner_up < MIN_SEPARATION {
+        return None;
+    }
+    Some(darkest.bubble_index)
 }
 
 #[cfg(test)]
@@ -159,12 +181,61 @@ mod tests {
     }
 
     #[test]
-    fn uncertain_only_row_yields_none() {
-        // The darkest bubble sits in the uncertain band (not confidently filled),
-        // so the row has no trustworthy digit and the whole read is rejected.
+    fn borderline_filled_marks_decode() {
+        // Regression for the reported bug: a real scan landed every cipher mark at
+        // ~0.65 — right on the grading "filled" boundary, with one digit dipping
+        // just under it. The old `> 0.65` rule rejected the whole code. A
+        // select-one row reads the unambiguous darkest mark regardless of the
+        // absolute fill level, so this must decode.
+        let tpl = template_with(vec![
+            group("shifr-0", BubbleKind::StudentId, 10),
+            group("shifr-1", BubbleKind::StudentId, 10),
+            group("shifr-2", BubbleKind::StudentId, 10),
+            group("shifr-3", BubbleKind::StudentId, 10),
+        ]);
+        let mut readings = Vec::new();
+        // Marked bubble at ~0.65 (incl. just below the filled band), rest blank.
+        readings.extend((0..10).map(|i| reading("shifr-0", i, if i == 1 { 0.652 } else { 0.05 })));
+        readings.extend((0..10).map(|i| reading("shifr-1", i, if i == 0 { 0.68 } else { 0.05 })));
+        readings.extend((0..10).map(|i| reading("shifr-2", i, if i == 0 { 0.649 } else { 0.05 })));
+        readings.extend((0..10).map(|i| reading("shifr-3", i, if i == 0 { 0.68 } else { 0.05 })));
+
+        assert_eq!(decode_student_id(&tpl, &readings).as_deref(), Some("1000"));
+    }
+
+    #[test]
+    fn lone_light_mark_is_decoded() {
+        // A single bubble marked in the uncertain band with the rest of the row
+        // clearly blank is an unambiguous selection — read it rather than falling
+        // back. (Grading still flags such a bubble for review; student-id decode is
+        // a separate, relative decision.)
         let tpl = template_with(vec![group("shifr-0", BubbleKind::StudentId, 10)]);
         let readings: Vec<_> = (0..10)
             .map(|i| reading("shifr-0", i, if i == 4 { 0.50 } else { 0.05 }))
+            .collect();
+
+        assert_eq!(decode_student_id(&tpl, &readings).as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn ambiguous_two_close_marks_yield_none() {
+        // Two bubbles within `MIN_SEPARATION` of each other — an erasure or a
+        // double-mark. The row is untrustworthy, so the whole code is rejected.
+        let tpl = template_with(vec![group("shifr-0", BubbleKind::StudentId, 10)]);
+        let readings: Vec<_> = (0..10)
+            .map(|i| {
+                reading(
+                    "shifr-0",
+                    i,
+                    if i == 3 {
+                        0.62
+                    } else if i == 7 {
+                        0.55
+                    } else {
+                        0.05
+                    },
+                )
+            })
             .collect();
 
         assert_eq!(decode_student_id(&tpl, &readings), None);
