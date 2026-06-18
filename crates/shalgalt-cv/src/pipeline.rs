@@ -331,6 +331,12 @@ fn process_one_page(
     // `None` when the code is blank or ambiguous, leaving the frontend to fall back
     // to a generated label.
     let student_id_text = shalgalt_core::decode_student_id(template, &readings);
+    // Log the decode outcome so a failed student-id read is diagnosable from the
+    // app log instead of silently falling back to a generated label. On `None`,
+    // dump each StudentId row's strongest bubble + fill band so we can tell apart
+    // "blank sheet", "marks too light (uncertain band)", and "sampled empty paper
+    // / coordinate mismatch" without a debugger.
+    diagnose_student_id(template, &readings, student_id_text.as_deref());
     // Decode which exam form the student bubbled so a mixed-variant batch can be
     // graded sheet-by-sheet. `None` (no variant row, blank, or ambiguous mark)
     // leaves variant selection to the grading orchestrator's fallback.
@@ -343,6 +349,70 @@ fn process_one_page(
         variant,
         readings,
     })
+}
+
+/// Log the student-id decode outcome for one page. Cheap, runs once per sheet.
+///
+/// On success we log the decoded code at `debug`. On failure we `warn` with a
+/// per-row breakdown — for every `StudentId` group, the index and fill of its
+/// darkest bubble plus the band it lands in (`filled`/`uncertain`/`unfilled`).
+/// That is enough to distinguish the three realistic failure modes:
+/// - all rows `unfilled` near 0.0 → the rows sampled blank paper (coordinate or
+///   warp mismatch between the rendered cipher block and the template);
+/// - the darkest bubble in the `uncertain` band → marks too light to clear the
+///   0.65 filled threshold;
+/// - some rows filled, others blank → the student left positions empty.
+fn diagnose_student_id(template: &OmrTemplate, readings: &[BubbleReading], decoded: Option<&str>) {
+    let sid_groups: Vec<&str> = template
+        .groups
+        .iter()
+        .filter(|g| g.kind == BubbleKind::StudentId)
+        .map(|g| g.id.as_str())
+        .collect();
+
+    if sid_groups.is_empty() {
+        tracing::debug!("student-id decode: template has no StudentId group");
+        return;
+    }
+    if let Some(code) = decoded {
+        tracing::debug!(
+            student_id = code,
+            rows = sid_groups.len(),
+            "student-id decoded"
+        );
+        return;
+    }
+
+    let rows: Vec<String> = sid_groups
+        .iter()
+        .map(|gid| {
+            match readings
+                .iter()
+                .filter(|r| r.group_id == *gid)
+                .max_by(|a, b| a.fill.total_cmp(&b.fill))
+            {
+                Some(best) => {
+                    let band = if best.is_filled() {
+                        "filled"
+                    } else if best.is_uncertain() {
+                        "uncertain"
+                    } else {
+                        "unfilled"
+                    };
+                    format!(
+                        "{gid}: idx={} fill={:.2} {band}",
+                        best.bubble_index, best.fill
+                    )
+                }
+                None => format!("{gid}: no readings"),
+            }
+        })
+        .collect();
+
+    tracing::warn!(
+        rows = %rows.join(" | "),
+        "student-id decode failed (falling back to generated label)"
+    );
 }
 
 /// Hash the template title into a stable `i64`. The persistence layer assigns the
