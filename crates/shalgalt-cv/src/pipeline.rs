@@ -121,7 +121,12 @@ pub(crate) async fn run(
         }
     }
 
-    emit(&progress_tx, &task_id, total, total, TaskStage::Done, None).await;
+    // Do NOT emit `TaskStage::Done` here. This is only the CV half of the job —
+    // the grading command (`apps/desktop/src/commands/scan.rs`) still has to score
+    // each sheet, emit a `task-result` per page, and only then emit the terminal
+    // `Done`. Emitting `Done` now races the frontend into finalizing the job before
+    // any `task-result` arrives, persisting an empty `graded_sheets` array. The
+    // orchestrating caller owns the terminal stage (see cv `AGENTS.md` Rule 2).
     Ok(sheets)
 }
 
