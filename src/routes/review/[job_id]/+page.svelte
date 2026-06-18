@@ -118,6 +118,33 @@
     }
   }
 
+  /**
+   * Assign a variant to the open sheet and re-grade against that variant's key.
+   * Lets the teacher resolve a sheet whose variant the CV could not read (or
+   * read wrong) instead of re-scanning it.
+   */
+  async function assignVariant(nextVariant: string): Promise<void> {
+    if (!template || !selected || !job) return;
+    const key = answerKeys.find((k) => k.variant === nextVariant);
+    if (!key) return;
+    const idx = selectedIndex;
+    const updatedParsed = { ...selected.parsed, variant: nextVariant };
+
+    try {
+      const newGraded = await regradeSheet({
+        templateJson: JSON.stringify(template),
+        parsedSheetJson: JSON.stringify(updatedParsed),
+        answerKeyJson: JSON.stringify(key),
+      });
+      sheets = sheets.map((s, i) =>
+        i === idx ? { ...s, parsed: updatedParsed, graded: newGraded } : s,
+      );
+      dirtyIndexes = new Set([...dirtyIndexes, idx]);
+    } catch (e) {
+      toast.error(mn.review.regradeFailed, { description: String(e) });
+    }
+  }
+
   async function saveCurrent(): Promise<void> {
     if (!job || !selected) return;
     const idx = selectedIndex;
@@ -252,15 +279,37 @@
           {/if}
         </div>
         {#if selected}
-          <footer class="flex items-center justify-between border-t pt-2 text-sm">
+          <footer class="flex items-center justify-between gap-3 border-t pt-2 text-sm">
             <p>
               {mn.review.pageHeader} {selected.page_index + 1} —
               {mn.review.score}: {selected.graded.total_score.toFixed(1)}
             </p>
-            <Button size="sm" onclick={saveCurrent}>
-              <SaveIcon />
-              {mn.review.saveSheet}
-            </Button>
+            <div class="flex items-center gap-2">
+              {#if answerKeys.length > 1}
+                <label class="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  {mn.review.variantLabel}
+                  <select
+                    class="border-input bg-background text-foreground h-8 rounded-md border px-2 text-sm"
+                    value={selected.parsed.variant ?? ""}
+                    onchange={(e) =>
+                      assignVariant((e.target as HTMLSelectElement).value)}
+                  >
+                    {#if !selectedAnswerKey}
+                      <option value="" disabled>
+                        {mn.review.variantUnresolved}
+                      </option>
+                    {/if}
+                    {#each answerKeys as k (k.variant)}
+                      <option value={k.variant}>{k.variant}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+              <Button size="sm" onclick={saveCurrent}>
+                <SaveIcon />
+                {mn.review.saveSheet}
+              </Button>
+            </div>
           </footer>
         {/if}
       </div>

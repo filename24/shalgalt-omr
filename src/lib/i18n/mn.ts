@@ -254,6 +254,8 @@ export const mn = {
     regradeFailed: "Шинэчлэн шалгах үед алдаа гарлаа",
     regradeNoVariant:
       "Энэ хуудасны хувилбар тодорхойгүй тул дүгнэх боломжгүй.",
+    variantLabel: "Хувилбар:",
+    variantUnresolved: "Тодорхойгүй",
     legend: {
       correct: "Зөв",
       wrong: "Буруу",
