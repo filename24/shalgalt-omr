@@ -31,6 +31,11 @@ pub struct QuestionColumn {
 #[ts(export, export_to = "../../../src/lib/types/generated/")]
 pub struct StudentRow {
     pub label: String,
+    /// Exam-form variant the sheet was graded against (the printed letter, e.g.
+    /// `"A"`). `None` for single-variant exams or sheets whose variant could not
+    /// be resolved; the writer prints an empty cell.
+    #[ts(optional, type = "string")]
+    pub variant: Option<String>,
     pub total_score: f64,
     pub needs_review: bool,
     pub answers: Vec<GradedAnswer>,
@@ -59,6 +64,7 @@ pub struct ReportLabels {
     /// Summary sheet headers.
     pub col_index: String,
     pub col_student: String,
+    pub col_variant: String,
     pub col_score: String,
     pub col_status: String,
     /// Per-question sheet headers.
@@ -279,6 +285,7 @@ mod tests {
     fn row(label: &str, answers: Vec<GradedAnswer>) -> StudentRow {
         StudentRow {
             label: label.into(),
+            variant: None,
             total_score: 0.0,
             needs_review: false,
             answers,

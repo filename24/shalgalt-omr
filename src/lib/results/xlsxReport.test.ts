@@ -25,11 +25,12 @@ function sheet(
   score: number,
   needsReview: boolean,
   answers: GradedAnswer[],
+  variant?: string,
 ): GradedJobSheet {
   return {
     page_index: 0,
     page_image_path: "/tmp/x.png",
-    parsed: { student_id_text: idText } as never,
+    parsed: { student_id_text: idText, variant } as never,
     graded: {
       template_id: 1,
       student_id: null,
@@ -92,6 +93,22 @@ describe("buildXlsxReport", () => {
     expect(report.rows[0]!.total_score).toBe(1);
     expect(report.rows[0]!.needs_review).toBe(false);
     expect(report.rows[0]!.answers).toBe(answers);
+  });
+
+  test("carries the decoded variant onto the row, null when absent", () => {
+    const report = buildXlsxReport({
+      title: "Сорил",
+      template: template([{ id: "q1", label: "1" }]),
+      answerKey: answerKey(["q1"]),
+      sheets: [
+        sheet("00123", 1, false, [], "B"),
+        sheet("00124", 1, false, []),
+      ],
+      studentFallback: "Сурагч",
+    });
+
+    expect(report.rows[0]!.variant).toBe("B");
+    expect(report.rows[1]!.variant).toBeUndefined();
   });
 
   test("uses an indexed fallback label when no student id was read", () => {

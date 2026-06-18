@@ -13,7 +13,7 @@ summary_sheet: string, per_question_sheet: string, errors_sheet: string,
 /**
  * Summary sheet headers.
  */
-col_index: string, col_student: string, col_score: string, col_status: string, 
+col_index: string, col_student: string, col_variant: string, col_score: string, col_status: string, 
 /**
  * Per-question sheet headers.
  */

@@ -52,6 +52,9 @@ export function buildXlsxReport(input: BuildReportInput): XlsxReport {
 
   const rows = input.sheets.map((sheet, i) => ({
     label: studentLabel(sheet, i, input.studentFallback),
+    // The exam-form variant the sheet was graded against; omitted (→ empty cell
+    // in the workbook) for single-variant exams or unresolved sheets.
+    variant: sheet.parsed.variant ?? undefined,
     total_score: sheet.graded.total_score,
     needs_review: sheet.graded.needs_review,
     answers: sheet.graded.answers,
@@ -73,6 +76,7 @@ export function buildReportLabels(): ReportLabels {
     errors_sheet: e.sheetErrors,
     col_index: e.colIndex,
     col_student: e.colStudent,
+    col_variant: e.colVariant,
     col_score: e.colScore,
     col_status: e.colStatus,
     col_question: e.colQuestion,

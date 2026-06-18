@@ -6,4 +6,10 @@ import type { GradedAnswer } from "./GradedAnswer";
  * (roster match), or the raw bubbled id, or a host-supplied fallback — the
  * frontend decides, this crate only prints it.
  */
-export type StudentRow = { label: string, total_score: number, needs_review: boolean, answers: Array<GradedAnswer>, };
+export type StudentRow = { label: string, 
+/**
+ * Exam-form variant the sheet was graded against (the printed letter, e.g.
+ * `"A"`). `None` for single-variant exams or sheets whose variant could not
+ * be resolved; the writer prints an empty cell.
+ */
+variant?: string, total_score: number, needs_review: boolean, answers: Array<GradedAnswer>, };

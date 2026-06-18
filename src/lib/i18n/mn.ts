@@ -318,6 +318,7 @@ export const mn = {
       sheetErrors: "Алдаа",
       colIndex: "№",
       colStudent: "Сурагч",
+      colVariant: "Хувилбар",
       colScore: "Оноо",
       colStatus: "Төлөв",
       colQuestion: "Асуулт",

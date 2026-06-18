@@ -68,29 +68,35 @@ fn write_summary(
     sheet.set_name(&labels.summary_sheet)?;
     sheet.set_column_width(0, 6)?;
     sheet.set_column_width(1, 28)?;
-    sheet.set_column_width(2, 12)?;
-    sheet.set_column_width(3, 18)?;
+    sheet.set_column_width(2, 10)?;
+    sheet.set_column_width(3, 12)?;
+    sheet.set_column_width(4, 18)?;
 
     sheet.write_string_with_format(0, 0, &report.title, title)?;
 
     const HEADER_ROW: u32 = 1;
+    // Column layout: index | student | variant | score | status.
+    const SCORE_COL: u16 = 3;
     sheet.write_string_with_format(HEADER_ROW, 0, &labels.col_index, header)?;
     sheet.write_string_with_format(HEADER_ROW, 1, &labels.col_student, header)?;
-    sheet.write_string_with_format(HEADER_ROW, 2, &labels.col_score, header)?;
-    sheet.write_string_with_format(HEADER_ROW, 3, &labels.col_status, header)?;
+    sheet.write_string_with_format(HEADER_ROW, 2, &labels.col_variant, header)?;
+    sheet.write_string_with_format(HEADER_ROW, SCORE_COL, &labels.col_score, header)?;
+    sheet.write_string_with_format(HEADER_ROW, 4, &labels.col_status, header)?;
 
     let first_data = HEADER_ROW + 1;
     for (i, row) in report.rows.iter().enumerate() {
         let r = first_data + i as u32;
         sheet.write_number(r, 0, (i + 1) as f64)?;
         sheet.write_string(r, 1, &row.label)?;
-        sheet.write_number(r, 2, row.total_score)?;
+        // Empty cell for sheets with no resolved variant (single-variant exams).
+        sheet.write_string(r, 2, row.variant.as_deref().unwrap_or(""))?;
+        sheet.write_number(r, SCORE_COL, row.total_score)?;
         let status = if row.needs_review {
             &labels.status_needs_review
         } else {
             &labels.status_ok
         };
-        sheet.write_string(r, 3, status)?;
+        sheet.write_string(r, 4, status)?;
     }
 
     // Conditional format: zero scores stand out (master plan P5-01 "red on zeros").
@@ -99,7 +105,7 @@ fn write_summary(
         let rule = ConditionalFormatCell::new()
             .set_rule(ConditionalFormatCellRule::EqualTo(0.0))
             .set_format(zero_red);
-        sheet.add_conditional_format(first_data, 2, last, 2, &rule)?;
+        sheet.add_conditional_format(first_data, SCORE_COL, last, SCORE_COL, &rule)?;
     }
 
     Ok(())
@@ -227,6 +233,7 @@ mod tests {
             errors_sheet: "errors".into(),
             col_index: "no".into(),
             col_student: "student".into(),
+            col_variant: "variant".into(),
             col_score: "score".into(),
             col_status: "status".into(),
             col_question: "question".into(),
@@ -264,6 +271,7 @@ mod tests {
             rows: vec![
                 StudentRow {
                     label: "student-a".into(),
+                    variant: Some("A".into()),
                     total_score: 2.0,
                     needs_review: false,
                     answers: vec![
@@ -279,6 +287,7 @@ mod tests {
                 },
                 StudentRow {
                     label: "student-b".into(),
+                    variant: None,
                     total_score: 0.0,
                     needs_review: true,
                     answers: vec![
