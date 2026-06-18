@@ -252,6 +252,8 @@ export const mn = {
     saveSuccess: "Хадгалагдлаа",
     saveFailed: "Хадгалах үед алдаа гарлаа",
     regradeFailed: "Шинэчлэн шалгах үед алдаа гарлаа",
+    regradeNoVariant:
+      "Энэ хуудасны хувилбар тодорхойгүй тул дүгнэх боломжгүй.",
     legend: {
       correct: "Зөв",
       wrong: "Буруу",

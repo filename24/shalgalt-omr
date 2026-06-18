@@ -12,6 +12,7 @@
   } from "$lib/db/jobs";
   import { getTemplate } from "$lib/db/templates";
   import { regradeSheet } from "$lib/ipc/scan";
+  import { parseStoredAnswerKeys } from "$lib/results/storedAnswerKeys";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
@@ -27,7 +28,9 @@
   let job = $state<Job | null>(null);
   let sheets = $state<GradedJobSheet[]>([]);
   let template = $state<OmrTemplate | null>(null);
-  let answerKey = $state<AnswerKey | null>(null);
+  // Every variant's key (the job may grade a mixed-variant batch); the key for
+  // the open sheet is resolved by its decoded variant.
+  let answerKeys = $state<AnswerKey[]>([]);
   let selectedIndex = $state<number>(0);
   let dirtyIndexes = $state<Set<number>>(new Set());
   let canvasWidth = $state(0);
@@ -37,6 +40,13 @@
 
   const jobIdParam = $derived(Number(page.params.job_id));
   const selected = $derived(sheets[selectedIndex] ?? null);
+  // The key for the open sheet, matched by its decoded variant. `null` when the
+  // variant is unresolved (no matching key) — the canvas then drops the
+  // correct-answer overlay and re-grading is disabled for that sheet.
+  const selectedAnswerKey = $derived(
+    answerKeys.find((k) => k.variant === selected?.parsed.variant) ??
+      (answerKeys.length === 1 ? answerKeys[0]! : null),
+  );
   const reviewedCount = $derived(sheets.filter((s) => s.reviewed).length);
   const flaggedCount = $derived(
     sheets.filter((s) => s.graded.needs_review && !s.reviewed).length,
@@ -76,14 +86,20 @@
       const tpl = await getTemplate(j.template_id);
       if (tpl) template = tpl.schema;
 
-      answerKey = JSON.parse(j.answer_key_json) as AnswerKey;
+      answerKeys = parseStoredAnswerKeys(j.answer_key_json);
     } catch (e) {
       loadFailed = String(e);
     }
   }
 
   async function applyOverride(next: BubbleReading[]): Promise<void> {
-    if (!template || !answerKey || !selected || !job) return;
+    if (!template || !selected || !job) return;
+    // Re-grade against the sheet's own variant key. With no resolved key there
+    // is nothing to score against, so surface that instead of mis-grading.
+    if (!selectedAnswerKey) {
+      toast.error(mn.review.regradeNoVariant);
+      return;
+    }
     const idx = selectedIndex;
     const updatedParsed = { ...selected.parsed, readings: next };
 
@@ -91,7 +107,7 @@
       const newGraded = await regradeSheet({
         templateJson: JSON.stringify(template),
         parsedSheetJson: JSON.stringify(updatedParsed),
-        answerKeyJson: job.answer_key_json,
+        answerKeyJson: JSON.stringify(selectedAnswerKey),
       });
       sheets = sheets.map((s, i) =>
         i === idx ? { ...s, parsed: updatedParsed, graded: newGraded } : s,
@@ -170,7 +186,7 @@
       </Card.Header>
     </Card.Root>
   </section>
-{:else if job && template && answerKey}
+{:else if job && template && answerKeys.length > 0}
   <section class="flex h-full flex-col p-4">
     <header class="mb-4 flex items-center justify-between gap-4">
       <div>
@@ -230,7 +246,7 @@
               pageImagePath={selected.page_image_path}
               readings={selected.parsed.readings}
               graded={selected.graded}
-              {answerKey}
+              answerKey={selectedAnswerKey}
               onOverride={applyOverride}
             />
           {/if}
