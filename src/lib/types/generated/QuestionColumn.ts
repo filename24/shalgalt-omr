@@ -5,4 +5,10 @@
  * human-facing question name (e.g. `"1"`, `"2.1.a"`); `group_id` matches the
  * `BubbleGroup.id` carried by each [`GradedAnswer`].
  */
-export type QuestionColumn = { group_id: string, label: string, };
+export type QuestionColumn = { group_id: string, label: string, 
+/**
+ * Maximum points for this question (the template `BubbleGroup.score`). The
+ * breakdown sheet needs it to turn a graded outcome into earned points via
+ * [`crate::grading::awarded_points`].
+ */
+score: number, };

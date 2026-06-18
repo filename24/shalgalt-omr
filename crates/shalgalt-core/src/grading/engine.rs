@@ -117,36 +117,35 @@ fn classify_question(
     correct: &[u32],
 ) -> (GradedAnswer, f32) {
     debug_assert!(!filled.is_empty(), "Blank case should be handled by caller");
+    let answer = classify_outcome(group_id, filled, correct);
+    let awarded = awarded_points(&answer, group_score);
+    (answer, awarded)
+}
 
+/// Decide which [`GradedAnswer`] outcome a marked question earns, independent of
+/// scoring. Scoring is derived from the outcome by [`awarded_points`] so the
+/// "outcome → points" rule lives in exactly one place.
+fn classify_outcome(group_id: &str, filled: &[u32], correct: &[u32]) -> GradedAnswer {
     let single_correct = correct.len() == 1;
 
     if single_correct {
         if filled.len() > 1 {
-            return (
-                GradedAnswer::Multiple {
-                    group_id: group_id.to_string(),
-                    marked_indices: filled.to_vec(),
-                },
-                0.0,
-            );
-        }
-        if filled[0] == correct[0] {
-            return (
-                GradedAnswer::Correct {
-                    group_id: group_id.to_string(),
-                    marked_indices: filled.to_vec(),
-                },
-                group_score,
-            );
-        }
-        return (
-            GradedAnswer::Wrong {
+            return GradedAnswer::Multiple {
                 group_id: group_id.to_string(),
                 marked_indices: filled.to_vec(),
-                correct_indices: correct.to_vec(),
-            },
-            0.0,
-        );
+            };
+        }
+        if filled[0] == correct[0] {
+            return GradedAnswer::Correct {
+                group_id: group_id.to_string(),
+                marked_indices: filled.to_vec(),
+            };
+        }
+        return GradedAnswer::Wrong {
+            group_id: group_id.to_string(),
+            marked_indices: filled.to_vec(),
+            correct_indices: correct.to_vec(),
+        };
     }
 
     let filled_set: BTreeSet<u32> = filled.iter().copied().collect();
@@ -154,36 +153,42 @@ fn classify_question(
     let has_wrong_extra = filled_set.difference(&correct_set).next().is_some();
 
     if has_wrong_extra {
-        return (
-            GradedAnswer::Wrong {
-                group_id: group_id.to_string(),
-                marked_indices: filled.to_vec(),
-                correct_indices: correct.to_vec(),
-            },
-            0.0,
-        );
-    }
-
-    if filled_set == correct_set {
-        return (
-            GradedAnswer::Correct {
-                group_id: group_id.to_string(),
-                marked_indices: filled.to_vec(),
-            },
-            group_score,
-        );
-    }
-
-    let ratio = filled.len() as f32 / correct.len() as f32;
-    (
-        GradedAnswer::Partial {
+        return GradedAnswer::Wrong {
             group_id: group_id.to_string(),
             marked_indices: filled.to_vec(),
             correct_indices: correct.to_vec(),
-            score_ratio: ratio,
-        },
-        group_score * ratio,
-    )
+        };
+    }
+
+    if filled_set == correct_set {
+        return GradedAnswer::Correct {
+            group_id: group_id.to_string(),
+            marked_indices: filled.to_vec(),
+        };
+    }
+
+    GradedAnswer::Partial {
+        group_id: group_id.to_string(),
+        marked_indices: filled.to_vec(),
+        correct_indices: correct.to_vec(),
+        score_ratio: filled.len() as f32 / correct.len() as f32,
+    }
+}
+
+/// Points a single graded answer contributes to the sheet total, given its
+/// question's maximum `group_score`. Single source of truth for the
+/// "outcome → points" rule: the grading engine totals these, and the xlsx export
+/// prints them per question. Non-scoring outcomes (wrong, blank, multiple,
+/// uncertain) earn nothing.
+pub fn awarded_points(answer: &GradedAnswer, group_score: f32) -> f32 {
+    match answer {
+        GradedAnswer::Correct { .. } => group_score,
+        GradedAnswer::Partial { score_ratio, .. } => group_score * score_ratio,
+        GradedAnswer::Wrong { .. }
+        | GradedAnswer::Blank { .. }
+        | GradedAnswer::Multiple { .. }
+        | GradedAnswer::Uncertain { .. } => 0.0,
+    }
 }
 
 fn sorted_unique(mut indices: Vec<u32>) -> Vec<u32> {
@@ -780,5 +785,51 @@ mod tests {
         assert!(!r.is_unfilled());
         assert!(r.is_uncertain());
         assert!(!r.is_filled());
+    }
+
+    #[test]
+    fn awarded_points_maps_each_outcome() {
+        let g = "q";
+        // Correct earns full marks; partial earns the fraction; everything else zero.
+        assert_eq!(
+            awarded_points(
+                &GradedAnswer::Correct {
+                    group_id: g.into(),
+                    marked_indices: vec![0]
+                },
+                4.0
+            ),
+            4.0
+        );
+        assert_eq!(
+            awarded_points(
+                &GradedAnswer::Partial {
+                    group_id: g.into(),
+                    marked_indices: vec![0],
+                    correct_indices: vec![0, 1],
+                    score_ratio: 0.5,
+                },
+                4.0
+            ),
+            2.0
+        );
+        for zero in [
+            GradedAnswer::Wrong {
+                group_id: g.into(),
+                marked_indices: vec![1],
+                correct_indices: vec![0],
+            },
+            GradedAnswer::Blank { group_id: g.into() },
+            GradedAnswer::Multiple {
+                group_id: g.into(),
+                marked_indices: vec![0, 1],
+            },
+            GradedAnswer::Uncertain {
+                group_id: g.into(),
+                uncertain_indices: vec![0],
+            },
+        ] {
+            assert_eq!(awarded_points(&zero, 4.0), 0.0);
+        }
     }
 }

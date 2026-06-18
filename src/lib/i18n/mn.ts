@@ -314,6 +314,7 @@ export const mn = {
       failed: "Excel гаргахад алдаа гарлаа",
       studentFallback: "Сурагч",
       sheetSummary: "Дүн",
+      sheetBreakdown: "Асуулт бүрийн оноо",
       sheetPerQuestion: "Асуулт тус бүр",
       sheetErrors: "Алдаа",
       colIndex: "№",

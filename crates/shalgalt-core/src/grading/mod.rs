@@ -5,5 +5,5 @@
 pub mod engine;
 pub mod select;
 
-pub use engine::grade;
+pub use engine::{awarded_points, grade};
 pub use select::select_answer_key;

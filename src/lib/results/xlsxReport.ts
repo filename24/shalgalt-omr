@@ -22,10 +22,21 @@ export interface BuildReportInput {
   studentFallback: string;
 }
 
-/** Resolve a `BubbleGroup.id` to its human label, falling back to the id. */
-function labelFor(template: OmrTemplate, groupId: string): string {
+/**
+ * Resolve a `BubbleGroup.id` to its display label and max score, falling back to
+ * the id and zero. The breakdown sheet needs the per-question max score to turn a
+ * graded outcome into earned points.
+ */
+function questionColumnFor(
+  template: OmrTemplate,
+  groupId: string,
+): { group_id: string; label: string; score: number } {
   const group = template.groups.find((g) => g.id === groupId);
-  return group?.label?.trim() ? group.label : groupId;
+  return {
+    group_id: groupId,
+    label: group?.label?.trim() ? group.label : groupId,
+    score: group?.score ?? 0,
+  };
 }
 
 /** A sheet's display name: bubbled student id, else a stable fallback. */
@@ -45,10 +56,9 @@ function studentLabel(
  * question set" rule.
  */
 export function buildXlsxReport(input: BuildReportInput): XlsxReport {
-  const questions = input.answerKey.answers.map((entry) => ({
-    group_id: entry.group_id,
-    label: labelFor(input.template, entry.group_id),
-  }));
+  const questions = input.answerKey.answers.map((entry) =>
+    questionColumnFor(input.template, entry.group_id),
+  );
 
   const rows = input.sheets.map((sheet, i) => ({
     label: studentLabel(sheet, i, input.studentFallback),
@@ -72,6 +82,7 @@ export function buildReportLabels(): ReportLabels {
   const e = mn.results.export;
   return {
     summary_sheet: e.sheetSummary,
+    breakdown_sheet: e.sheetBreakdown,
     per_question_sheet: e.sheetPerQuestion,
     errors_sheet: e.sheetErrors,
     col_index: e.colIndex,

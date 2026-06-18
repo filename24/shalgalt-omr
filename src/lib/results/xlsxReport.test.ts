@@ -8,7 +8,9 @@ import type { GradedJobSheet } from "$lib/types/job";
 
 // Minimal fixtures — buildXlsxReport only reads `template.groups[].{id,label}`
 // and the graded fields, so the rest of each shape is cast away for brevity.
-function template(groups: { id: string; label: string }[]): OmrTemplate {
+function template(
+  groups: { id: string; label: string; score?: number }[],
+): OmrTemplate {
   return { groups } as unknown as OmrTemplate;
 }
 
@@ -44,11 +46,11 @@ function sheet(
 }
 
 describe("buildXlsxReport", () => {
-  test("question columns follow the answer key order with template labels", () => {
+  test("question columns follow the answer key order with template labels and scores", () => {
     const tpl = template([
-      { id: "q1", label: "1-р асуулт" },
-      { id: "q2", label: "2-р асуулт" },
-      { id: "q3", label: "Түлхүүрт ороогүй" },
+      { id: "q1", label: "1-р асуулт", score: 2 },
+      { id: "q2", label: "2-р асуулт", score: 3 },
+      { id: "q3", label: "Түлхүүрт ороогүй", score: 1 },
     ]);
     // Key omits q3 → it must not become a column (answer key = question set).
     const report = buildXlsxReport({
@@ -60,12 +62,12 @@ describe("buildXlsxReport", () => {
     });
 
     expect(report.questions).toEqual([
-      { group_id: "q2", label: "2-р асуулт" },
-      { group_id: "q1", label: "1-р асуулт" },
+      { group_id: "q2", label: "2-р асуулт", score: 3 },
+      { group_id: "q1", label: "1-р асуулт", score: 2 },
     ]);
   });
 
-  test("falls back to group id when the template has no matching label", () => {
+  test("falls back to group id and zero score when the template has no match", () => {
     const report = buildXlsxReport({
       title: "Сорил",
       template: template([]),
@@ -73,7 +75,7 @@ describe("buildXlsxReport", () => {
       sheets: [],
       studentFallback: "Сурагч",
     });
-    expect(report.questions[0]).toEqual({ group_id: "qX", label: "qX" });
+    expect(report.questions[0]).toEqual({ group_id: "qX", label: "qX", score: 0 });
   });
 
   test("rows carry score, review flag, and pass answers through unchanged", () => {

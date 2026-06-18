@@ -23,8 +23,11 @@ use rust_xlsxwriter::{
 };
 
 use crate::error::{AppError, AppResult};
+use crate::grading::awarded_points;
 
-use super::report::{error_rows, question_stats, OutcomeKind, ReportLabels, XlsxReport};
+use super::report::{
+    answer_group_id, error_rows, question_stats, OutcomeKind, ReportLabels, XlsxReport,
+};
 
 fn to_app(err: XlsxError) -> AppError {
     AppError::Internal(anyhow::anyhow!("xlsx export failed: {err}"))
@@ -49,6 +52,7 @@ pub fn build_report(report: &XlsxReport, labels: &ReportLabels) -> AppResult<Vec
         .set_font_color(Color::RGB(0x808080));
 
     write_summary(&mut workbook, report, labels, &title, &header, &zero_red).map_err(to_app)?;
+    write_breakdown(&mut workbook, report, labels, &title, &header).map_err(to_app)?;
     write_per_question(&mut workbook, report, labels, &header, &percent, &zero_red)
         .map_err(to_app)?;
     write_errors(&mut workbook, report, labels, &header, &muted).map_err(to_app)?;
@@ -106,6 +110,59 @@ fn write_summary(
             .set_rule(ConditionalFormatCellRule::EqualTo(0.0))
             .set_format(zero_red);
         sheet.add_conditional_format(first_data, SCORE_COL, last, SCORE_COL, &rule)?;
+    }
+
+    Ok(())
+}
+
+/// Per-student × per-question points matrix. One row per graded sheet; one column
+/// per question holding the points that student earned on it (full marks for a
+/// correct answer, the partial fraction for a partial, zero otherwise), then a
+/// trailing total column equal to the sheet's score. Earned points come from
+/// [`awarded_points`] so this sheet can never drift from the grading engine.
+fn write_breakdown(
+    workbook: &mut Workbook,
+    report: &XlsxReport,
+    labels: &ReportLabels,
+    title: &Format,
+    header: &Format,
+) -> Result<(), XlsxError> {
+    let sheet = workbook.add_worksheet();
+    sheet.set_name(&labels.breakdown_sheet)?;
+    sheet.set_column_width(0, 6)?;
+    sheet.set_column_width(1, 28)?;
+
+    sheet.write_string_with_format(0, 0, &report.title, title)?;
+
+    const HEADER_ROW: u32 = 1;
+    sheet.write_string_with_format(HEADER_ROW, 0, &labels.col_index, header)?;
+    sheet.write_string_with_format(HEADER_ROW, 1, &labels.col_student, header)?;
+    // One column per question (header = question label), then a trailing total.
+    for (q, question) in report.questions.iter().enumerate() {
+        let col = 2 + q as u16;
+        sheet.set_column_width(col, 8)?;
+        sheet.write_string_with_format(HEADER_ROW, col, &question.label, header)?;
+    }
+    let total_col = 2 + report.questions.len() as u16;
+    sheet.write_string_with_format(HEADER_ROW, total_col, &labels.col_score, header)?;
+
+    let first_data = HEADER_ROW + 1;
+    for (i, row) in report.rows.iter().enumerate() {
+        let r = first_data + i as u32;
+        sheet.write_number(r, 0, (i + 1) as f64)?;
+        sheet.write_string(r, 1, &row.label)?;
+        for (q, question) in report.questions.iter().enumerate() {
+            let col = 2 + q as u16;
+            // Match this question's answer on the sheet; an absent answer (e.g. an
+            // unresolved-variant sheet with no scored answers) earns nothing.
+            let earned = row
+                .answers
+                .iter()
+                .find(|a| answer_group_id(a) == question.group_id)
+                .map_or(0.0, |a| awarded_points(a, question.score as f32) as f64);
+            sheet.write_number(r, col, earned)?;
+        }
+        sheet.write_number(r, total_col, row.total_score)?;
     }
 
     Ok(())
@@ -229,6 +286,7 @@ mod tests {
     fn labels() -> ReportLabels {
         ReportLabels {
             summary_sheet: "summary".into(),
+            breakdown_sheet: "breakdown".into(),
             per_question_sheet: "per_question".into(),
             errors_sheet: "errors".into(),
             col_index: "no".into(),
@@ -262,10 +320,12 @@ mod tests {
                 QuestionColumn {
                     group_id: "q1".into(),
                     label: "1".into(),
+                    score: 1.0,
                 },
                 QuestionColumn {
                     group_id: "q2".into(),
                     label: "2".into(),
+                    score: 1.0,
                 },
             ],
             rows: vec![
@@ -325,6 +385,7 @@ mod tests {
             questions: vec![QuestionColumn {
                 group_id: "q1".into(),
                 label: "1".into(),
+                score: 1.0,
             }],
             rows: vec![],
         };

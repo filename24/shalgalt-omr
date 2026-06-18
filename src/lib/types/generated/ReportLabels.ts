@@ -9,7 +9,7 @@ export type ReportLabels = {
 /**
  * Worksheet (tab) names.
  */
-summary_sheet: string, per_question_sheet: string, errors_sheet: string, 
+summary_sheet: string, breakdown_sheet: string, per_question_sheet: string, errors_sheet: string, 
 /**
  * Summary sheet headers.
  */

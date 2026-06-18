@@ -22,6 +22,10 @@ use crate::domain::GradedAnswer;
 pub struct QuestionColumn {
     pub group_id: String,
     pub label: String,
+    /// Maximum points for this question (the template `BubbleGroup.score`). The
+    /// breakdown sheet needs it to turn a graded outcome into earned points via
+    /// [`crate::grading::awarded_points`].
+    pub score: f64,
 }
 
 /// One graded sheet flattened for export. `label` is the resolved student name
@@ -59,6 +63,7 @@ pub struct XlsxReport {
 pub struct ReportLabels {
     /// Worksheet (tab) names.
     pub summary_sheet: String,
+    pub breakdown_sheet: String,
     pub per_question_sheet: String,
     pub errors_sheet: String,
     /// Summary sheet headers.
@@ -123,7 +128,7 @@ impl OutcomeKind {
 }
 
 /// The `group_id` an answer belongs to, regardless of variant.
-fn answer_group_id(answer: &GradedAnswer) -> &str {
+pub(crate) fn answer_group_id(answer: &GradedAnswer) -> &str {
     match answer {
         GradedAnswer::Correct { group_id, .. }
         | GradedAnswer::Wrong { group_id, .. }
@@ -242,6 +247,7 @@ mod tests {
         QuestionColumn {
             group_id: id.into(),
             label: label.into(),
+            score: 1.0,
         }
     }
 
