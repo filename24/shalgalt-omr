@@ -72,6 +72,14 @@
       ? (answerKeys.find((k) => k.variant === variant) ?? null)
       : null,
   );
+  // The card carries a variant selector row only when the template declares a
+  // `variant` group. With one present and more than one variant on the exam, we
+  // auto-detect each sheet's variant instead of forcing a single choice — so a
+  // mixed stack grades in one pass.
+  const templateHasVariantGroup = $derived(
+    selectedTemplate?.schema.groups.some((g) => g.kind === "variant") ?? false,
+  );
+  const autoDetect = $derived(templateHasVariantGroup && answerKeys.length > 1);
 
   let unlistenResult: UnlistenFn | null = null;
 
@@ -145,12 +153,18 @@
       toast.error(mn.grade.errors.examRequired);
       return;
     }
-    if (variant === null || !selectedAnswerKey) {
+    if (!selectedTemplate) {
+      toast.error(mn.grade.errors.templateMissing);
+      return;
+    }
+    if (answerKeys.length === 0) {
       toast.error(mn.grade.errors.variantRequired);
       return;
     }
-    if (!selectedTemplate) {
-      toast.error(mn.grade.errors.templateMissing);
+    // Manual mode still requires an explicit variant; auto-detect resolves it
+    // per sheet from the bubble row, so no single choice is needed.
+    if (!autoDetect && (variant === null || !selectedAnswerKey)) {
+      toast.error(mn.grade.errors.variantRequired);
       return;
     }
 
@@ -158,16 +172,26 @@
     // answer key does not target, so a key that matches *zero* of the template's
     // question groups (stale ids after a template edit, or sheets printed from a
     // different template) would yield empty results with no explanation. Refuse
-    // to start and tell the teacher to check the key instead.
-    const answerKey = toAnswerKey(selectedAnswerKey);
-    if (!answerKeyMatchesTemplate(selectedTemplate.schema, answerKey)) {
+    // to start and tell the teacher to check the key(s) instead. In auto mode we
+    // ship every variant, so each one must match.
+    const keysToGrade = autoDetect
+      ? answerKeys.map(toAnswerKey)
+      : [toAnswerKey(selectedAnswerKey!)];
+    if (
+      keysToGrade.some(
+        (k) => !answerKeyMatchesTemplate(selectedTemplate.schema, k),
+      )
+    ) {
       toast.error(mn.grade.errors.answerKeyMismatch);
       return;
     }
 
-    // The exam picker guarantees a well-formed key, so no JSON validation is
-    // needed — project it to the `AnswerKey` domain shape grading consumes.
-    const answerKeyJson = JSON.stringify(answerKey);
+    // The exam picker guarantees well-formed keys. Ship every variant so the
+    // backend can grade a mixed stack sheet-by-sheet; the manually chosen
+    // variant (manual mode) rides along as the fallback for sheets with no
+    // decodable variant mark.
+    const answerKeysJson = JSON.stringify(keysToGrade);
+    const fallbackVariant = autoDetect ? null : variant;
     const templateId = selectedExam.template_id;
 
     busy = true;
@@ -182,7 +206,7 @@
         task_id: taskId,
         pdf_path: pdfPath,
         template_id: templateId,
-        answer_key_json: answerKeyJson,
+        answer_key_json: answerKeysJson,
       });
       activeTaskId = taskId;
       activeJobId = job.id;
@@ -194,7 +218,8 @@
         taskId,
         pdfPath,
         templateJson: JSON.stringify(selectedTemplate.schema),
-        answerKeyJson,
+        answerKeysJson,
+        fallbackVariant,
       });
     } catch (e) {
       busy = false;
@@ -367,6 +392,18 @@
           <Button type="button" variant="outline" size="sm" onclick={gotoExam}>
             {mn.grade.variantEmptyCta}
           </Button>
+        {:else if autoDetect}
+          <div class="rounded-md border bg-muted/30 px-3 py-2">
+            <p class="text-foreground text-sm font-medium">
+              {mn.grade.variantAuto}
+              <Badge variant="secondary" class="ml-1.5">
+                {mn.grade.variantAutoCount.replace("{count}", String(answerKeys.length))}
+              </Badge>
+            </p>
+            <p class="text-muted-foreground mt-0.5 text-xs">
+              {mn.grade.variantAutoHint}
+            </p>
+          </div>
         {:else}
           <select
             id="variant-id"
@@ -386,7 +423,11 @@
     <Card.Footer class="flex items-center justify-between">
       <Button
         onclick={start}
-        disabled={busy || !pdfPath || examId === null || variant === null}
+        disabled={busy ||
+          !pdfPath ||
+          examId === null ||
+          answerKeys.length === 0 ||
+          (!autoDetect && variant === null)}
       >
         <PlayIcon />
         {busy ? mn.grade.starting : mn.grade.start}

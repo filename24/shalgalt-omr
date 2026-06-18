@@ -16,6 +16,10 @@ import type { OmrTemplate } from "$lib/types/template";
 import type { AnswerKey } from "$lib/types/generated/AnswerKey";
 import type { GradedJobSheet } from "$lib/types/job";
 import { buildReportLabels, buildXlsxReport } from "./xlsxReport";
+import {
+  mergeAnswerKeysForColumns,
+  parseStoredAnswerKeys,
+} from "./storedAnswerKeys";
 
 /** Strip characters that are awkward in file names; keep it simple and safe. */
 function safeFileName(title: string): string {
@@ -79,7 +83,11 @@ export async function exportJobById(jobId: number): Promise<string | null> {
   }
   let answerKey: AnswerKey;
   try {
-    answerKey = JSON.parse(job.answer_key_json) as AnswerKey;
+    // The job stores one key per variant; the xlsx columns come from the union
+    // of their question groups.
+    answerKey = mergeAnswerKeysForColumns(
+      parseStoredAnswerKeys(job.answer_key_json),
+    );
   } catch (e) {
     toast.error(mn.results.export.failed, { description: String(e) });
     return null;

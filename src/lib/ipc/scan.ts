@@ -15,8 +15,17 @@ export interface GradePdfArgs {
   pdfPath: string;
   /** Serialized `OmrTemplate` JSON (read from `templates.json_schema`). */
   templateJson: string;
-  /** Serialized `AnswerKey` JSON (validated client-side via `answerKeySchema`). */
-  answerKeyJson: string;
+  /**
+   * Serialized `AnswerKey[]` JSON — every variant the exam owns. Each sheet is
+   * graded against the key matching the variant decoded from its bubble row.
+   */
+  answerKeysJson: string;
+  /**
+   * Variant used when a sheet has no decoded variant (template lacks a variant
+   * row, or the mark was blank/ambiguous). `null` in auto-detect mode; the
+   * chosen variant for single-variant exams.
+   */
+  fallbackVariant: string | null;
 }
 
 /**
@@ -28,7 +37,8 @@ export function gradePdf(args: GradePdfArgs): Promise<void> {
     taskId: args.taskId,
     pdfPath: args.pdfPath,
     templateJson: args.templateJson,
-    answerKeyJson: args.answerKeyJson,
+    answerKeysJson: args.answerKeysJson,
+    fallbackVariant: args.fallbackVariant,
   });
 }
 

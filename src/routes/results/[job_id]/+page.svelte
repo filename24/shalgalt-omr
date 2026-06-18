@@ -7,6 +7,10 @@
   import { getTemplate } from "$lib/db/templates";
   import { assetUrl } from "$lib/fs/templateAssets";
   import { exportJobToXlsx } from "$lib/results/export";
+  import {
+    mergeAnswerKeysForColumns,
+    parseStoredAnswerKeys,
+  } from "$lib/results/storedAnswerKeys";
   import type { Job, GradedJobSheet } from "$lib/types/job";
   import type { OmrTemplate } from "$lib/types/template";
   import type { AnswerKey } from "$lib/types/generated/AnswerKey";
@@ -66,7 +70,10 @@
       }
       job = j;
       sheets = parseGradedSheets(j);
-      answerKey = JSON.parse(j.answer_key_json) as AnswerKey;
+      // Stored as one key per variant; the export uses their union for columns.
+      answerKey = mergeAnswerKeysForColumns(
+        parseStoredAnswerKeys(j.answer_key_json),
+      );
       const tpl = await getTemplate(j.template_id);
       if (tpl) template = tpl.schema;
     } catch (e) {

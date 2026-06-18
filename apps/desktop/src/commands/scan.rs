@@ -38,7 +38,12 @@ const RESULT_EVENT: &str = "task-result";
 ///   * `pdf_path` — absolute path on disk (Rule 1).
 ///   * `template_json` — serialized `OmrTemplate` from `templates.json_schema`.
 ///     Forwarding the full JSON keeps this command DB-free.
-///   * `answer_key_json` — serialized `AnswerKey` pasted by the user.
+///   * `answer_keys_json` — serialized `Vec<AnswerKey>`: every variant the exam
+///     owns. Each sheet is graded against the key whose `variant` matches the one
+///     decoded from its bubble row, so a mixed-variant stack grades in one pass.
+///   * `fallback_variant` — used when a sheet has no decoded variant (template
+///     has no variant row, or the mark was blank/ambiguous). `None` in auto mode;
+///     set to the manually chosen variant for single-variant exams.
 #[tauri::command]
 pub async fn scan_grade_pdf(
     app: AppHandle,
@@ -46,7 +51,8 @@ pub async fn scan_grade_pdf(
     task_id: String,
     pdf_path: String,
     template_json: String,
-    answer_key_json: String,
+    answer_keys_json: String,
+    fallback_variant: Option<String>,
 ) -> AppResult<()> {
     if task_id.trim().is_empty() {
         return Err(AppError::BadRequest("task_id is empty".into()));
@@ -57,8 +63,11 @@ pub async fn scan_grade_pdf(
 
     let template: OmrTemplate = serde_json::from_str(&template_json)
         .map_err(|e| AppError::BadRequest(format!("template_json parse failed: {e}")))?;
-    let answer_key: AnswerKey = serde_json::from_str(&answer_key_json)
-        .map_err(|e| AppError::BadRequest(format!("answer_key_json parse failed: {e}")))?;
+    let answer_keys: Vec<AnswerKey> = serde_json::from_str(&answer_keys_json)
+        .map_err(|e| AppError::BadRequest(format!("answer_keys_json parse failed: {e}")))?;
+    if answer_keys.is_empty() {
+        return Err(AppError::BadRequest("answer_keys_json is empty".into()));
+    }
 
     let cache_dir = state.dirs().cache_dir.clone();
     let app_handle = app.clone();
@@ -73,7 +82,8 @@ pub async fn scan_grade_pdf(
             &task_id_owned,
             PathBuf::from(pdf_path),
             template,
-            answer_key,
+            answer_keys,
+            fallback_variant,
             cache_dir,
         )
         .await
@@ -99,7 +109,8 @@ async fn run_grade_pipeline(
     task_id: &str,
     pdf_path: PathBuf,
     template: OmrTemplate,
-    answer_key: AnswerKey,
+    answer_keys: Vec<AnswerKey>,
+    fallback_variant: Option<String>,
     cache_dir: PathBuf,
 ) -> AppResult<()> {
     // Forward every TaskProgress message the CV pipeline produces. We use a
@@ -140,7 +151,17 @@ async fn run_grade_pipeline(
     );
 
     for (i, parsed) in sheets.iter().enumerate() {
-        let graded = grading::grade(&template, parsed, &answer_key)?;
+        // Pick the key for this sheet's variant (or the manual fallback). When
+        // nothing resolves — an unkeyed or undetectable variant — the sheet is
+        // emitted unscored and flagged for manual review instead of mis-graded.
+        let graded = match grading::select_answer_key(
+            &answer_keys,
+            parsed.variant.as_deref(),
+            fallback_variant.as_deref(),
+        ) {
+            Some(key) => grading::grade(&template, parsed, key)?,
+            None => unresolved_variant_sheet(parsed),
+        };
         let page_image_path = page_raster_path(&raster_dir, parsed.page_index);
 
         let _ = app.emit(
@@ -178,6 +199,22 @@ async fn run_grade_pipeline(
     );
 
     Ok(())
+}
+
+/// Build the placeholder result for a sheet whose variant could not be resolved
+/// to an answer key. Scored zero and flagged `needs_review` so it surfaces in the
+/// manual-review queue, where the teacher can assign a variant and re-grade. The
+/// decoded variant (if any) rides along on the `ParsedSheet` in the same event.
+fn unresolved_variant_sheet(parsed: &ParsedSheet) -> GradedSheet {
+    GradedSheet {
+        template_id: parsed.template_id,
+        student_id: None,
+        student_id_text: parsed.student_id_text.clone(),
+        total_score: 0.0,
+        answers: Vec::new(),
+        image_path: None,
+        needs_review: true,
+    }
 }
 
 /// Mirror of `shalgalt_cv::pdf::rasterize_all_pages` filename convention. The
