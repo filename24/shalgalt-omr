@@ -13,3 +13,6 @@ pub mod domain;
 pub mod error;
 pub mod export;
 pub mod grading;
+pub mod student_id;
+
+pub use student_id::decode_student_id;

@@ -326,10 +326,16 @@ fn process_one_page(
     let warped_ink = threshold::flatten_to_ink(&warped)?;
     let readings = bubbles::read_bubbles(&warped_ink, template)?;
 
+    // Decode the student cipher ("Шифр") from the StudentId rows. The decode is
+    // pure logic and lives in core so it stays testable without OpenCV; it returns
+    // `None` when the code is blank or ambiguous, leaving the frontend to fall back
+    // to a generated label.
+    let student_id_text = shalgalt_core::decode_student_id(template, &readings);
+
     Ok(ParsedSheet {
         template_id,
         page_index: 0,
-        student_id_text: None, // P3-04 reads bubbles only; ID-text resolution lands in P3-05+.
+        student_id_text,
         readings,
     })
 }
