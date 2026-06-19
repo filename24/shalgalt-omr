@@ -64,17 +64,33 @@
   // fire, leaving the stage at 0×0 and the canvas stuck on its "…" placeholder.
   // Run reactively instead: the effect re-runs when `bind:this` populates
   // `canvasContainer`, seeds the initial size, and observes for later resizes.
+  //
+  // The container chain uses `min-h-0`/`min-w-0` so `flex-1`+`overflow-hidden`
+  // actually bound the box independently of the Konva stage inside it. Without
+  // that, the stage would push the container larger, the observer would read
+  // the larger size, grow the stage again, and the page would expand forever.
+  // We still guard here: only write on an actual change, and coalesce in a
+  // rAF, which also silences the "ResizeObserver loop" console warning.
   $effect(() => {
     const el = canvasContainer;
     if (!el) return;
-    canvasWidth = el.clientWidth;
-    canvasHeight = el.clientHeight;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w !== canvasWidth) canvasWidth = w;
+      if (h !== canvasHeight) canvasHeight = h;
+    };
+    measure();
     const ro = new ResizeObserver(() => {
-      canvasWidth = el.clientWidth;
-      canvasHeight = el.clientHeight;
+      if (frame === 0) frame = requestAnimationFrame(measure);
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
   });
 
   async function loadJob(): Promise<void> {
@@ -259,8 +275,8 @@
       </div>
     </header>
 
-    <div class="grid flex-1 grid-cols-[280px_1fr] gap-4 overflow-hidden">
-      <aside class="flex flex-col gap-2 overflow-y-auto pr-1">
+    <div class="grid min-h-0 flex-1 grid-cols-[280px_1fr] gap-4 overflow-hidden">
+      <aside class="flex min-h-0 flex-col gap-2 overflow-y-auto pr-1">
         {#each sheets as sheet, i (sheet.page_index)}
           <PageThumbnail
             {sheet}
@@ -273,7 +289,7 @@
         {/if}
       </aside>
 
-      <div class="flex flex-col gap-2 overflow-hidden">
+      <div class="flex min-h-0 min-w-0 flex-col gap-2 overflow-hidden">
         <div class="flex items-center justify-between text-xs">
           <p class="text-muted-foreground">{mn.review.bubbleHint}</p>
           <div class="flex gap-2">
@@ -291,7 +307,7 @@
             </span>
           </div>
         </div>
-        <div bind:this={canvasContainer} class="flex-1 overflow-hidden">
+        <div bind:this={canvasContainer} class="min-h-0 min-w-0 flex-1 overflow-hidden">
           {#if selected}
             <ReviewCanvas
               width={canvasWidth}
