@@ -6,7 +6,7 @@
 .DESCRIPTION
     Fetches the native runtime libraries the Tauri bundle must ship on Windows:
 
-      - pdfium.dll        from bblanchon/pdfium-binaries (pdfium-windows-x64.tgz)
+      - pdfium.dll        from bblanchon/pdfium-binaries (pdfium-win-x64.tgz)
       - opencv_world<NNN>.dll  from the OpenCV 4.10.0 Windows self-extractor
 
     The OpenCV approach mirrors .github/workflows/ci.yml: the
@@ -49,7 +49,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
 $ResourcesDir = Join-Path $RepoRoot "apps\desktop\resources"
 
-$PdfiumUrl = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-windows-x64.tgz"
+$PdfiumUrl = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz"
 $OpenCvToolsRoot = "C:\tools"
 $OpenCvDir = Join-Path $OpenCvToolsRoot "opencv"
 
@@ -69,7 +69,7 @@ function Get-Pdfium {
         Write-Log "Downloading pdfium: $PdfiumUrl"
         Invoke-WebRequest -Uri $PdfiumUrl -OutFile $archive
 
-        Write-Log "Extracting pdfium-windows-x64.tgz"
+        Write-Log "Extracting pdfium-win-x64.tgz"
         # `tar` ships with Windows 10+; it understands gzip-compressed tarballs.
         tar -xzf $archive -C $tmpDir
 
@@ -77,7 +77,7 @@ function Get-Pdfium {
         # moves it, by searching for the DLL.
         $extracted = Get-ChildItem -Path $tmpDir -Recurse -Filter "pdfium.dll" | Select-Object -First 1
         if ($null -eq $extracted) {
-            throw "pdfium.dll not found inside pdfium-windows-x64.tgz"
+            throw "pdfium.dll not found inside pdfium-win-x64.tgz"
         }
 
         Copy-Item $extracted.FullName -Destination $dest -Force

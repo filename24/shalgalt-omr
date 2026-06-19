@@ -251,8 +251,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $url = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-windows-x64.tgz"
+          # Asset is named pdfium-win-x64.tgz (OS token is `win`, not `windows`).
+          $url = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz"
           Invoke-WebRequest -Uri $url -OutFile pdfium.tgz
+          # `tar -C` requires the target dir to exist already.
+          New-Item -ItemType Directory -Force -Path C:\tools\pdfium | Out-Null
           tar -xzf pdfium.tgz -C C:\tools\pdfium
           Copy-Item "C:\tools\pdfium\bin\pdfium.dll" -Destination "apps/desktop/resources/"
           
