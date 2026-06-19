@@ -140,6 +140,8 @@ impl LayoutMap {
 fn bubble_label_set<'a>(group: &BubbleGroup, opts: &'a PdfOptions) -> &'a [char] {
     match group.kind {
         BubbleKind::StudentId => &opts.digit_labels,
+        // Mirror lib.rs: the variant selector uses the A–E choice labels.
+        BubbleKind::Variant => &opts.choice_labels,
         BubbleKind::Question => {
             if group.bubbles.len() > opts.choice_labels.len() {
                 &opts.digit_labels

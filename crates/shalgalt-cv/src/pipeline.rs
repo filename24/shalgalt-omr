@@ -24,10 +24,10 @@ use crate::{
 /// and returns one [`ParsedSheet`] per page.
 ///
 /// This function is the implementation behind the crate-level
-/// [`crate::process_pdf`] facade. It is `pub(crate)` because the public surface
+/// [`crate::process_sources`] facade. It is `pub(crate)` because the public surface
 /// is the facade — having two entry points named the same thing is confusing.
 pub(crate) async fn run(
-    pdf_path: PathBuf,
+    source_paths: Vec<PathBuf>,
     template: OmrTemplate,
     progress_tx: tokio::sync::mpsc::Sender<TaskProgress>,
     task_id: String,
@@ -40,10 +40,14 @@ pub(crate) async fn run(
     emit(&progress_tx, &task_id, 0, 0, TaskStage::LoadingPdf, None).await;
 
     let raster_dir = cache_dir.join("page-rasters").join(&task_id);
-    let pdf_path_for_blocking = pdf_path.clone();
+    let sources_for_blocking = source_paths.clone();
     let raster_dir_clone = raster_dir.clone();
+    // Each source may be a multi-page PDF or a single scanned image (PNG/JPG/…).
+    // `rasterize_sources` flattens the whole batch into one continuous
+    // `page-{idx:04}.png` sequence in `raster_dir`, so the rest of the pipeline is
+    // both format-agnostic and unaware of how many files the teacher uploaded.
     let page_paths: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
-        pdf::rasterize_all_pages(&pdf_path_for_blocking, &raster_dir_clone)
+        pdf::rasterize_sources(&sources_for_blocking, &raster_dir_clone)
     })
     .await
     .map_err(|e| AppError::Internal(anyhow::anyhow!("rasterize join: {e}")))??;
@@ -56,10 +60,10 @@ pub(crate) async fn run(
             0,
             0,
             TaskStage::Failed,
-            Some("PDF has no pages".into()),
+            Some("source has no pages".into()),
         )
         .await;
-        return Err(AppError::BadRequest("PDF has no pages".into()));
+        return Err(AppError::BadRequest("source has no pages".into()));
     }
 
     let mut sheets: Vec<ParsedSheet> = Vec::with_capacity(total);
@@ -121,7 +125,12 @@ pub(crate) async fn run(
         }
     }
 
-    emit(&progress_tx, &task_id, total, total, TaskStage::Done, None).await;
+    // Do NOT emit `TaskStage::Done` here. This is only the CV half of the job —
+    // the grading command (`apps/desktop/src/commands/scan.rs`) still has to score
+    // each sheet, emit a `task-result` per page, and only then emit the terminal
+    // `Done`. Emitting `Done` now races the frontend into finalizing the job before
+    // any `task-result` arrives, persisting an empty `graded_sheets` array. The
+    // orchestrating caller owns the terminal stage (see cv `AGENTS.md` Rule 2).
     Ok(sheets)
 }
 
@@ -158,17 +167,19 @@ pub(crate) async fn run_answer_key(
     emit(&progress_tx, &task_id, 0, 1, TaskStage::LoadingPdf, None).await;
 
     let raster_dir = cache_dir.join("page-rasters").join(&task_id);
-    let pdf_path_for_blocking = pdf_path.clone();
+    let source_path_for_blocking = pdf_path.clone();
     let raster_dir_clone = raster_dir.clone();
+    // The answer-key source may be a single-page PDF or one scanned image (PNG/JPG/…);
+    // `rasterize_source` handles both. The one-page contract is enforced below.
     let page_paths: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
-        pdf::rasterize_all_pages(&pdf_path_for_blocking, &raster_dir_clone)
+        pdf::rasterize_source(&source_path_for_blocking, &raster_dir_clone)
     })
     .await
     .map_err(|e| AppError::Internal(anyhow::anyhow!("rasterize join: {e}")))??;
 
     let page_count = page_paths.len() as u32;
     if page_count == 0 {
-        return Err(AppError::BadRequest("PDF has no pages".into()));
+        return Err(AppError::BadRequest("source has no pages".into()));
     }
     // The answer sheet is a single page by contract (P4-06). Refuse multi-page
     // input rather than silently reading only the first page.
@@ -321,12 +332,93 @@ fn process_one_page(
     let warped_ink = threshold::flatten_to_ink(&warped)?;
     let readings = bubbles::read_bubbles(&warped_ink, template)?;
 
+    // Decode the student cipher ("Шифр") from the StudentId rows. The decode is
+    // pure logic and lives in core so it stays testable without OpenCV; it returns
+    // `None` when the code is blank or ambiguous, leaving the frontend to fall back
+    // to a generated label.
+    let student_id_text = shalgalt_core::decode_student_id(template, &readings);
+    // Log the decode outcome so a failed student-id read is diagnosable from the
+    // app log instead of silently falling back to a generated label. On `None`,
+    // dump each StudentId row's strongest bubble + fill band so we can tell apart
+    // "blank sheet", "marks too light (uncertain band)", and "sampled empty paper
+    // / coordinate mismatch" without a debugger.
+    diagnose_student_id(template, &readings, student_id_text.as_deref());
+    // Decode which exam form the student bubbled so a mixed-variant batch can be
+    // graded sheet-by-sheet. `None` (no variant row, blank, or ambiguous mark)
+    // leaves variant selection to the grading orchestrator's fallback.
+    let variant = shalgalt_core::decode_variant(template, &readings);
+
     Ok(ParsedSheet {
         template_id,
         page_index: 0,
-        student_id_text: None, // P3-04 reads bubbles only; ID-text resolution lands in P3-05+.
+        student_id_text,
+        variant,
         readings,
     })
+}
+
+/// Log the student-id decode outcome for one page. Cheap, runs once per sheet.
+///
+/// On success we log the decoded code at `debug`. On failure we `warn` with a
+/// per-row breakdown — for every `StudentId` group, the index and fill of its
+/// darkest bubble plus the band it lands in (`filled`/`uncertain`/`unfilled`).
+/// That is enough to distinguish the three realistic failure modes:
+/// - all rows `unfilled` near 0.0 → the rows sampled blank paper (coordinate or
+///   warp mismatch between the rendered cipher block and the template);
+/// - the darkest bubble in the `uncertain` band → marks too light to clear the
+///   0.65 filled threshold;
+/// - some rows filled, others blank → the student left positions empty.
+fn diagnose_student_id(template: &OmrTemplate, readings: &[BubbleReading], decoded: Option<&str>) {
+    let sid_groups: Vec<&str> = template
+        .groups
+        .iter()
+        .filter(|g| g.kind == BubbleKind::StudentId)
+        .map(|g| g.id.as_str())
+        .collect();
+
+    if sid_groups.is_empty() {
+        tracing::debug!("student-id decode: template has no StudentId group");
+        return;
+    }
+    if let Some(code) = decoded {
+        tracing::debug!(
+            student_id = code,
+            rows = sid_groups.len(),
+            "student-id decoded"
+        );
+        return;
+    }
+
+    let rows: Vec<String> = sid_groups
+        .iter()
+        .map(|gid| {
+            match readings
+                .iter()
+                .filter(|r| r.group_id == *gid)
+                .max_by(|a, b| a.fill.total_cmp(&b.fill))
+            {
+                Some(best) => {
+                    let band = if best.is_filled() {
+                        "filled"
+                    } else if best.is_uncertain() {
+                        "uncertain"
+                    } else {
+                        "unfilled"
+                    };
+                    format!(
+                        "{gid}: idx={} fill={:.2} {band}",
+                        best.bubble_index, best.fill
+                    )
+                }
+                None => format!("{gid}: no readings"),
+            }
+        })
+        .collect();
+
+    tracing::warn!(
+        rows = %rows.join(" | "),
+        "student-id decode failed (falling back to generated label)"
+    );
 }
 
 /// Hash the template title into a stable `i64`. The persistence layer assigns the

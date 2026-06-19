@@ -60,7 +60,11 @@ const markerSchema = z.object({
   kind: markerKindSchema.optional(),
 });
 
-const bubbleKindSchema = z.union([z.literal("student_id"), z.literal("question")]);
+const bubbleKindSchema = z.union([
+  z.literal("student_id"),
+  z.literal("question"),
+  z.literal("variant"),
+]);
 
 const bubbleGroupSchema = z.object({
   id: z.string().min(1),

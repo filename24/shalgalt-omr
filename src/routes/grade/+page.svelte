@@ -7,12 +7,14 @@
   import { progress } from "$lib/stores/progress.svelte";
   import { session } from "$lib/stores/session.svelte";
   import { gradePdf, TASK_RESULT_EVENT } from "$lib/ipc/scan";
-  import { pickPdf } from "$lib/picker";
+  import { pickScanSources } from "$lib/picker";
   import { listTemplates } from "$lib/db/templates";
   import { listExams } from "$lib/db/exams";
   import { listAnswerKeysByExam } from "$lib/db/answerKeys";
   import { createJob, completeJob, updateJobProgress } from "$lib/db/jobs";
   import { toAnswerKey } from "$lib/types/exam";
+  import { answerKeyMatchesTemplate } from "$lib/grade/validateAnswerKey";
+  import { logSheetDiagnostics, logJobFailure } from "$lib/grade/diagnostics";
   import { mn } from "$lib/i18n";
 
   import { Button } from "$lib/components/ui/button";
@@ -30,7 +32,9 @@
   import type { TaskStage } from "$lib/types/generated/TaskStage";
   import type { GradedJobSheet } from "$lib/types/job";
 
-  let pdfPath = $state(session.lastPdfPath ?? "");
+  let pdfPaths = $state<string[]>(
+    session.lastPdfPath ? [session.lastPdfPath] : [],
+  );
   let templates = $state<TemplateSummary[]>([]);
   let exams = $state<ExamSummary[]>([]);
   let examId = $state<number | null>(null);
@@ -43,6 +47,16 @@
   let terminalState = $state<"running" | "done" | "failed">("running");
   let failureMessage = $state<string | null>(null);
   let needsReviewCount = $state(0);
+
+  // Readonly summary shown in the source field: the lone path when one file is
+  // picked, otherwise a "N files selected" count for a multi-page batch.
+  const sourceSummary = $derived(
+    pdfPaths.length === 0
+      ? ""
+      : pdfPaths.length === 1
+        ? pdfPaths[0]!
+        : mn.grade.filesSelected.replace("{count}", String(pdfPaths.length)),
+  );
 
   const last = $derived(progress.last);
   const matchesActiveTask = $derived(
@@ -71,6 +85,14 @@
       ? (answerKeys.find((k) => k.variant === variant) ?? null)
       : null,
   );
+  // The card carries a variant selector row only when the template declares a
+  // `variant` group. With one present and more than one variant on the exam, we
+  // auto-detect each sheet's variant instead of forcing a single choice — so a
+  // mixed stack grades in one pass.
+  const templateHasVariantGroup = $derived(
+    selectedTemplate?.schema.groups.some((g) => g.kind === "variant") ?? false,
+  );
+  const autoDetect = $derived(templateHasVariantGroup && answerKeys.length > 1);
 
   let unlistenResult: UnlistenFn | null = null;
 
@@ -119,13 +141,15 @@
     unlistenResult = await listen<TaskResult>(TASK_RESULT_EVENT, (event) => {
       if (event.payload.task_id !== activeTaskId) return;
       collected = [...collected, event.payload];
+      // Dev-only: explain this sheet's review/recognition outcome in the console.
+      logSheetDiagnostics(event.payload);
     });
   }
 
   async function browse(): Promise<void> {
     try {
-      const p = await pickPdf();
-      if (p) pdfPath = p;
+      const picked = await pickScanSources();
+      if (picked.length > 0) pdfPaths = picked;
     } catch (e) {
       toast.error(mn.errors.unknown, { description: String(e) });
     }
@@ -136,7 +160,7 @@
       toast.error(mn.grade.errors.jobAlreadyRunning);
       return;
     }
-    if (!pdfPath) {
+    if (pdfPaths.length === 0) {
       toast.error(mn.grade.errors.pdfRequired);
       return;
     }
@@ -144,18 +168,45 @@
       toast.error(mn.grade.errors.examRequired);
       return;
     }
-    if (variant === null || !selectedAnswerKey) {
-      toast.error(mn.grade.errors.variantRequired);
-      return;
-    }
     if (!selectedTemplate) {
       toast.error(mn.grade.errors.templateMissing);
       return;
     }
+    if (answerKeys.length === 0) {
+      toast.error(mn.grade.errors.variantRequired);
+      return;
+    }
+    // Manual mode still requires an explicit variant; auto-detect resolves it
+    // per sheet from the bubble row, so no single choice is needed.
+    if (!autoDetect && (variant === null || !selectedAnswerKey)) {
+      toast.error(mn.grade.errors.variantRequired);
+      return;
+    }
 
-    // The exam picker guarantees a well-formed key, so no JSON validation is
-    // needed — project it to the `AnswerKey` domain shape grading consumes.
-    const answerKeyJson = JSON.stringify(toAnswerKey(selectedAnswerKey));
+    // Guard against a silent total-skip: grading drops any question group the
+    // answer key does not target, so a key that matches *zero* of the template's
+    // question groups (stale ids after a template edit, or sheets printed from a
+    // different template) would yield empty results with no explanation. Refuse
+    // to start and tell the teacher to check the key(s) instead. In auto mode we
+    // ship every variant, so each one must match.
+    const keysToGrade = autoDetect
+      ? answerKeys.map(toAnswerKey)
+      : [toAnswerKey(selectedAnswerKey!)];
+    if (
+      keysToGrade.some(
+        (k) => !answerKeyMatchesTemplate(selectedTemplate.schema, k),
+      )
+    ) {
+      toast.error(mn.grade.errors.answerKeyMismatch);
+      return;
+    }
+
+    // The exam picker guarantees well-formed keys. Ship every variant so the
+    // backend can grade a mixed stack sheet-by-sheet; the manually chosen
+    // variant (manual mode) rides along as the fallback for sheets with no
+    // decodable variant mark.
+    const answerKeysJson = JSON.stringify(keysToGrade);
+    const fallbackVariant = autoDetect ? null : variant;
     const templateId = selectedExam.template_id;
 
     busy = true;
@@ -168,21 +219,24 @@
       const taskId = crypto.randomUUID();
       const job = await createJob({
         task_id: taskId,
-        pdf_path: pdfPath,
+        // The jobs row keeps one representative source path for display; the full
+        // batch is graded below. Multi-file uploads store the first path.
+        pdf_path: pdfPaths[0]!,
         template_id: templateId,
-        answer_key_json: answerKeyJson,
+        answer_key_json: answerKeysJson,
       });
       activeTaskId = taskId;
       activeJobId = job.id;
       session.setActiveJob(taskId);
-      session.recordPdfPath(pdfPath);
+      session.recordPdfPath(pdfPaths[0]!);
       session.recordTemplate(templateId);
 
       await gradePdf({
         taskId,
-        pdfPath,
+        sourcePaths: pdfPaths,
         templateJson: JSON.stringify(selectedTemplate.schema),
-        answerKeyJson,
+        answerKeysJson,
+        fallbackVariant,
       });
     } catch (e) {
       busy = false;
@@ -200,6 +254,8 @@
     if (p.stage === "done") {
       void finalizeJob("done", null);
     } else if (p.stage === "failed") {
+      // Dev-only: marker-detection / recognition failures surface only here.
+      logJobFailure(p.message ?? null);
       void finalizeJob("failed", p.message ?? "unknown error");
     } else if (busy) {
       // Live progress — best-effort DB update; ignore errors so the UI keeps
@@ -305,7 +361,7 @@
         <div class="flex gap-2">
           <Input
             id="pdf-path"
-            bind:value={pdfPath}
+            value={sourceSummary}
             placeholder={mn.grade.pdfPlaceholder}
             class="flex-1"
             readonly
@@ -355,6 +411,18 @@
           <Button type="button" variant="outline" size="sm" onclick={gotoExam}>
             {mn.grade.variantEmptyCta}
           </Button>
+        {:else if autoDetect}
+          <div class="rounded-md border bg-muted/30 px-3 py-2">
+            <p class="text-foreground text-sm font-medium">
+              {mn.grade.variantAuto}
+              <Badge variant="secondary" class="ml-1.5">
+                {mn.grade.variantAutoCount.replace("{count}", String(answerKeys.length))}
+              </Badge>
+            </p>
+            <p class="text-muted-foreground mt-0.5 text-xs">
+              {mn.grade.variantAutoHint}
+            </p>
+          </div>
         {:else}
           <select
             id="variant-id"
@@ -374,7 +442,11 @@
     <Card.Footer class="flex items-center justify-between">
       <Button
         onclick={start}
-        disabled={busy || !pdfPath || examId === null || variant === null}
+        disabled={busy ||
+          pdfPaths.length === 0 ||
+          examId === null ||
+          answerKeys.length === 0 ||
+          (!autoDetect && variant === null)}
       >
         <PlayIcon />
         {busy ? mn.grade.starting : mn.grade.start}

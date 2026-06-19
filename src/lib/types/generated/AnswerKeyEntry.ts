@@ -5,4 +5,11 @@
  * `correct_indices` is a list to support multi-correct questions (e.g. "B and
  * D"). Single-correct questions hold exactly one element.
  */
-export type AnswerKeyEntry = { group_id: string, correct_indices: Array<number>, };
+export type AnswerKeyEntry = { group_id: string, correct_indices: Array<number>, 
+/**
+ * Points this question is worth *in this exam*. `None` falls back to the
+ * template's [`BubbleGroup::score`](super::template::BubbleGroup::score), so
+ * one template can back exams that weight the same question differently and
+ * pre-existing keys (authored before per-exam scoring) keep their behavior.
+ */
+score?: number, };
