@@ -153,6 +153,16 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
+    // Opt-in auto-update (P6, master plan §6.8). Registering the plugin only exposes the
+    // `check()` capability; it never runs on startup. The frontend gates the actual update
+    // check behind a user preference (default OFF) so offline schools never see prompts.
+    // Endpoints / pubkey / install mode are configured under `plugins.updater` in
+    // `tauri.conf.json`.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
     builder
         .plugin(
             // Persistent rotating log file in the OS log dir, plus stdout for `tauri dev`
