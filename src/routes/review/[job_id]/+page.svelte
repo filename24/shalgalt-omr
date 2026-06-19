@@ -54,15 +54,26 @@
 
   onMount(() => {
     void loadJob();
+  });
 
-    // Track canvas size so the Konva stage gets pixel-accurate width/height.
+  // Track canvas size so the Konva stage gets pixel-accurate width/height.
+  //
+  // The container lives inside the `{:else if job && …}` block, so it does not
+  // exist yet when the component first mounts — the job loads asynchronously.
+  // Observing it once in `onMount` would bind to a `null` element and never
+  // fire, leaving the stage at 0×0 and the canvas stuck on its "…" placeholder.
+  // Run reactively instead: the effect re-runs when `bind:this` populates
+  // `canvasContainer`, seeds the initial size, and observes for later resizes.
+  $effect(() => {
+    const el = canvasContainer;
+    if (!el) return;
+    canvasWidth = el.clientWidth;
+    canvasHeight = el.clientHeight;
     const ro = new ResizeObserver(() => {
-      if (canvasContainer) {
-        canvasWidth = canvasContainer.clientWidth;
-        canvasHeight = canvasContainer.clientHeight;
-      }
+      canvasWidth = el.clientWidth;
+      canvasHeight = el.clientHeight;
     });
-    if (canvasContainer) ro.observe(canvasContainer);
+    ro.observe(el);
     return () => ro.disconnect();
   });
 
@@ -77,16 +88,28 @@
         loadFailed = mn.review.notFinishedYet;
         return;
       }
-      job = j;
+      // Resolve the template and answer keys before flipping the render gate.
+      // If either is missing the gate (`job && template && answerKeys.length`)
+      // can never become true, so surface an explicit error instead of leaving
+      // the page blank — which reads as "stuck loading".
+      const tpl = await getTemplate(j.template_id);
+      if (!tpl) {
+        loadFailed = mn.review.templateMissing;
+        return;
+      }
+      const keys = parseStoredAnswerKeys(j.answer_key_json);
+      if (keys.length === 0) {
+        loadFailed = mn.review.answerKeyMissing;
+        return;
+      }
+
       sheets = parseGradedSheets(j);
       // Open the first flagged sheet by default; otherwise the first sheet.
       const flaggedIdx = sheets.findIndex((s) => s.graded.needs_review);
       selectedIndex = flaggedIdx >= 0 ? flaggedIdx : 0;
-
-      const tpl = await getTemplate(j.template_id);
-      if (tpl) template = tpl.schema;
-
-      answerKeys = parseStoredAnswerKeys(j.answer_key_json);
+      template = tpl.schema;
+      answerKeys = keys;
+      job = j;
     } catch (e) {
       loadFailed = String(e);
     }
@@ -213,7 +236,11 @@
       </Card.Header>
     </Card.Root>
   </section>
-{:else if job && template && answerKeys.length > 0}
+{:else if !job}
+  <section class="p-8">
+    <p class="text-muted-foreground text-sm">{mn.review.loading}</p>
+  </section>
+{:else if template && answerKeys.length > 0}
   <section class="flex h-full flex-col p-4">
     <header class="mb-4 flex items-center justify-between gap-4">
       <div>
