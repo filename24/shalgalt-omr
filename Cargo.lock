@@ -6067,7 +6067,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-core"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -6087,7 +6087,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-cv"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "image",
@@ -6105,7 +6105,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-fileformat"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "age",
  "chrono",
@@ -6118,7 +6118,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-omr"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -6155,7 +6155,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-pdf"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "lopdf 0.34.0",
@@ -6168,7 +6168,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-server"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -6185,7 +6185,7 @@ dependencies = [
 
 [[package]]
 name = "shalgalt-store"
-version = "0.1.0"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "rusqlite",

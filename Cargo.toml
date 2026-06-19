@@ -12,7 +12,7 @@ members = [
 
 # Shared metadata that crates can opt into via `package.<field>.workspace = true`.
 [workspace.package]
-version = "0.1.0"
+version = "0.6.0-rc.1"
 edition = "2021"
 authors = ["filename24"]
 license = "MIT"
