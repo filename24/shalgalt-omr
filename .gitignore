@@ -22,3 +22,8 @@ vite.config.ts.timestamp-*
 
 # Per-session agent worktrees (working copies; embedded git repos). Never commit.
 .claude/worktrees/
+
+# Bundled native runtime libs (pdfium, opencv) fetched by scripts/fetch-binaries.*
+# at build time. Never commit the binaries; only the README marker is tracked.
+/apps/desktop/resources/*
+!/apps/desktop/resources/README.txt
