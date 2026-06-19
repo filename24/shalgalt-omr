@@ -1,6 +1,19 @@
 {
   "version": "0.6.0-rc.1",
   "notes": "See the GitHub release for changelog.",
-  "pub_date": "2026-06-19T16:00:38Z",
-  "platforms": {}
+  "pub_date": "2026-06-19T16:18:44Z",
+  "platforms": {
+    "linux-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRQkpZRE83RG55d01Ub0ZxMm9WLzVuMkJVUGN3TTNTUFhRV3JUZVFXTlRzL0gwaW5pcngrR2xTZFFBTzNTd1pSWHQ2WkNtWmlhcGhITGdUeXlvUGRla1A3a0dPVEdDdkFnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxODg1NjQxCWZpbGU6c2hhbGdhbHQtb21yXzAuNi4wLXJjLjFfYW1kNjQuQXBwSW1hZ2UKbkZ4d1pmbUZ6VFNyUlkrTmlkUm1FQVQzak1ObDRFdWJjdmU2OVZBQi9ySUlUT2dDc3VWcTNZeTFKTlNlZk45QlpPTDVRZGVlOEZBQUVlRTJlYU1rQUE9PQo=",
+      "url": "https://github.com/filename24/shalgalt-omr/releases/download/v0.6.0-rc.1/shalgalt-omr_0.6.0-rc.1_amd64.AppImage"
+    },
+    "darwin-aarch64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRQkpZRE83RG55d0RkQ281MjE3bzZxckdtUFlKdWlTbXg4aGZ3OGV0WmZkMWVpY2EzVThuSEFUTitVUUFUZUd2bHFFcWlMcUR2K1FJWXhycVhuR3pBZXhlWG1jYzAwMlFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxODg1ODcyCWZpbGU6c2hhbGdhbHQtb21yLmFwcC50YXIuZ3oKU2JsbXQxSUJMOUVaclFucnc0dUJ6bFhuaVlZTjI2SnFGcHVnSVJ2RU1YejlCWThpRlVHaUVkZk5GZm9WcXBQRGtoamZuV1dXTmtncFVOVzR3dXpVQ3c9PQo=",
+      "url": "https://github.com/filename24/shalgalt-omr/releases/download/v0.6.0-rc.1/shalgalt-omr_aarch64.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRQkpZRE83RG55d0lRM1VCTXZFdWFCNGJ0NngrMmR6UFIxbk1ONWVvZWlQTW5zZUdzMVNERU9EelV2aldNY2gzV3d2MkZCcVpJd0NyNG9LM1VwcmtvV1ZRN28vQ3g3R3dvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgxODg1ODk2CWZpbGU6c2hhbGdhbHQtb21yXzAuNi4wLXJjLjFfeDY0LXNldHVwLmV4ZQo4SU9EVlVES1I5SnRuVWd0VUVhVXhBZnhRUTM5RHlxRUp2eU5NWVl2YlFsSHNhTDJ3WWlVbHg1MFZtMzNiejI4K25NbDRic0ZTS0RRbHhHZFlDUjZBZz09Cg==",
+      "url": "https://github.com/filename24/shalgalt-omr/releases/download/v0.6.0-rc.1/shalgalt-omr_0.6.0-rc.1_x64-setup.exe"
+    }
+  }
 }
