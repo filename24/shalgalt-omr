@@ -14,6 +14,7 @@
   import { createJob, completeJob, updateJobProgress } from "$lib/db/jobs";
   import { toAnswerKey } from "$lib/types/exam";
   import { answerKeyMatchesTemplate } from "$lib/grade/validateAnswerKey";
+  import { logSheetDiagnostics, logJobFailure } from "$lib/grade/diagnostics";
   import { mn } from "$lib/i18n";
 
   import { Button } from "$lib/components/ui/button";
@@ -140,6 +141,8 @@
     unlistenResult = await listen<TaskResult>(TASK_RESULT_EVENT, (event) => {
       if (event.payload.task_id !== activeTaskId) return;
       collected = [...collected, event.payload];
+      // Dev-only: explain this sheet's review/recognition outcome in the console.
+      logSheetDiagnostics(event.payload);
     });
   }
 
@@ -251,6 +254,8 @@
     if (p.stage === "done") {
       void finalizeJob("done", null);
     } else if (p.stage === "failed") {
+      // Dev-only: marker-detection / recognition failures surface only here.
+      logJobFailure(p.message ?? null);
       void finalizeJob("failed", p.message ?? "unknown error");
     } else if (busy) {
       // Live progress — best-effort DB update; ignore errors so the UI keeps

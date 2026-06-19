@@ -101,8 +101,10 @@ fn detect_raw(gray: &Mat) -> AppResult<(Vector<Mat>, Mat)> {
 fn assemble_corner_set(corners: &Vector<Mat>, ids: &Mat) -> AppResult<[DetectedMarker; 4]> {
     let count = ids.rows();
     if count < 4 {
+        tracing::warn!(detected = count, "aruco: fewer than 4 markers detected");
         return Err(AppError::BadRequest(format!(
-            "expected 4 ArUco markers (DICT_6X6_50, IDs 0..3), found {count}"
+            "expected 4 ArUco markers (DICT_6X6_50, IDs 0..3), detected only {count}. \
+             Ensure all four corner markers are visible, unobscured, and not cropped."
         )));
     }
 
@@ -140,17 +142,35 @@ fn assemble_corner_set(corners: &Vector<Mat>, ids: &Mat) -> AppResult<[DetectedM
         });
     }
 
-    let mut out: Vec<DetectedMarker> = Vec::with_capacity(4);
-    for (slot, m) in found.into_iter().enumerate() {
-        match m {
-            Some(m) => out.push(m),
-            None => {
-                return Err(AppError::BadRequest(format!(
-                    "ArUco marker with ID {slot} not found"
-                )));
-            }
-        }
+    // Report every missing/present marker at once so a failed alignment names
+    // exactly which corner(s) the detector lost — far more actionable than
+    // bailing on the first gap.
+    let missing: Vec<usize> = found
+        .iter()
+        .enumerate()
+        .filter(|(_, m)| m.is_none())
+        .map(|(slot, _)| slot)
+        .collect();
+    if !missing.is_empty() {
+        let present: Vec<usize> = found
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.is_some())
+            .map(|(slot, _)| slot)
+            .collect();
+        tracing::warn!(
+            ?present,
+            ?missing,
+            "aruco: marker set incomplete; cannot align page"
+        );
+        return Err(AppError::BadRequest(format!(
+            "ArUco markers incomplete: found IDs {present:?}, missing {missing:?} \
+             (need 0,1,2,3 — DICT_6X6_50). Ensure all four corner markers are visible, \
+             unobscured, and not cropped."
+        )));
     }
+
+    let mut out: Vec<DetectedMarker> = found.into_iter().flatten().collect();
     Ok([out.remove(0), out.remove(0), out.remove(0), out.remove(0)])
 }
 
