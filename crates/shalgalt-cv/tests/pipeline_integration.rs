@@ -121,6 +121,45 @@ fn filled_bubble_reads_above_threshold() {
 }
 
 #[test]
+fn three_markers_still_align() {
+    // Drop the TL marker (slot 0): only TR/BR/BL remain — exactly MIN_MARKERS. The
+    // homography must still align well enough that a known filled bubble reads filled,
+    // which also proves the detected-corner ↔ destination-corner ordering is correct.
+    let filled_norm = (0.20_f32, 0.50_f32);
+    let img = synth::mfp_quality_missing_marker(&[filled_norm], 0xABCDEF, 0);
+
+    let template = template_with_one_question_at("q1", filled_norm.0, filled_norm.1);
+
+    let gray = threshold::to_gray(&img).expect("to_gray");
+    let markers =
+        perspective::detect_corner_markers(&gray).expect("three markers should be enough to align");
+    assert_eq!(markers.len(), 3, "exactly three markers detected");
+    assert!(
+        markers.iter().all(|m| m.id != 0),
+        "the dropped TL marker (id 0) must be absent, got {:?}",
+        markers.iter().map(|m| m.id).collect::<Vec<_>>()
+    );
+
+    let layout = perspective::MarkerLayout::from_template(&template.markers);
+    let warped =
+        perspective::warp_to_canonical(&gray, &markers, &layout).expect("warp from 3 markers");
+    let ink = threshold::flatten_to_ink(&warped).expect("flatten_to_ink");
+    let readings = bubbles::read_bubbles(&ink, &template).expect("read_bubbles");
+
+    assert_eq!(readings.len(), 2, "two bubbles in q1");
+    assert!(
+        readings[0].fill > 0.65,
+        "filled bubble via 3-marker warp should read above 0.65, got {}",
+        readings[0].fill
+    );
+    assert!(
+        readings[1].fill < 0.35,
+        "empty bubble via 3-marker warp should read below 0.35, got {}",
+        readings[1].fill
+    );
+}
+
+#[test]
 fn deliberately_bad_fixture_fails_marker_detection_gracefully() {
     let img = synth::deliberately_bad(0xBAD);
     let dir = save_to_tempdir(&img, "bad.png");

@@ -169,7 +169,8 @@ export function logJobFailure(message: string | null): void {
   if (!isGradeDebugEnabled()) return;
   console.error(`[grade] job FAILED: ${message ?? "unknown error"}`);
   console.error(
-    "If this mentions ArUco markers, the four corner markers were not all detected — " +
-      "check the scan/photo for cropping, glare, shadow, skew, or low resolution.",
+    "If this mentions ArUco markers, fewer than 3 of the 4 corner markers were detected " +
+      "(3 are enough to align) — check the scan/photo for cropping, glare, shadow, skew, " +
+      "or low resolution.",
   );
 }
