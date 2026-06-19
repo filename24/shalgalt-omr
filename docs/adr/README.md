@@ -40,3 +40,6 @@ reasoning*, not the prose volume.
 | [0010](0010-confidence-band.md) | Per-bubble fill measurement, decision bands, and confidence formula | Accepted |
 | [0011](0011-shalgalt-file-format.md) | `.shalgalt` project file: zip container with a plaintext manifest | Accepted |
 | [0012](0012-age-encryption.md) | Optional `.shalgalt` encryption: `age` passphrase recipients, ASCII-armored | Accepted |
+| [0013](0013-rest-api-v1-datastore.md) | HTTP API: `/v1` versioning, `DataStore` seam in core, OpenAPI via `utoipa` | Accepted |
+| [0014](0014-server-binary-and-rusqlite-store.md) | Standalone server + shared `rusqlite` `DataStore`, read path split from plugin-sql writes | Accepted |
+| [0015](0015-api-port-default-and-fallback.md) | API port: less-common default (22345), desktop auto-fallback, `SHALGALT_API_PORT` override | Accepted |

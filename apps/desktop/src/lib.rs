@@ -79,6 +79,7 @@ const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_0002: &str = include_str!("../migrations/0002_backdrop.sql");
 const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
 const MIGRATION_0004: &str = include_str!("../migrations/0004_exams.sql");
+const MIGRATION_0005: &str = include_str!("../migrations/0005_results_exam.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -107,6 +108,12 @@ pub fn run() {
             version: 4,
             description: "add_exams_answer_keys",
             sql: MIGRATION_0004,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 5,
+            description: "add_results_exam_id",
+            sql: MIGRATION_0005,
             kind: MigrationKind::Up,
         },
     ];
@@ -189,6 +196,7 @@ pub fn run() {
             commands::project::project_open,
             commands::project::project_save,
             commands::project::project_export,
+            commands::api::api_info,
             take_pending_open_file,
         ])
         .build(tauri::generate_context!())
@@ -233,12 +241,29 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
     // Drop preview cache files older than 24h before the editor opens.
     commands::pdf::prune_old_previews(&dirs.cache_dir);
 
+    let db_path = dirs.db_path();
+    let data_dir = dirs.data_dir.clone();
     let state = AppState::new(dirs);
 
-    // Rule 4: the axum server lives in its own task. Storing the handle via `manage` means
-    // it is dropped (and shut down gracefully) when the Tauri app exits.
-    let api: ApiHandle = api::spawn().await?;
-    app.manage(api);
+    // Rule 4 + port hardening (ADR 0015): the embedded API is an OPTIONAL integration
+    // surface. A bind failure must never brick IPC, so `state` is always managed and the
+    // API handle is added only when the server actually started. Auto-fallback inside
+    // `api::spawn` handles the common case of the default port being busy on a teacher's
+    // machine; the port it lands on is advertised via `write_endpoint_file` so external
+    // integrations can still find it. The `ApiHandle`, when present, is dropped (and shut
+    // down gracefully) when the Tauri app exits.
+    match api::spawn(db_path).await {
+        Ok(api) => {
+            let port = api.port();
+            api::write_endpoint_file(&data_dir, port);
+            app.manage(commands::api::ApiInfo::running(port));
+            app.manage(api);
+        }
+        Err(e) => {
+            tracing::error!("embedded API server did not start (app continues without it): {e:?}");
+            app.manage(commands::api::ApiInfo::disabled());
+        }
+    }
     app.manage(state);
 
     Ok(())

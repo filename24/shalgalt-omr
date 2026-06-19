@@ -87,4 +87,40 @@ impl Serialize for AppError {
     }
 }
 
+/// HTTP rendering for the `/v1/` REST surface (P5). The same `{ code, message }` envelope
+/// the IPC layer serializes is reused as the JSON body; only the status line is derived
+/// here, so REST clients and the Tauri frontend read identical error shapes.
+///
+/// `BadRequest` → 400 (also the read-only-mode write rejection), `NotFound` → 404;
+/// everything else is an internal fault → 500.
+///
+/// Crucially, the *message* for a 500 is a fixed generic string — the underlying detail
+/// (which for `Internal`/`Io` can include a SQLite error and the absolute database path)
+/// is logged via `tracing::error!` but **never** sent to the client. The standalone server
+/// is reachable over the LAN, so leaking a filesystem path in a response body is a real
+/// information-disclosure bug. `BadRequest`/`NotFound` messages are author-controlled and
+/// safe to surface.
+impl axum::response::IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+
+        let (status, message) = match &self {
+            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            other => {
+                tracing::error!(code = other.code(), detail = %other, "v1 request failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "an internal error occurred".to_string(),
+                )
+            }
+        };
+        let body = axum::Json(AppErrorPayload {
+            code: self.code(),
+            message,
+        });
+        (status, body).into_response()
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;

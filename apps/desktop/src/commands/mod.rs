@@ -7,6 +7,7 @@
 //! contains no read/write commands. What lives here is (a) Rust-only heavy work (scan) and
 //! (b) external-format conversion (xlsx).
 
+pub mod api;
 pub mod export;
 pub mod pdf;
 pub mod project;

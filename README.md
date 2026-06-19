@@ -14,7 +14,7 @@
 | Native UI   | Tauri 2.0                                                             |
 | Core        | Rust — opencv-rust, pdfium-render, rust_xlsxwriter                    |
 | Persistence | tauri-plugin-sql + SQLite (single local file)                         |
-| API         | axum (background, port 8080)                                          |
+| API         | axum (background, default port 22345 — ADR 0015)                      |
 
 ## System Prerequisites
 

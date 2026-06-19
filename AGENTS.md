@@ -22,7 +22,7 @@ exposes a background HTTP API for optional integrations.
 | Native shell | Tauri 2.0 + plugins: sql, dialog, fs, opener, log, single-instance, window-state |
 | Core         | Rust — opencv-rust, pdfium-render, rust_xlsxwriter, printpdf          |
 | Persistence  | `tauri-plugin-sql` + SQLite (single file in Tauri's `app_data_dir`)   |
-| Bg API       | axum on `127.0.0.1:8080` (CORS permissive, oneshot graceful shutdown) |
+| Bg API       | axum on `127.0.0.1:22345` (default; auto-fallback if busy — ADR 0015. CORS permissive, oneshot graceful shutdown) |
 | Async        | tokio (`full`)                                                        |
 
 ## Workspace Layout
@@ -54,7 +54,9 @@ apps/
 
 crates/
   shalgalt-core/         ── AGENTS.md   — Domain models, grading, axum router, AppError,
-                                          xlsx export. Pure Rust. Rule 3 home.
+                                          xlsx export, DataStore seam. Pure Rust. Rule 3 home.
+  shalgalt-store/        ── AGENTS.md   — rusqlite DataStore for the HTTP API (P5). The one
+                                          place a second SQLite connection lives.
   shalgalt-pdf/          ── AGENTS.md   — printpdf-based OMR sheet generator with
                                           embedded Noto Sans + Noto Sans Mongolian.
   shalgalt-cv/           ── AGENTS.md   — pdfium + OpenCV pipeline; TaskProgress shape.
@@ -256,8 +258,9 @@ package.
 
 - [`AGENTS.md`](AGENTS.md) — repo rules, locked decisions, language conventions (this file).
 - [`apps/desktop/AGENTS.md`](apps/desktop/AGENTS.md) — Tauri shell + IPC commands + axum harness + migrations.
-- [`apps/server/AGENTS.md`](apps/server/AGENTS.md) — standalone HTTP server (P5 placeholder).
-- [`crates/shalgalt-core/AGENTS.md`](crates/shalgalt-core/AGENTS.md) — domain, grading, router, AppError, xlsx (Rule 3 home).
+- [`apps/server/AGENTS.md`](apps/server/AGENTS.md) — standalone HTTP server (P5).
+- [`crates/shalgalt-core/AGENTS.md`](crates/shalgalt-core/AGENTS.md) — domain, grading, router, AppError, xlsx, DataStore (Rule 3 home).
+- [`crates/shalgalt-store/AGENTS.md`](crates/shalgalt-store/AGENTS.md) — rusqlite DataStore for the HTTP API (P5).
 - [`crates/shalgalt-pdf/AGENTS.md`](crates/shalgalt-pdf/AGENTS.md) — printpdf renderer + Noto fonts.
 - [`crates/shalgalt-cv/AGENTS.md`](crates/shalgalt-cv/AGENTS.md) — pdfium + OpenCV pipeline + TaskProgress.
 - [`crates/shalgalt-fileformat/AGENTS.md`](crates/shalgalt-fileformat/AGENTS.md) — `.shalgalt` zip + age (P4 placeholder).

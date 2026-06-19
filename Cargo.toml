@@ -4,6 +4,7 @@ members = [
     "apps/desktop",
     "apps/server",
     "crates/shalgalt-core",
+    "crates/shalgalt-store",
     "crates/shalgalt-pdf",
     "crates/shalgalt-cv",
     "crates/shalgalt-fileformat",

@@ -1,0 +1,28 @@
+[package]
+name = "shalgalt-store"
+description = "rusqlite-backed DataStore for the HTTP API, shared by apps/desktop and apps/server (P5)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_store"
+path = "src/lib.rs"
+
+[dependencies]
+# The DataStore trait + DTOs this crate implements live in core; core itself stays
+# database-free (see crates/shalgalt-core/CLAUDE.md).
+shalgalt-core = { path = "../shalgalt-core" }
+
+# Read path for the SQLite file that `tauri-plugin-sql` (sqlx) writes. `bundled` links the
+# same vendored SQLite sqlx already pulls in via libsqlite3-sys, so the desktop binary ends
+# up with a single unified SQLite rather than two.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -22,6 +22,12 @@ tauri-build = { version = "2", features = [] }
 # Tauri code on the dependency path.
 shalgalt-core = { path = "../../crates/shalgalt-core" }
 
+# --- HTTP API data store (P5) ---
+# Read-only `rusqlite` reader over the plugin-sql SQLite file, injected into the embedded
+# axum router so the `/v1/` surface serves real data. Writes stay owned by plugin-sql; the
+# injected `DeferredReadOnlyStore` never writes (see ADR 0014).
+shalgalt-store = { path = "../../crates/shalgalt-store" }
+
 # --- CV pipeline (P2-03) ---
 # Multi-page PDF rasterization, perspective alignment, bubble reading, and the
 # `TaskProgress` / `TaskStage` payloads all live in this crate. Tauri-bound

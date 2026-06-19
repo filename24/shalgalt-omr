@@ -6,4 +6,4 @@
 
 pub mod server;
 
-pub use server::{spawn, ApiHandle};
+pub use server::{spawn, write_endpoint_file, ApiHandle};

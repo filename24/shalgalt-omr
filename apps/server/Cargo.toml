@@ -8,6 +8,30 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+# Split lib + bin so the app-assembly (router + auth + CORS) is importable by the
+# integration test under `tests/` without booting a real socket.
+[lib]
+name = "shalgalt_server"
+path = "src/lib.rs"
+
 [[bin]]
 name = "shalgalt-server"
 path = "src/main.rs"
+
+[dependencies]
+# Same router/auth/CORS the desktop embeds (Rule 4). No fork.
+shalgalt-core = { path = "../../crates/shalgalt-core" }
+# Read-write rusqlite store: this binary owns the SQLite file.
+shalgalt-store = { path = "../../crates/shalgalt-store" }
+
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tempfile = "3"

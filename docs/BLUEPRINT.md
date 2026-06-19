@@ -30,6 +30,10 @@ dashboards.
     asynchronous, frontend-driven access.
   - axum: when the Tauri app starts, a background-thread RESTful API server runs at
     `localhost:8080` to enable downstream dashboard integrations.
+    > **Superseded by [ADR 0015](adr/0015-api-port-default-and-fallback.md):** the default
+    > port is now `22345` (with auto-fallback if busy). Integrations should read the bound
+    > port from `app_data_dir/api-endpoint.json` or the `api_info` IPC command, not assume
+    > a fixed value.
 
 ## 3. Core Architecture & Strict Rules (AI Guardrails)
 
