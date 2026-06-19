@@ -1,0 +1,36 @@
+[package]
+name = "shalgalt-pdf"
+description = "OMR PDF generator backed by printpdf with embedded Noto Sans fonts"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_pdf"
+path = "src/lib.rs"
+
+[dependencies]
+# Pure-Rust PDF writer (master plan §6.2). Deterministic across OSes, supports
+# embedded TTF + auto-subsetting, vector primitives. No system C deps.
+printpdf = "0.9"
+
+# Domain types (`OmrTemplate`, `PaperSpec`) — re-exported via `shalgalt_pdf::domain`.
+shalgalt-core = { path = "../shalgalt-core" }
+
+# Internal ergonomic ?-mapping. Never leaks past `PdfError` at the crate boundary.
+anyhow = "1"
+thiserror = "2"
+
+# Serialize / Deserialize derives for `LayoutMap` — same workspace serde version as
+# shalgalt-core so the JSON round-trip is byte-identical between map producer (this
+# crate) and map consumer (`shalgalt-cv` grader, P3-02).
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# PDF validity assertions in the smoke / Cyrillic-glyph tests.
+lopdf = "0.34"
+# JSON serialisation round-trip test for `LayoutMap`.
+serde_json = "1"

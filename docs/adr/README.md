@@ -1,0 +1,45 @@
+# Architecture Decision Records
+
+This folder collects ADRs — short documents that record significant architectural or
+operational choices, the alternatives considered, and the consequences accepted.
+
+## When to write one
+
+- The decision is hard to reverse (e.g. choice of build toolchain, database engine,
+  IPC contract).
+- Multiple credible options exist and the trade-offs are non-obvious.
+- A future contributor would otherwise re-litigate the same question.
+
+If a change is small, local, and easily reversible, it does not need an ADR — just write
+the code.
+
+## File naming
+
+`NNNN-kebab-case-title.md`, monotonically increasing (no gaps). Use four digits to keep
+sort order stable past 100 entries.
+
+## Template
+
+Use the structure of an existing ADR (Status / Date / Deciders / Context / Options /
+Decision / Consequences / Follow-up). Keep them short — the value is in the *recorded
+reasoning*, not the prose volume.
+
+## Index
+
+| ID | Title | Status |
+| -- | ----- | ------ |
+| [0001](0001-windows-opencv-strategy.md) | Windows OpenCV install strategy | Accepted |
+| [0002](0002-pdf-generator-printpdf.md) | PDF generator: `printpdf` | Accepted |
+| [0003](0003-cargo-workspace-and-crate-boundaries.md) | Cargo workspace + crate boundaries | Accepted |
+| [0004](0004-ts-rs-type-codegen.md) | Generate TypeScript bindings from Rust via `ts-rs` | Accepted |
+| [0005](0005-pdf-ipc-contract.md) | PDF generation IPC contract | Accepted |
+| [0006](0006-light-theme-and-comfort-typography.md) | Light-default theme + comfortable typography mode | Accepted |
+| [0007](0007-canvas-wrapper-and-layout-modules.md) | Canvas wrapper + per-element layout modules in `shalgalt-pdf` | Accepted |
+| [0008](0008-bubble-label-position.md) | Bubble label position: inside the circle | Accepted |
+| [0009](0009-aruco-markers.md) | Corner markers: ArUco DICT_6X6_50, IDs 0..3 in TL/TR/BR/BL order | Accepted |
+| [0010](0010-confidence-band.md) | Per-bubble fill measurement, decision bands, and confidence formula | Accepted |
+| [0011](0011-shalgalt-file-format.md) | `.shalgalt` project file: zip container with a plaintext manifest | Accepted |
+| [0012](0012-age-encryption.md) | Optional `.shalgalt` encryption: `age` passphrase recipients, ASCII-armored | Accepted |
+| [0013](0013-rest-api-v1-datastore.md) | HTTP API: `/v1` versioning, `DataStore` seam in core, OpenAPI via `utoipa` | Accepted |
+| [0014](0014-server-binary-and-rusqlite-store.md) | Standalone server + shared `rusqlite` `DataStore`, read path split from plugin-sql writes | Accepted |
+| [0015](0015-api-port-default-and-fallback.md) | API port: less-common default (22345), desktop auto-fallback, `SHALGALT_API_PORT` override | Accepted |

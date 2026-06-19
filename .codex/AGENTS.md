@@ -21,7 +21,6 @@ The generated baseline enables GitHub, Context7, Exa, Memory, Playwright, and Se
 
 ## Workflow Files
 
-- `.claude/commands/documentation-update.md`
-- `.claude/commands/project-wide-language-or-style-migration.md`
+- `.claude/commands/add-or-evolve-pdf-feature.md`
 
 Use these workflow files as reusable task scaffolds when the detected repository workflows recur.

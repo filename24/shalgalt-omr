@@ -4,103 +4,113 @@
 > Auto-generated skill from repository analysis
 
 ## Overview
-This skill covers the development patterns and workflows for the `shalgalt-omr` project—a Rust backend with a Vite-powered frontend. The repository emphasizes clear documentation, consistent code style, and structured commit messages. You'll learn how to contribute code, update documentation, and maintain consistency across the codebase.
+
+This skill provides guidance on contributing to the `shalgalt-omr` codebase, a Rust project focused on Optical Mark Recognition (OMR) with PDF generation capabilities. It covers coding conventions, commit patterns, and step-by-step workflows for evolving PDF features, ensuring consistency and maintainability across the repository.
 
 ## Coding Conventions
 
 ### File Naming
+
 - Use **camelCase** for file names.
-  - Example: `scanSheet.rs`, `answerParser.ts`, `userProfile.svelte`
+  - Example: `pdfLayout.rs`, `fontManager.rs`
 
 ### Import Style
-- Mixed import styles are used. Both default and named imports may appear.
-  - Example (TypeScript/Svelte):
-    ```ts
-    import { parseAnswers } from './answerParser';
-    import scanSheet from './scanSheet';
+
+- Use **relative imports** within modules.
+  - Example (Rust):
+    ```rust
+    mod layout;
+    use crate::layout::PageLayout;
+    ```
+  - Example (TypeScript):
+    ```typescript
+    import { GeneratedType } from './generated/typeDefs';
     ```
 
 ### Export Style
-- Prefer **named exports**.
+
+- Use **named exports**.
   - Example (TypeScript):
-    ```ts
-    export function parseAnswers(data: string) { ... }
-    export const SHEET_VERSION = '1.0.0';
+    ```typescript
+    export type { GeneratedType };
     ```
 
 ### Commit Messages
+
 - Follow **conventional commit** style.
-- Prefixes: `docs:`, `feat:`, `chore:`
-- Example:
-  ```
-  docs: update README with new installation instructions
-  feat: add answer sheet parsing logic
-  chore: migrate UI strings to English
-  ```
+- Prefix with `feat` for new features.
+  - Example:
+    ```
+    feat(pdf): add support for custom font embedding in PDF output
+    ```
 
 ## Workflows
 
-### Documentation Update
-**Trigger:** When you want to add new documentation or update existing docs.  
-**Command:** `/update-docs`
+### Add or Evolve PDF Feature
 
-1. Edit or create markdown files in the `docs/` directory or the root `README.md`.
-2. Commit your changes with a `docs:` prefix in the commit message.
-   - Example: `docs: add usage guide for answer scanning`
-3. Submit your pull request for review.
+**Trigger:** When introducing or significantly updating PDF generation/layout features.
 
-**Files Involved:**
-- `README.md`
-- `docs/ARCHITECTURE.md`
-- `docs/BLUEPRINT.md`
-- `AGENTS.md`
+**Command:** `/add-pdf-feature`
 
----
+Follow these steps to add or evolve PDF-related features:
 
-### Project-wide Language or Style Migration
-**Trigger:** When you need to enforce language or style conventions across the project.  
-**Command:** `/migrate-language`
-
-1. Edit multiple files across backend, frontend, and documentation to update language or style.
-   - This may include renaming variables, updating UI strings, or standardizing documentation language.
-2. Commit your changes with a `chore:` or `docs:` prefix in the commit message.
-   - Example: `chore: migrate all UI text to English`
-3. Submit your pull request for review.
-
-**Files Involved:**
-- `README.md`
-- `docs/ARCHITECTURE.md`
-- `docs/BLUEPRINT.md`
-- `src-tauri/Cargo.toml`
-- `src-tauri/src/**/*.rs`
-- `src/lib/**/*.ts`
-- `src/lib/**/*.svelte`
-- `src/routes/**/*.svelte`
-
----
+1. **Update or create Rust modules** in `crates/shalgalt-pdf/src/`.
+   - Add new files for layouts, styles, shapes, etc.
+   - Example:
+     ```rust
+     // crates/shalgalt-pdf/src/layout.rs
+     pub struct PageLayout { /* ... */ }
+     ```
+2. **Add or update font assets** in `crates/shalgalt-pdf/assets/fonts/`.
+   - Place new `.ttf` or `.otf` files as needed.
+3. **Update or create tests** in `crates/shalgalt-pdf/tests/`.
+   - Include both golden tests (output comparison) and smoke tests.
+   - Example:
+     ```rust
+     #[test]
+     fn test_pdf_layout() {
+         // test implementation
+     }
+     ```
+4. **Update domain logic** in `crates/shalgalt-core/src/domain/` as necessary.
+   - Add or modify domain models/types related to PDF features.
+5. **Update Cargo files**:
+   - Run `cargo build` to update `Cargo.lock`.
+   - Edit `crates/shalgalt-pdf/Cargo.toml` if dependencies change.
+6. **Update generated TypeScript types** in `src/lib/types/generated/`.
+   - Regenerate or manually update `.ts` files to reflect Rust changes.
+   - Example:
+     ```typescript
+     // src/lib/types/generated/pdfTypes.ts
+     export type PdfLayout = { /* ... */ };
+     ```
+7. **(Optional) Add documentation** in `docs/adr/`.
+   - Create or update architecture decision records for major changes.
 
 ## Testing Patterns
 
-- **Test File Pattern:** Files ending with `.test.*` (e.g., `answerParser.test.ts`)
-- **Testing Framework:** Not explicitly detected; check existing test files for framework clues.
-- **Location:** Tests are typically placed alongside the code they test.
+- **Framework:** Unknown (Rust's built-in test framework is likely).
+- **Test Files:** Use `*.test.ts` for TypeScript tests; Rust tests are in `crates/shalgalt-pdf/tests/*.rs`.
+- **Test Example (Rust):**
+  ```rust
+  #[test]
+  fn test_pdf_generation() {
+      // Arrange, Act, Assert
+  }
+  ```
+- **Test Example (TypeScript):**
+  ```typescript
+  // src/lib/types/generated/pdfTypes.test.ts
+  import { PdfLayout } from './pdfTypes';
 
-**Example Test File:**
-```ts
-// answerParser.test.ts
-import { parseAnswers } from './answerParser';
-
-test('parses valid answer sheet', () => {
-  const input = 'A,B,C,D';
-  expect(parseAnswers(input)).toEqual(['A', 'B', 'C', 'D']);
-});
-```
+  test('PdfLayout structure', () => {
+    // test implementation
+  });
+  ```
 
 ## Commands
 
-| Command         | Purpose                                                |
-|-----------------|--------------------------------------------------------|
-| /update-docs    | Add or update project documentation and guides         |
-| /migrate-language | Migrate codebase, docs, and UI strings for consistency |
-
+| Command           | Purpose                                                      |
+|-------------------|--------------------------------------------------------------|
+| /add-pdf-feature  | Initiate the workflow for adding or evolving PDF features    |
 ```

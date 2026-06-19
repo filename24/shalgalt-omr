@@ -2,14 +2,13 @@
   "version": "2.0",
   "technicalLevel": "technical",
   "preferredStyle": {
-    "verbosity": "moderate",
+    "verbosity": "detailed",
     "codeComments": true,
     "explanations": true
   },
   "domains": [
-    "rust",
-    "vite"
+    "rust"
   ],
   "suggestedBy": "ecc-tools-repo-analysis",
-  "createdAt": "2026-05-02T10:52:34.646Z"
+  "createdAt": "2026-05-08T03:02:36.959Z"
 }

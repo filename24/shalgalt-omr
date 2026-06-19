@@ -1,0 +1,63 @@
+[package]
+name = "shalgalt-cv"
+description = "OMR computer-vision pipeline: pdfium rasterization, OpenCV bubble reading"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_cv"
+path = "src/lib.rs"
+
+[dependencies]
+# Domain models + AppError envelope.
+shalgalt-core = { path = "../shalgalt-core" }
+
+# OMR algorithms.
+# NOTE: requires system-installed OpenCV (libopencv-dev / brew opencv / Windows
+# self-extractor — see README and ADR 0001).
+opencv = { version = "0.94", default-features = false, features = [
+    "clang-runtime",
+    "imgcodecs",
+    "imgproc",
+    # P3-01: ArUco marker detection. The actual module path differs between
+    # OpenCV 4.6 (cv::aruco — Ubuntu apt, older Homebrew) and OpenCV 4.7+
+    # (cv::objdetect::ArucoDetector — Windows self-extractor, current Homebrew,
+    # vcpkg). `build.rs` probes the local version and emits one of
+    # `opencv_aruco_legacy` / `opencv_aruco_modern`; `src/perspective.rs` picks
+    # the import path at compile time. Override the probe with the
+    # `OPENCV_FORCE_ARUCO=legacy|modern` env var when auto-detection misses.
+    "aruco",
+    "objdetect",
+    # The legacy `aruco` bindings reference `calib3d::SolvePnPMethod` for board
+    # pose estimation. We don't call those code paths, but the binding
+    # cross-references require the feature.
+    "calib3d",
+] }
+
+# PDF rasterization.
+pdfium-render = { version = "0.8", features = ["thread_safe", "image", "sync"] }
+image = "0.25"
+
+# Progress reporting + cache hashing.
+tokio = { version = "1", features = ["sync", "rt"] }
+sha2 = "0.10"
+
+# Logging + error context.
+tracing = "0.1"
+anyhow = "1"
+
+# Domain serialization (TaskProgress / TaskStage).
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+# The pdfium-render marker-raster regression test (P2-06 acceptance) feeds bytes from
+# shalgalt-pdf into pdfium-render and verifies that the four corners contain dark pixels.
+# Dev-only — `shalgalt-pdf`'s runtime stays free of pdfium.
+shalgalt-pdf = { path = "../shalgalt-pdf" }
+tempfile = "3"
+# Deterministic noise / rotation jitter for synthetic fixtures (P3-09).
+rand = { version = "0.8", features = ["std_rng"] }

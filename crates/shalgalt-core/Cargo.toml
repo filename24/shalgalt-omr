@@ -1,0 +1,61 @@
+[package]
+name = "shalgalt-core"
+description = "Pure-Rust core: domain models, grading engine, xlsx export, axum router"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_core"
+path = "src/lib.rs"
+
+[dependencies]
+# Domain serialization (Rule 3) — every model derives Serialize/Deserialize.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error envelope shared across the workspace.
+thiserror = "2"
+anyhow = "1"
+
+# axum router for the background HTTP server (Rule 4). The actual `tokio::spawn` /
+# graceful-shutdown harness lives in `apps/desktop` so the router can stay
+# Tauri-agnostic and be reused by `apps/server` (P5-05).
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Structured logging for the `/v1/` error path: internal (500) details are logged here and
+# kept out of the HTTP body. Macros-only; the host installs the subscriber.
+tracing = "0.1"
+
+# Branch-free, length-independent comparison for the bearer token (P5-04). Avoids leaking
+# the token's bytes *or* its length through response timing.
+constant_time_eq = "0.3"
+
+# xlsx result export (P5-01). The writer is pure — it produces an in-memory
+# buffer — and all human-language text (sheet names, headers, status words) is
+# injected by the host via `export::ReportLabels`, so this crate stays
+# English-only while the workbook ships Mongolian headers.
+rust_xlsxwriter = "0.95"
+
+# TypeScript binding generation (P2-04). Domain types derive `TS` and emit
+# `.ts` interfaces into `src/lib/types/generated/` whenever `cargo test -p
+# shalgalt-core` runs (frontend `pnpm generate-types` wraps that). Required at
+# build time because the derive expands to runtime code.
+ts-rs = "10"
+
+# OpenAPI generation for the `/v1/` REST surface (P5-06). DTOs derive `ToSchema`
+# and handlers carry `#[utoipa::path]`; `ApiDoc::openapi()` is served verbatim at
+# `/openapi.json`. Master plan §8.2 sanctions this as the single OpenAPI
+# dependency in core (the spec lives next to the router it documents).
+utoipa = { version = "5", features = ["axum_extras"] }
+
+[dev-dependencies]
+# In-process router tests boot the `/v1/` surface over a `MemoryStore` and assert
+# JSON bodies without binding a socket.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+tokio = { version = "1", features = ["macros", "rt"] }

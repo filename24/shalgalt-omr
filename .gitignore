@@ -8,3 +8,22 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Cargo workspace target dir lives at the repo root after the P2-01 layout switch.
+/target/
+
+# Local-only translations and per-issue body drafts. The English master plan
+# at `.claude/PRPs/plans/shalgalt-omr-master.plan.md` and the body template
+# are committed; everything below was source material for one-shot GitHub
+# Issue creation and now lives only on github.com/filename24/shalgalt-omr.
+.claude/PRPs/plans/*.ko.md
+.claude/PRPs/plans/issues/P*.md
+.claude/PRPs/plans/issues/M-*.md
+
+# Per-session agent worktrees (working copies; embedded git repos). Never commit.
+.claude/worktrees/
+
+# Bundled native runtime libs (pdfium, opencv) fetched by scripts/fetch-binaries.*
+# at build time. Never commit the binaries; only the README marker is tracked.
+/apps/desktop/resources/*
+!/apps/desktop/resources/README.txt

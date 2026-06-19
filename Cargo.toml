@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/desktop",
+    "apps/server",
+    "crates/shalgalt-core",
+    "crates/shalgalt-store",
+    "crates/shalgalt-pdf",
+    "crates/shalgalt-cv",
+    "crates/shalgalt-fileformat",
+]
+
+# Shared metadata that crates can opt into via `package.<field>.workspace = true`.
+[workspace.package]
+version = "0.6.0-rc.1"
+edition = "2021"
+authors = ["filename24"]
+license = "MIT"
+repository = "https://github.com/filename24/shalgalt-omr"
+
+# Release profile is defined at the workspace root. Cargo emits a warning if a
+# member crate also declares `[profile.*]`, so `apps/desktop/Cargo.toml` no
+# longer carries the original `[profile.release]` block.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

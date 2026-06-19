@@ -1,0 +1,49 @@
+[package]
+name = "shalgalt-fileformat"
+description = "Read/write `.shalgalt` zip project files with optional age passphrase encryption"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "shalgalt_fileformat"
+path = "src/lib.rs"
+
+[dependencies]
+# Zip container (master plan §6.3). `default-features = false` drops the bzip2 / zstd /
+# xz / aes-crypto C codecs we never use — encryption is external via `age`, and the only
+# compression we need is DEFLATE for small plaintext JSON. `deflate-flate2-zlib-rs` selects
+# flate2's pure-Rust `zlib-rs` backend (no system C zlib). `time` keeps the
+# `last_modified_time` API we pin for deterministic archives.
+zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs", "time"] }
+
+# age format reference implementation (str4d/rage). `armor` is NOT a default feature; it
+# is required for the ASCII-armored I/O the format mandates for portability (§6.3). The
+# `secrecy` crate is re-exported as `age::secrecy`, so we deliberately do NOT add a
+# separate `secrecy` dependency — that keeps the `SecretString` version in lockstep.
+age = { version = "0.11", features = ["armor"] }
+
+# Manifest (de)serialization. Same workspace serde version as the sibling crates so the
+# JSON round-trip stays byte-stable across producers and consumers.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Typed crate error (`FileFormatError`).
+thiserror = "2"
+
+# RFC 3339 `created_at` timestamp in the manifest. `serde` feature gives the
+# DateTime<Utc> <-> ISO-8601 string mapping for free.
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+# Round-trip / bad-passphrase / forward-compat tests write archives to temp paths.
+tempfile = "3"
+# Integration tests are a separate crate, so they need chrono explicitly to build the
+# `Manifest.created_at` timestamp (chrono appears in this crate's public API).
+chrono = { version = "0.4", features = ["serde"] }
+# The malformed-archive tests hand-build hostile/garbled zips directly (missing manifest,
+# non-JSON manifest, truncated ciphertext) — scenarios `write()` cannot produce.
+zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs", "time"] }
