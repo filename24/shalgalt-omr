@@ -94,7 +94,9 @@ pub fn grade(
             continue;
         }
 
-        let (graded, awarded) = classify_question(&group.id, group.score, &filled, &correct);
+        // Per-exam score overrides the template default when the key carries one.
+        let group_score = answer_key.score_for(&group.id).unwrap_or(group.score);
+        let (graded, awarded) = classify_question(&group.id, group_score, &filled, &correct);
         total_score += awarded;
         answers.push(graded);
     }
@@ -117,36 +119,35 @@ fn classify_question(
     correct: &[u32],
 ) -> (GradedAnswer, f32) {
     debug_assert!(!filled.is_empty(), "Blank case should be handled by caller");
+    let answer = classify_outcome(group_id, filled, correct);
+    let awarded = awarded_points(&answer, group_score);
+    (answer, awarded)
+}
 
+/// Decide which [`GradedAnswer`] outcome a marked question earns, independent of
+/// scoring. Scoring is derived from the outcome by [`awarded_points`] so the
+/// "outcome → points" rule lives in exactly one place.
+fn classify_outcome(group_id: &str, filled: &[u32], correct: &[u32]) -> GradedAnswer {
     let single_correct = correct.len() == 1;
 
     if single_correct {
         if filled.len() > 1 {
-            return (
-                GradedAnswer::Multiple {
-                    group_id: group_id.to_string(),
-                    marked_indices: filled.to_vec(),
-                },
-                0.0,
-            );
-        }
-        if filled[0] == correct[0] {
-            return (
-                GradedAnswer::Correct {
-                    group_id: group_id.to_string(),
-                    marked_indices: filled.to_vec(),
-                },
-                group_score,
-            );
-        }
-        return (
-            GradedAnswer::Wrong {
+            return GradedAnswer::Multiple {
                 group_id: group_id.to_string(),
                 marked_indices: filled.to_vec(),
-                correct_indices: correct.to_vec(),
-            },
-            0.0,
-        );
+            };
+        }
+        if filled[0] == correct[0] {
+            return GradedAnswer::Correct {
+                group_id: group_id.to_string(),
+                marked_indices: filled.to_vec(),
+            };
+        }
+        return GradedAnswer::Wrong {
+            group_id: group_id.to_string(),
+            marked_indices: filled.to_vec(),
+            correct_indices: correct.to_vec(),
+        };
     }
 
     let filled_set: BTreeSet<u32> = filled.iter().copied().collect();
@@ -154,36 +155,42 @@ fn classify_question(
     let has_wrong_extra = filled_set.difference(&correct_set).next().is_some();
 
     if has_wrong_extra {
-        return (
-            GradedAnswer::Wrong {
-                group_id: group_id.to_string(),
-                marked_indices: filled.to_vec(),
-                correct_indices: correct.to_vec(),
-            },
-            0.0,
-        );
-    }
-
-    if filled_set == correct_set {
-        return (
-            GradedAnswer::Correct {
-                group_id: group_id.to_string(),
-                marked_indices: filled.to_vec(),
-            },
-            group_score,
-        );
-    }
-
-    let ratio = filled.len() as f32 / correct.len() as f32;
-    (
-        GradedAnswer::Partial {
+        return GradedAnswer::Wrong {
             group_id: group_id.to_string(),
             marked_indices: filled.to_vec(),
             correct_indices: correct.to_vec(),
-            score_ratio: ratio,
-        },
-        group_score * ratio,
-    )
+        };
+    }
+
+    if filled_set == correct_set {
+        return GradedAnswer::Correct {
+            group_id: group_id.to_string(),
+            marked_indices: filled.to_vec(),
+        };
+    }
+
+    GradedAnswer::Partial {
+        group_id: group_id.to_string(),
+        marked_indices: filled.to_vec(),
+        correct_indices: correct.to_vec(),
+        score_ratio: filled.len() as f32 / correct.len() as f32,
+    }
+}
+
+/// Points a single graded answer contributes to the sheet total, given its
+/// question's maximum `group_score`. Single source of truth for the
+/// "outcome → points" rule: the grading engine totals these, and the xlsx export
+/// prints them per question. Non-scoring outcomes (wrong, blank, multiple,
+/// uncertain) earn nothing.
+pub fn awarded_points(answer: &GradedAnswer, group_score: f32) -> f32 {
+    match answer {
+        GradedAnswer::Correct { .. } => group_score,
+        GradedAnswer::Partial { score_ratio, .. } => group_score * score_ratio,
+        GradedAnswer::Wrong { .. }
+        | GradedAnswer::Blank { .. }
+        | GradedAnswer::Multiple { .. }
+        | GradedAnswer::Uncertain { .. } => 0.0,
+    }
 }
 
 fn sorted_unique(mut indices: Vec<u32>) -> Vec<u32> {
@@ -243,6 +250,23 @@ mod tests {
         }
     }
 
+    fn variant_group(id: &str, options: u32) -> BubbleGroup {
+        BubbleGroup {
+            id: id.to_string(),
+            kind: BubbleKind::Variant,
+            label: id.to_string(),
+            bubbles: (0..options)
+                .map(|i| TemplatePoint {
+                    x: 0.1 + i as f32 * 0.05,
+                    y: 0.2,
+                })
+                .collect(),
+            answer_index: None,
+            score: 1.0,
+            section: None,
+        }
+    }
+
     fn template_with(groups: Vec<BubbleGroup>) -> OmrTemplate {
         OmrTemplate {
             version: OmrTemplate::CURRENT_VERSION,
@@ -271,6 +295,7 @@ mod tests {
             template_id: 42,
             page_index: 0,
             student_id_text: None,
+            variant: None,
             readings,
         }
     }
@@ -279,6 +304,7 @@ mod tests {
         AnswerKeyEntry {
             group_id: group_id.to_string(),
             correct_indices: vec![correct],
+            score: None,
         }
     }
 
@@ -286,6 +312,7 @@ mod tests {
         AnswerKeyEntry {
             group_id: group_id.to_string(),
             correct_indices: correct,
+            score: None,
         }
     }
 
@@ -322,6 +349,46 @@ mod tests {
                 marked_indices: vec![2],
             }
         );
+    }
+
+    #[test]
+    fn per_exam_score_overrides_the_template_default() {
+        // Template says this question is worth 1.0, but the exam's answer key
+        // weights it 5.0 — a correct answer must earn the key's score, not the
+        // template's.
+        let tpl = template_with(vec![question("q1", 4, Some(2), 1.0)]);
+        let p = parsed(vec![
+            reading("q1", 0, 0.05),
+            reading("q1", 1, 0.10),
+            reading("q1", 2, 0.92),
+            reading("q1", 3, 0.08),
+        ]);
+        let key = answer_key(vec![AnswerKeyEntry {
+            group_id: "q1".into(),
+            correct_indices: vec![2],
+            score: Some(5.0),
+        }]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.total_score, 5.0);
+    }
+
+    #[test]
+    fn missing_key_score_falls_back_to_template_score() {
+        // No per-exam score on the entry → the template's 2.5 is used.
+        let tpl = template_with(vec![question("q1", 4, Some(2), 2.5)]);
+        let p = parsed(vec![
+            reading("q1", 0, 0.05),
+            reading("q1", 1, 0.10),
+            reading("q1", 2, 0.92),
+            reading("q1", 3, 0.08),
+        ]);
+        let key = answer_key(vec![key_single("q1", 2)]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.total_score, 2.5);
     }
 
     #[test]
@@ -541,6 +608,7 @@ mod tests {
             template_id: 7,
             page_index: 0,
             student_id_text: Some("00123".into()),
+            variant: None,
             readings: vec![
                 reading("sid", 0, 0.92),
                 reading("q1", 0, 0.92),
@@ -559,6 +627,42 @@ mod tests {
         assert_eq!(result.answers.len(), 1, "student_id group is not graded");
         assert!(matches!(result.answers[0], GradedAnswer::Correct { .. }));
         assert_eq!(result.total_score, 1.0);
+    }
+
+    #[test]
+    fn variant_groups_are_never_scored_even_with_a_key_entry() {
+        // The variant row identifies which exam form the sheet is; it is marked by
+        // the student but must never be graded. Even if a stray answer-key entry
+        // exists for the variant group id, the engine skips it: no score, no answer.
+        let tpl = template_with(vec![
+            variant_group("variant", 5),
+            question("q1", 4, Some(0), 1.0),
+        ]);
+        let p = parsed(vec![
+            // Student marked variant "A" (index 0).
+            reading("variant", 0, 0.92),
+            reading("variant", 1, 0.05),
+            reading("variant", 2, 0.05),
+            reading("variant", 3, 0.05),
+            reading("variant", 4, 0.05),
+            // q1 correct.
+            reading("q1", 0, 0.92),
+            reading("q1", 1, 0.05),
+            reading("q1", 2, 0.05),
+            reading("q1", 3, 0.05),
+        ]);
+        // A defensive key entry for the variant group must not cause it to score.
+        let key = answer_key(vec![key_single("variant", 0), key_single("q1", 0)]);
+
+        let result = grade(&tpl, &p, &key).unwrap();
+
+        assert_eq!(result.answers.len(), 1, "variant group is not graded");
+        assert!(matches!(result.answers[0], GradedAnswer::Correct { .. }));
+        assert_eq!(
+            result.total_score, 1.0,
+            "only q1 contributes; the variant mark awards nothing"
+        );
+        assert!(!result.needs_review);
     }
 
     #[test]
@@ -725,5 +829,51 @@ mod tests {
         assert!(!r.is_unfilled());
         assert!(r.is_uncertain());
         assert!(!r.is_filled());
+    }
+
+    #[test]
+    fn awarded_points_maps_each_outcome() {
+        let g = "q";
+        // Correct earns full marks; partial earns the fraction; everything else zero.
+        assert_eq!(
+            awarded_points(
+                &GradedAnswer::Correct {
+                    group_id: g.into(),
+                    marked_indices: vec![0]
+                },
+                4.0
+            ),
+            4.0
+        );
+        assert_eq!(
+            awarded_points(
+                &GradedAnswer::Partial {
+                    group_id: g.into(),
+                    marked_indices: vec![0],
+                    correct_indices: vec![0, 1],
+                    score_ratio: 0.5,
+                },
+                4.0
+            ),
+            2.0
+        );
+        for zero in [
+            GradedAnswer::Wrong {
+                group_id: g.into(),
+                marked_indices: vec![1],
+                correct_indices: vec![0],
+            },
+            GradedAnswer::Blank { group_id: g.into() },
+            GradedAnswer::Multiple {
+                group_id: g.into(),
+                marked_indices: vec![0, 1],
+            },
+            GradedAnswer::Uncertain {
+                group_id: g.into(),
+                uncertain_indices: vec![0],
+            },
+        ] {
+            assert_eq!(awarded_points(&zero, 4.0), 0.0);
+        }
     }
 }

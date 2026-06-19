@@ -35,31 +35,48 @@ const RESULT_EVENT: &str = "task-result";
 /// Inputs:
 ///   * `task_id` — frontend-generated UUID. Lets the frontend correlate events
 ///     with the DB row it just inserted.
-///   * `pdf_path` — absolute path on disk (Rule 1).
+///   * `source_paths` — absolute paths on disk, in upload order (Rule 1). Each is a
+///     multi-page PDF or a single scanned image (PNG/JPG/…); the batch is flattened
+///     into one continuous page sequence and graded sheet-by-sheet.
 ///   * `template_json` — serialized `OmrTemplate` from `templates.json_schema`.
 ///     Forwarding the full JSON keeps this command DB-free.
-///   * `answer_key_json` — serialized `AnswerKey` pasted by the user.
+///   * `answer_keys_json` — serialized `Vec<AnswerKey>`: every variant the exam
+///     owns. Each sheet is graded against the key whose `variant` matches the one
+///     decoded from its bubble row, so a mixed-variant stack grades in one pass.
+///   * `fallback_variant` — used when a sheet has no decoded variant (template
+///     has no variant row, or the mark was blank/ambiguous). `None` in auto mode;
+///     set to the manually chosen variant for single-variant exams.
 #[tauri::command]
 pub async fn scan_grade_pdf(
     app: AppHandle,
     state: State<'_, AppState>,
     task_id: String,
-    pdf_path: String,
+    source_paths: Vec<String>,
     template_json: String,
-    answer_key_json: String,
+    answer_keys_json: String,
+    fallback_variant: Option<String>,
 ) -> AppResult<()> {
     if task_id.trim().is_empty() {
         return Err(AppError::BadRequest("task_id is empty".into()));
     }
-    if pdf_path.trim().is_empty() {
-        return Err(AppError::BadRequest("pdf_path is empty".into()));
+    if source_paths.is_empty() {
+        return Err(AppError::BadRequest("source_paths is empty".into()));
+    }
+    if source_paths.iter().any(|p| p.trim().is_empty()) {
+        return Err(AppError::BadRequest(
+            "source_paths contains an empty path".into(),
+        ));
     }
 
     let template: OmrTemplate = serde_json::from_str(&template_json)
         .map_err(|e| AppError::BadRequest(format!("template_json parse failed: {e}")))?;
-    let answer_key: AnswerKey = serde_json::from_str(&answer_key_json)
-        .map_err(|e| AppError::BadRequest(format!("answer_key_json parse failed: {e}")))?;
+    let answer_keys: Vec<AnswerKey> = serde_json::from_str(&answer_keys_json)
+        .map_err(|e| AppError::BadRequest(format!("answer_keys_json parse failed: {e}")))?;
+    if answer_keys.is_empty() {
+        return Err(AppError::BadRequest("answer_keys_json is empty".into()));
+    }
 
+    let sources: Vec<PathBuf> = source_paths.into_iter().map(PathBuf::from).collect();
     let cache_dir = state.dirs().cache_dir.clone();
     let app_handle = app.clone();
     let task_id_owned = task_id.clone();
@@ -71,9 +88,10 @@ pub async fn scan_grade_pdf(
         if let Err(err) = run_grade_pipeline(
             &app_handle,
             &task_id_owned,
-            PathBuf::from(pdf_path),
+            sources,
             template,
-            answer_key,
+            answer_keys,
+            fallback_variant,
             cache_dir,
         )
         .await
@@ -97,9 +115,10 @@ pub async fn scan_grade_pdf(
 async fn run_grade_pipeline(
     app: &AppHandle,
     task_id: &str,
-    pdf_path: PathBuf,
+    source_paths: Vec<PathBuf>,
     template: OmrTemplate,
-    answer_key: AnswerKey,
+    answer_keys: Vec<AnswerKey>,
+    fallback_variant: Option<String>,
     cache_dir: PathBuf,
 ) -> AppResult<()> {
     // Forward every TaskProgress message the CV pipeline produces. We use a
@@ -114,7 +133,8 @@ async fn run_grade_pipeline(
         }
     });
 
-    let sheets = shalgalt_cv::process_pdf(&pdf_path, &template, tx, task_id, &cache_dir).await?;
+    let sheets =
+        shalgalt_cv::process_sources(&source_paths, &template, tx, task_id, &cache_dir).await?;
     // The CV pipeline closes its end of the channel when it returns, so the
     // forwarder will drain and exit on its own. Awaiting it here flushes any
     // final messages before we move on to grading.
@@ -122,9 +142,10 @@ async fn run_grade_pipeline(
 
     let total = sheets.len() as u32;
 
-    // Page rasters are written by `shalgalt_cv::pdf::rasterize_all_pages` into
-    // `<cache_dir>/page-rasters/<task_id>/page-NNN.png`. Reconstruct the path
-    // for each sheet so `/review` can `asset://`-load it later.
+    // Page rasters are written by `shalgalt_cv::pdf::rasterize_sources` into
+    // `<cache_dir>/page-rasters/<task_id>/page-NNN.png`, numbered continuously across
+    // every uploaded file. Reconstruct the path for each sheet from its global
+    // `page_index` so `/review` can `asset://`-load it later.
     let raster_dir = cache_dir.join("page-rasters").join(task_id);
 
     // Stage transition: grading. Pre-bump processed=0 so the bar resets.
@@ -140,7 +161,17 @@ async fn run_grade_pipeline(
     );
 
     for (i, parsed) in sheets.iter().enumerate() {
-        let graded = grading::grade(&template, parsed, &answer_key)?;
+        // Pick the key for this sheet's variant (or the manual fallback). When
+        // nothing resolves — an unkeyed or undetectable variant — the sheet is
+        // emitted unscored and flagged for manual review instead of mis-graded.
+        let graded = match grading::select_answer_key(
+            &answer_keys,
+            parsed.variant.as_deref(),
+            fallback_variant.as_deref(),
+        ) {
+            Some(key) => grading::grade(&template, parsed, key)?,
+            None => unresolved_variant_sheet(parsed),
+        };
         let page_image_path = page_raster_path(&raster_dir, parsed.page_index);
 
         let _ = app.emit(
@@ -180,10 +211,26 @@ async fn run_grade_pipeline(
     Ok(())
 }
 
-/// Mirror of `shalgalt_cv::pdf::rasterize_all_pages` filename convention. The
-/// CV crate writes `page-{idx:04}.png` (0-based, 4-digit zero-padded) into
-/// `raster_dir`; we reconstruct the same string here so we never have to
-/// re-rasterize.
+/// Build the placeholder result for a sheet whose variant could not be resolved
+/// to an answer key. Scored zero and flagged `needs_review` so it surfaces in the
+/// manual-review queue, where the teacher can assign a variant and re-grade. The
+/// decoded variant (if any) rides along on the `ParsedSheet` in the same event.
+fn unresolved_variant_sheet(parsed: &ParsedSheet) -> GradedSheet {
+    GradedSheet {
+        template_id: parsed.template_id,
+        student_id: None,
+        student_id_text: parsed.student_id_text.clone(),
+        total_score: 0.0,
+        answers: Vec::new(),
+        image_path: None,
+        needs_review: true,
+    }
+}
+
+/// Mirror of `shalgalt_cv::pdf::rasterize_sources` filename convention. The CV
+/// crate writes `page-{idx:04}.png` (0-based, 4-digit zero-padded, numbered
+/// continuously across every uploaded file) into `raster_dir`; we reconstruct the
+/// same string here so we never have to re-rasterize.
 fn page_raster_path(raster_dir: &Path, page_index: u32) -> String {
     raster_dir
         .join(format!("page-{:04}.png", page_index))

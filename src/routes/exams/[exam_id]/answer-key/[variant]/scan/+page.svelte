@@ -16,7 +16,7 @@
   import { upsertAnswerKey } from "$lib/db/answerKeys";
   import { answersSchema, type Exam } from "$lib/types/exam";
   import { scanAnswerKey, type AnswerKeyImportSummary } from "$lib/ipc/scan";
-  import { pickPdf } from "$lib/picker";
+  import { pickScanSource } from "$lib/picker";
   import { assetUrl } from "$lib/fs/templateAssets";
   import { progress } from "$lib/stores/progress.svelte";
   import type { OmrTemplate, BubbleGroup } from "$lib/types/template";
@@ -91,7 +91,7 @@
 
   async function startScan(): Promise<void> {
     if (!template || scanning) return;
-    const path = await pickPdf();
+    const path = await pickScanSource();
     if (!path) return;
 
     const taskId = crypto.randomUUID();

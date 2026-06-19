@@ -71,6 +71,21 @@ pub fn mfp_quality(filled_bubbles: &[(f32, f32)], seed: u64) -> Mat {
     img
 }
 
+/// Like [`mfp_quality`] but omits one corner marker (slot `0..3` = TL/TR/BR/BL), to
+/// exercise partial-marker homography alignment (three markers must still align).
+pub fn mfp_quality_missing_marker(
+    filled_bubbles: &[(f32, f32)],
+    seed: u64,
+    drop_slot: usize,
+) -> Mat {
+    let mut img = blank_page();
+    draw_corner_markers_except(&mut img, Some(drop_slot));
+    draw_bubble_grid(&mut img);
+    fill_bubbles(&mut img, filled_bubbles);
+    add_gaussian_noise(&mut img, 4.0, seed);
+    img
+}
+
 /// Render a phone-quality page: small rotation, mild perspective distortion,
 /// gaussian blur, and uneven illumination.
 pub fn phone_quality(filled_bubbles: &[(f32, f32)], seed: u64) -> Mat {
@@ -81,17 +96,23 @@ pub fn phone_quality(filled_bubbles: &[(f32, f32)], seed: u64) -> Mat {
     img
 }
 
-/// Heavy distortion that should make detection fail rather than crash.
+/// Heavy distortion that should make detection fail rather than crash. Blacks out the
+/// two top markers (TL + TR) so at most two survive — below `MIN_MARKERS` — which keeps
+/// the "fails gracefully" assertion deterministic under the ≥3-marker alignment rule.
 pub fn deliberately_bad(seed: u64) -> Mat {
     let mut img = blank_page();
     draw_corner_markers(&mut img);
     draw_bubble_grid(&mut img);
-    // Heavy noise and a partial blackout near one marker.
+    // Heavy noise plus blackouts over the two top markers.
     add_gaussian_noise(&mut img, 60.0, seed);
-    let blackout = Rect::new(0, 0, 400, 400);
-    let mut roi = Mat::roi_mut(&mut img, blackout).expect("roi_mut for blackout");
-    roi.set_to(&Scalar::all(0.0), &core::no_array())
-        .expect("set_to black");
+    for blackout in [
+        Rect::new(0, 0, 400, 400),
+        Rect::new(PAGE_W - 400, 0, 400, 400),
+    ] {
+        let mut roi = Mat::roi_mut(&mut img, blackout).expect("roi_mut for blackout");
+        roi.set_to(&Scalar::all(0.0), &core::no_array())
+            .expect("set_to black");
+    }
     img
 }
 
@@ -110,6 +131,11 @@ fn blank_page() -> Mat {
 /// Marker centres in normalized space match the Mongolian-standard preset
 /// (0.04 / 0.96 corners). Marker side length is 0.04 of the page.
 fn draw_corner_markers(img: &mut Mat) {
+    draw_corner_markers_except(img, None);
+}
+
+/// Draw the four corner markers, optionally skipping one slot (`0..3` = TL/TR/BR/BL).
+fn draw_corner_markers_except(img: &mut Mat, skip: Option<usize>) {
     let centres = [
         (0.04_f32, 0.04_f32, 0_usize), // TL — ID 0
         (0.96, 0.04, 1),               // TR — ID 1
@@ -118,6 +144,9 @@ fn draw_corner_markers(img: &mut Mat) {
     ];
     let side_norm = 0.04_f32;
     for (cx_norm, cy_norm, id) in centres {
+        if skip == Some(id) {
+            continue;
+        }
         let cx = (cx_norm * PAGE_W as f32) as i32;
         let cy = (cy_norm * PAGE_H as f32) as i32;
         let half = (side_norm * PAGE_W as f32 * 0.5) as i32;

@@ -28,8 +28,11 @@ interface RowSpec {
   label: string
   /** Section grouping shown in the LayerTree. */
   section: string
-  /** "student_id" for input rows, "question" for graded rows. */
-  kind: 'student_id' | 'question'
+  /**
+   * "student_id" for the cipher rows, "question" for graded rows, "variant" for
+   * the exam-form selector (marked by the student but never graded).
+   */
+  kind: 'student_id' | 'question' | 'variant'
   /** Top-left bubble of the row in normalized coordinates. */
   origin: TemplatePoint
   /** Number of bubbles. */
@@ -177,7 +180,11 @@ function buildVariantRow(): BubbleGroup {
     idPrefix: 'variant',
     label: '',
     section: VARIANT.section,
-    kind: 'question',
+    // The variant selector identifies which exam form the student sat. It is
+    // marked like a question but must never be graded, so it carries its own
+    // `variant` kind — excluded from the answer key and the scoring engine,
+    // exactly like the `student_id` cipher rows.
+    kind: 'variant',
     origin: { x: VARIANT.startX, y: VARIANT.y },
     count: VARIANT.count,
     spacingX: VARIANT.spacing,
@@ -249,8 +256,9 @@ function buildSection2Block(
 
 /**
  * Build a fresh `OmrTemplate` matching the Mongolian general-school standard
- * layout. Used by the Toolbar's "New > Standard" entry. Returns 51 groups
- * laid out across an A4-portrait coordinate space.
+ * layout. Used by the Toolbar's "New > Standard" entry. Returns 107 groups
+ * (4 cipher + 1 variant + 70 questions + 4×8 numeric digit rows) laid out
+ * across an A4-portrait coordinate space.
  */
 export function createMongolianStandardTemplate(opts?: {
   title?: string

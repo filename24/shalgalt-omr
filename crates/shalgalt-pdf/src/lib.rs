@@ -266,6 +266,9 @@ pub(crate) fn build_page_ops(
     for group in &template.groups {
         let labels: &[char] = match group.kind {
             shalgalt_core::domain::BubbleKind::StudentId => &opts.digit_labels,
+            // The variant selector is a single short choice row (A/B/C/…), so it
+            // takes the same A–E choice labels as a question.
+            shalgalt_core::domain::BubbleKind::Variant => &opts.choice_labels,
             shalgalt_core::domain::BubbleKind::Question => {
                 if group.bubbles.len() > opts.choice_labels.len() {
                     &opts.digit_labels

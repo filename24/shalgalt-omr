@@ -29,7 +29,9 @@
     pageImagePath: string;
     readings: BubbleReading[];
     graded: GradedSheet;
-    answerKey: AnswerKey;
+    /** The variant's key, or `null` when the sheet's variant is unresolved — the
+     * canvas then renders marks without the correct-answer overlay. */
+    answerKey: AnswerKey | null;
     onOverride: (next: BubbleReading[]) => void;
   }
 
@@ -106,7 +108,7 @@
 
   function correctIndicesFor(groupId: string): readonly number[] {
     return (
-      answerKey.answers.find((a) => a.group_id === groupId)?.correct_indices ??
+      answerKey?.answers.find((a) => a.group_id === groupId)?.correct_indices ??
       []
     );
   }

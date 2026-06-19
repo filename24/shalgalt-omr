@@ -4,7 +4,7 @@
   import { mn } from "$lib/i18n";
   import CircleDotIcon from "@lucide/svelte/icons/circle-dot";
   import CornerDownLeftIcon from "@lucide/svelte/icons/corner-down-left";
-  import type { BubbleGroup } from "$lib/types/template";
+  import type { BubbleGroup, BubbleKind } from "$lib/types/template";
 
   const markerLabels = [
     mn.editor.markers.tl,
@@ -15,10 +15,15 @@
 
   const markerColors = ["#ef4444", "#22c55e", "#3b82f6", "#eab308"];
 
-  function kindLabel(kind: "student_id" | "question"): string {
-    return kind === "student_id"
-      ? mn.editor.groups.kindStudentId
-      : mn.editor.groups.kindQuestion;
+  function kindLabel(kind: BubbleKind): string {
+    switch (kind) {
+      case "student_id":
+        return mn.editor.groups.kindStudentId;
+      case "variant":
+        return mn.editor.groups.kindVariant;
+      case "question":
+        return mn.editor.groups.kindQuestion;
+    }
   }
 
   // Bucket groups by `section`. Groups without a section share an "other"
