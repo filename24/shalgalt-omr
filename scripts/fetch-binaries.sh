@@ -96,7 +96,10 @@ fetch_pdfium() {
   local url tmp_dir
   url="${PDFIUM_BASE_URL}/${archive}"
   tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "${tmp_dir}"' RETURN
+  # Without `functrace`, this RETURN trap also fires when later functions (e.g. main)
+  # return, where `tmp_dir` is no longer in scope. `${tmp_dir:-}` keeps that re-fire
+  # from tripping `set -u`; `rm -rf ""` is a harmless no-op.
+  trap 'rm -rf "${tmp_dir:-}"' RETURN
 
   log "Downloading pdfium: ${url}"
   curl -fsSL "${url}" -o "${tmp_dir}/pdfium.tgz"
