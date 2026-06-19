@@ -786,7 +786,8 @@ finish first.
   *deps*: P6-01. *labels*: `phase:P6`, `area:distribution`, `type:infra`.
 
 - **#P6-06 — ADRs for P6 decisions**
-  `0011-github-releases-distribution.md`, `0012-optin-updater.md`.
+  `0017-github-releases-distribution.md`, `0018-optin-updater.md`
+  (numbered 0017/0018 because 0011/0012 were taken by the file-format/age ADRs).
   *deps*: P6-01. *labels*: `phase:P6`, `area:docs`, `type:docs`.
 
 ### Phase 7 — Documentation (4 issues)
@@ -884,8 +885,8 @@ graph LR
 | 0008 | `age` passphrase encryption | P4 |
 | 0009 | REST API versioning policy | P5 |
 | 0010 | Standalone server binary | P5 |
-| 0011 | GitHub Releases distribution | P6 |
-| 0012 | Opt-in updater | P6 |
+| 0017 | GitHub Releases distribution | P6 |
+| 0018 | Opt-in updater | P6 |
 
 ADR 0001 (Windows OpenCV strategy) is **kept** since opencv stays.
 
