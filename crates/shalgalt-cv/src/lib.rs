@@ -27,7 +27,7 @@ pub mod threshold;
 
 pub use shalgalt_core::domain::{TaskProgress, TaskStage};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use shalgalt_core::domain::{BubbleReading, OmrTemplate, ParsedSheet};
 use shalgalt_core::error::AppResult;
@@ -79,21 +79,23 @@ pub struct AnswerKeyReading {
     pub page_count: u32,
 }
 
-/// End-to-end OMR processing facade — split a PDF into pages, align each one
-/// against the four template ArUco markers, read the bubbles, and stream progress
-/// events through `progress_tx` while the work happens.
+/// End-to-end OMR processing facade — flatten an ordered batch of sources (each a
+/// multi-page PDF or a single scanned image) into one continuous page sequence, align
+/// each page against the four template ArUco markers, read the bubbles, and stream
+/// progress events through `progress_tx` while the work happens.
 ///
-/// `cache_dir` is where intermediate page rasters land. The desktop app passes its
-/// `app_cache_dir`; tests typically pass a `tempfile::TempDir`.
-pub async fn process_pdf(
-    pdf_path: &Path,
+/// Passing several images grades them as a multi-page batch in upload order; a single
+/// PDF behaves exactly as before. `cache_dir` is where intermediate page rasters land —
+/// the desktop app passes its `app_cache_dir`; tests typically pass a `tempfile::TempDir`.
+pub async fn process_sources(
+    source_paths: &[PathBuf],
     template: &OmrTemplate,
     progress_tx: mpsc::Sender<TaskProgress>,
     task_id: &str,
     cache_dir: &Path,
 ) -> AppResult<Vec<ParsedSheet>> {
     pipeline::run(
-        pdf_path.to_path_buf(),
+        source_paths.to_vec(),
         template.clone(),
         progress_tx,
         task_id.to_string(),

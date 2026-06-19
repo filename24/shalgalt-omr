@@ -7,7 +7,7 @@
   import { progress } from "$lib/stores/progress.svelte";
   import { session } from "$lib/stores/session.svelte";
   import { gradePdf, TASK_RESULT_EVENT } from "$lib/ipc/scan";
-  import { pickPdf } from "$lib/picker";
+  import { pickScanSources } from "$lib/picker";
   import { listTemplates } from "$lib/db/templates";
   import { listExams } from "$lib/db/exams";
   import { listAnswerKeysByExam } from "$lib/db/answerKeys";
@@ -31,7 +31,9 @@
   import type { TaskStage } from "$lib/types/generated/TaskStage";
   import type { GradedJobSheet } from "$lib/types/job";
 
-  let pdfPath = $state(session.lastPdfPath ?? "");
+  let pdfPaths = $state<string[]>(
+    session.lastPdfPath ? [session.lastPdfPath] : [],
+  );
   let templates = $state<TemplateSummary[]>([]);
   let exams = $state<ExamSummary[]>([]);
   let examId = $state<number | null>(null);
@@ -44,6 +46,16 @@
   let terminalState = $state<"running" | "done" | "failed">("running");
   let failureMessage = $state<string | null>(null);
   let needsReviewCount = $state(0);
+
+  // Readonly summary shown in the source field: the lone path when one file is
+  // picked, otherwise a "N files selected" count for a multi-page batch.
+  const sourceSummary = $derived(
+    pdfPaths.length === 0
+      ? ""
+      : pdfPaths.length === 1
+        ? pdfPaths[0]!
+        : mn.grade.filesSelected.replace("{count}", String(pdfPaths.length)),
+  );
 
   const last = $derived(progress.last);
   const matchesActiveTask = $derived(
@@ -133,8 +145,8 @@
 
   async function browse(): Promise<void> {
     try {
-      const p = await pickPdf();
-      if (p) pdfPath = p;
+      const picked = await pickScanSources();
+      if (picked.length > 0) pdfPaths = picked;
     } catch (e) {
       toast.error(mn.errors.unknown, { description: String(e) });
     }
@@ -145,7 +157,7 @@
       toast.error(mn.grade.errors.jobAlreadyRunning);
       return;
     }
-    if (!pdfPath) {
+    if (pdfPaths.length === 0) {
       toast.error(mn.grade.errors.pdfRequired);
       return;
     }
@@ -204,19 +216,21 @@
       const taskId = crypto.randomUUID();
       const job = await createJob({
         task_id: taskId,
-        pdf_path: pdfPath,
+        // The jobs row keeps one representative source path for display; the full
+        // batch is graded below. Multi-file uploads store the first path.
+        pdf_path: pdfPaths[0]!,
         template_id: templateId,
         answer_key_json: answerKeysJson,
       });
       activeTaskId = taskId;
       activeJobId = job.id;
       session.setActiveJob(taskId);
-      session.recordPdfPath(pdfPath);
+      session.recordPdfPath(pdfPaths[0]!);
       session.recordTemplate(templateId);
 
       await gradePdf({
         taskId,
-        pdfPath,
+        sourcePaths: pdfPaths,
         templateJson: JSON.stringify(selectedTemplate.schema),
         answerKeysJson,
         fallbackVariant,
@@ -342,7 +356,7 @@
         <div class="flex gap-2">
           <Input
             id="pdf-path"
-            bind:value={pdfPath}
+            value={sourceSummary}
             placeholder={mn.grade.pdfPlaceholder}
             class="flex-1"
             readonly
@@ -424,7 +438,7 @@
       <Button
         onclick={start}
         disabled={busy ||
-          !pdfPath ||
+          pdfPaths.length === 0 ||
           examId === null ||
           answerKeys.length === 0 ||
           (!autoDetect && variant === null)}

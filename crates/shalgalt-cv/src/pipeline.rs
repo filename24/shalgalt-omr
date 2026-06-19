@@ -24,10 +24,10 @@ use crate::{
 /// and returns one [`ParsedSheet`] per page.
 ///
 /// This function is the implementation behind the crate-level
-/// [`crate::process_pdf`] facade. It is `pub(crate)` because the public surface
+/// [`crate::process_sources`] facade. It is `pub(crate)` because the public surface
 /// is the facade — having two entry points named the same thing is confusing.
 pub(crate) async fn run(
-    pdf_path: PathBuf,
+    source_paths: Vec<PathBuf>,
     template: OmrTemplate,
     progress_tx: tokio::sync::mpsc::Sender<TaskProgress>,
     task_id: String,
@@ -40,10 +40,14 @@ pub(crate) async fn run(
     emit(&progress_tx, &task_id, 0, 0, TaskStage::LoadingPdf, None).await;
 
     let raster_dir = cache_dir.join("page-rasters").join(&task_id);
-    let pdf_path_for_blocking = pdf_path.clone();
+    let sources_for_blocking = source_paths.clone();
     let raster_dir_clone = raster_dir.clone();
+    // Each source may be a multi-page PDF or a single scanned image (PNG/JPG/…).
+    // `rasterize_sources` flattens the whole batch into one continuous
+    // `page-{idx:04}.png` sequence in `raster_dir`, so the rest of the pipeline is
+    // both format-agnostic and unaware of how many files the teacher uploaded.
     let page_paths: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
-        pdf::rasterize_all_pages(&pdf_path_for_blocking, &raster_dir_clone)
+        pdf::rasterize_sources(&sources_for_blocking, &raster_dir_clone)
     })
     .await
     .map_err(|e| AppError::Internal(anyhow::anyhow!("rasterize join: {e}")))??;
@@ -56,10 +60,10 @@ pub(crate) async fn run(
             0,
             0,
             TaskStage::Failed,
-            Some("PDF has no pages".into()),
+            Some("source has no pages".into()),
         )
         .await;
-        return Err(AppError::BadRequest("PDF has no pages".into()));
+        return Err(AppError::BadRequest("source has no pages".into()));
     }
 
     let mut sheets: Vec<ParsedSheet> = Vec::with_capacity(total);
@@ -163,17 +167,19 @@ pub(crate) async fn run_answer_key(
     emit(&progress_tx, &task_id, 0, 1, TaskStage::LoadingPdf, None).await;
 
     let raster_dir = cache_dir.join("page-rasters").join(&task_id);
-    let pdf_path_for_blocking = pdf_path.clone();
+    let source_path_for_blocking = pdf_path.clone();
     let raster_dir_clone = raster_dir.clone();
+    // The answer-key source may be a single-page PDF or one scanned image (PNG/JPG/…);
+    // `rasterize_source` handles both. The one-page contract is enforced below.
     let page_paths: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
-        pdf::rasterize_all_pages(&pdf_path_for_blocking, &raster_dir_clone)
+        pdf::rasterize_source(&source_path_for_blocking, &raster_dir_clone)
     })
     .await
     .map_err(|e| AppError::Internal(anyhow::anyhow!("rasterize join: {e}")))??;
 
     let page_count = page_paths.len() as u32;
     if page_count == 0 {
-        return Err(AppError::BadRequest("PDF has no pages".into()));
+        return Err(AppError::BadRequest("source has no pages".into()));
     }
     // The answer sheet is a single page by contract (P4-06). Refuse multi-page
     // input rather than silently reading only the first page.

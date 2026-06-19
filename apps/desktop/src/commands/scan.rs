@@ -35,7 +35,9 @@ const RESULT_EVENT: &str = "task-result";
 /// Inputs:
 ///   * `task_id` — frontend-generated UUID. Lets the frontend correlate events
 ///     with the DB row it just inserted.
-///   * `pdf_path` — absolute path on disk (Rule 1).
+///   * `source_paths` — absolute paths on disk, in upload order (Rule 1). Each is a
+///     multi-page PDF or a single scanned image (PNG/JPG/…); the batch is flattened
+///     into one continuous page sequence and graded sheet-by-sheet.
 ///   * `template_json` — serialized `OmrTemplate` from `templates.json_schema`.
 ///     Forwarding the full JSON keeps this command DB-free.
 ///   * `answer_keys_json` — serialized `Vec<AnswerKey>`: every variant the exam
@@ -49,7 +51,7 @@ pub async fn scan_grade_pdf(
     app: AppHandle,
     state: State<'_, AppState>,
     task_id: String,
-    pdf_path: String,
+    source_paths: Vec<String>,
     template_json: String,
     answer_keys_json: String,
     fallback_variant: Option<String>,
@@ -57,8 +59,13 @@ pub async fn scan_grade_pdf(
     if task_id.trim().is_empty() {
         return Err(AppError::BadRequest("task_id is empty".into()));
     }
-    if pdf_path.trim().is_empty() {
-        return Err(AppError::BadRequest("pdf_path is empty".into()));
+    if source_paths.is_empty() {
+        return Err(AppError::BadRequest("source_paths is empty".into()));
+    }
+    if source_paths.iter().any(|p| p.trim().is_empty()) {
+        return Err(AppError::BadRequest(
+            "source_paths contains an empty path".into(),
+        ));
     }
 
     let template: OmrTemplate = serde_json::from_str(&template_json)
@@ -69,6 +76,7 @@ pub async fn scan_grade_pdf(
         return Err(AppError::BadRequest("answer_keys_json is empty".into()));
     }
 
+    let sources: Vec<PathBuf> = source_paths.into_iter().map(PathBuf::from).collect();
     let cache_dir = state.dirs().cache_dir.clone();
     let app_handle = app.clone();
     let task_id_owned = task_id.clone();
@@ -80,7 +88,7 @@ pub async fn scan_grade_pdf(
         if let Err(err) = run_grade_pipeline(
             &app_handle,
             &task_id_owned,
-            PathBuf::from(pdf_path),
+            sources,
             template,
             answer_keys,
             fallback_variant,
@@ -107,7 +115,7 @@ pub async fn scan_grade_pdf(
 async fn run_grade_pipeline(
     app: &AppHandle,
     task_id: &str,
-    pdf_path: PathBuf,
+    source_paths: Vec<PathBuf>,
     template: OmrTemplate,
     answer_keys: Vec<AnswerKey>,
     fallback_variant: Option<String>,
@@ -125,7 +133,8 @@ async fn run_grade_pipeline(
         }
     });
 
-    let sheets = shalgalt_cv::process_pdf(&pdf_path, &template, tx, task_id, &cache_dir).await?;
+    let sheets =
+        shalgalt_cv::process_sources(&source_paths, &template, tx, task_id, &cache_dir).await?;
     // The CV pipeline closes its end of the channel when it returns, so the
     // forwarder will drain and exit on its own. Awaiting it here flushes any
     // final messages before we move on to grading.
@@ -133,9 +142,10 @@ async fn run_grade_pipeline(
 
     let total = sheets.len() as u32;
 
-    // Page rasters are written by `shalgalt_cv::pdf::rasterize_all_pages` into
-    // `<cache_dir>/page-rasters/<task_id>/page-NNN.png`. Reconstruct the path
-    // for each sheet so `/review` can `asset://`-load it later.
+    // Page rasters are written by `shalgalt_cv::pdf::rasterize_sources` into
+    // `<cache_dir>/page-rasters/<task_id>/page-NNN.png`, numbered continuously across
+    // every uploaded file. Reconstruct the path for each sheet from its global
+    // `page_index` so `/review` can `asset://`-load it later.
     let raster_dir = cache_dir.join("page-rasters").join(task_id);
 
     // Stage transition: grading. Pre-bump processed=0 so the bar resets.
@@ -217,10 +227,10 @@ fn unresolved_variant_sheet(parsed: &ParsedSheet) -> GradedSheet {
     }
 }
 
-/// Mirror of `shalgalt_cv::pdf::rasterize_all_pages` filename convention. The
-/// CV crate writes `page-{idx:04}.png` (0-based, 4-digit zero-padded) into
-/// `raster_dir`; we reconstruct the same string here so we never have to
-/// re-rasterize.
+/// Mirror of `shalgalt_cv::pdf::rasterize_sources` filename convention. The CV
+/// crate writes `page-{idx:04}.png` (0-based, 4-digit zero-padded, numbered
+/// continuously across every uploaded file) into `raster_dir`; we reconstruct the
+/// same string here so we never have to re-rasterize.
 fn page_raster_path(raster_dir: &Path, page_index: u32) -> String {
     raster_dir
         .join(format!("page-{:04}.png", page_index))

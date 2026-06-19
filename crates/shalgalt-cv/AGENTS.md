@@ -11,10 +11,11 @@ for IPC consumers.
 
 ```
 src/
-  lib.rs           — `process_pdf(pdf_path, template, progress_tx)` facade. Currently a
-                     stub returning `AppError::Internal`; the real implementation lands
-                     in P3-01..P3-04.
-  pdf.rs           — pdfium-render multi-page rasterization (P3).
+  lib.rs           — `process_sources(source_paths, template, progress_tx)` grading
+                     facade + `read_answer_key(...)`. Sources are a batch of PDFs and/or
+                     single images, flattened into one continuous page sequence.
+  pdf.rs           — pdfium-render multi-page rasterization + single-image transcode.
+                     `rasterize_sources` (batch) / `rasterize_source` (one) / `is_image_path`.
   preview.rs       — Single-page rasterization used by the P1 template editor.
   perspective.rs   — 4-marker detection + `warpPerspective` (P3).
   bubbles.rs       — Per-bubble fill-ratio reading + confidence scoring (P3).
@@ -40,8 +41,8 @@ tests/
 
 Every public function MUST take filesystem paths (`&Path`, `String`), never byte buffers.
 
-- `process_pdf(pdf_path: &Path, …)` — good.
-- ~~`process_pdf(bytes: Vec<u8>, …)`~~ — forbidden. Frontend would have had to read a PDF
+- `process_sources(source_paths: &[PathBuf], …)` — good.
+- ~~`process_sources(bytes: Vec<u8>, …)`~~ — forbidden. Frontend would have had to read a PDF
   into memory and base64-encode it across the IPC boundary, which is exactly the
   "memory mirage" Rule 1 forbids.
 

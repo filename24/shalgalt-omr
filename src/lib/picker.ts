@@ -16,6 +16,54 @@ export async function pickPdf(): Promise<string | null> {
 }
 
 /**
+ * Dialog filters for a grading scan source. The first entry lists every accepted
+ * extension so a teacher can pick a PDF or a phone photo without switching the
+ * dialog's type dropdown; the rest narrow to PDF-only or image-only.
+ */
+const SCAN_SOURCE_FILTERS = [
+  {
+    name: "Шалгалтын хуудас",
+    extensions: ["pdf", "png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"],
+  },
+  { name: "PDF", extensions: ["pdf"] },
+  { name: "Зураг", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"] },
+];
+
+/**
+ * Open a native file picker for a single grading scan source — either a
+ * multi-page PDF or one scanned image (PNG/JPG/JPEG/WebP/BMP/TIFF) — and return
+ * its absolute path. Returns `null` when the user cancels. Same Rule 1 invariant
+ * as `pickPdf`: we hand the path across IPC, never the bytes.
+ */
+export async function pickScanSource(): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: SCAN_SOURCE_FILTERS,
+  });
+  return typeof selected === "string" ? selected : null;
+}
+
+/**
+ * Open a native file picker for one or more grading scan sources — any mix of
+ * multi-page PDFs and single scanned images — and return their absolute paths in
+ * the order the OS reports them. Returns an empty array when the user cancels.
+ *
+ * This is what powers multi-page upload: each image counts as one page, so a
+ * teacher can select a whole stack of phone photos (and/or PDFs) in one go and
+ * grade them as a single batch. Same Rule 1 invariant as `pickPdf`.
+ */
+export async function pickScanSources(): Promise<string[]> {
+  const selected = await open({
+    multiple: true,
+    directory: false,
+    filters: SCAN_SOURCE_FILTERS,
+  });
+  if (Array.isArray(selected)) return selected;
+  return typeof selected === "string" ? [selected] : [];
+}
+
+/**
  * Open a native file picker for a single backdrop image (PNG/JPG/JPEG/WebP)
  * and return its absolute path. Same Rule 1 invariant as `pickPdf`.
  */
