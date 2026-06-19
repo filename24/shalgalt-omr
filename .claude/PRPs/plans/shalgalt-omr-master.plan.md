@@ -204,7 +204,7 @@ low-quality phone scans. Mongolian-standard preset migrates from corner
 squares to 6×6 ArUco markers in P2. Alignment uses each marker's four
 corners as homography correspondences (`find_homography` + RANSAC) and
 tolerates one missing marker — **≥3 of 4** markers is enough to align a page
-(ADR 0013).
+(ADR 0016).
 
 ### 6.5 Mobile-scanner robustness
 

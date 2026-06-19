@@ -91,7 +91,7 @@ These are **locked**. Re-litigation requires an ADR under `docs/adr/`.
   Marker IDs: top-left `0`, top-right `1`, bottom-right `2`, bottom-left `3`.
 - **Alignment**: each detected marker contributes its four corners as homography
   correspondences; the page aligns whenever **≥3 of 4** markers are found (`MIN_MARKERS`).
-  Fewer than 3 is a `BadRequest`. See ADR 0013.
+  Fewer than 3 is a `BadRequest`. See ADR 0016.
 - **Thresholding**: adaptive (Gaussian, block size 35–51, C ≈ 7) — not Otsu — because
   schools photocopy sheets and the global histogram is unreliable.
 - **Deskew**: marker-driven. After ArUco detection, fit the homography from marker corners

@@ -1,4 +1,4 @@
-# ADR 0013 — Corner-based homography: align from 3 of 4 ArUco markers
+# ADR 0016 — Corner-based homography: align from 3 of 4 ArUco markers
 
 - **Status**: Accepted
 - **Date**: 2026-06-19
