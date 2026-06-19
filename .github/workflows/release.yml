@@ -45,9 +45,13 @@ jobs:
       matrix:
         platform:
           - name: linux-x86_64
-            # Build on the oldest supported Ubuntu so the AppImage's glibc floor stays
-            # low enough to run on older teacher machines (newer runners raise it).
-            runner: ubuntu-22.04
+            # ubuntu-latest pins OpenCV to apt 4.6 — matching rust-check and the local
+            # binding the legacy ArUco path is written against. ubuntu-22.04 would lower
+            # the AppImage's glibc floor for older machines, but ships OpenCV 4.5.4 whose
+            # legacy `aruco::detect_markers` has a different arity than 4.6, which the
+            # build does not yet handle. FOLLOW-UP: lower the glibc floor once OpenCV is
+            # pinned uniformly across CI and the release (PPA or static build).
+            runner: ubuntu-latest
             # Native host target — leave tauri-action's `args` target unset.
             rust_target: ""
             tauri_target_arg: ""
@@ -235,18 +239,12 @@ jobs:
           # Updater signing — REQUIRED. Without these the updater cannot verify bundles.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Windows Authenticode (OPTIONAL). tauri reads the base64 cert + password and
-          # signs the NSIS/WiX installers. Absent ⇒ unsigned (warned above).
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          # macOS signing + notarization (OPTIONAL, all-or-nothing). These env vars are
-          # only consumed when the cert is present; the guard step above logs intent.
-          APPLE_CERTIFICATE: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_CERTIFICATE || '' }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
-          APPLE_SIGNING_IDENTITY: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_SIGNING_IDENTITY || '' }}
-          APPLE_ID: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_ID || '' }}
-          APPLE_PASSWORD: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ steps.macos_signing.outputs.enabled == 'true' && secrets.APPLE_TEAM_ID || '' }}
+          # Code-signing certificates are intentionally NOT passed in v0. No Apple/EV
+          # certs exist yet, and Tauri treats an *empty* cert env var as "set"
+          # (Rust `env::var` returns `Ok("")`), then fails on `security import` of an
+          # empty certificate. Omitting the vars entirely makes macOS and Windows ship
+          # unsigned (ad-hoc). When real certs arrive, re-add `WINDOWS_CERTIFICATE`
+          # (+ `_PASSWORD`) and the `APPLE_*` group here — see docs/distribution.md.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Tauri crate root (owns tauri.conf.json). Matches `pnpm tauri`'s cd.
