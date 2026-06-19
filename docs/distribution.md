@@ -25,17 +25,55 @@ the production credentials — no workflow or code changes are needed.
 
 ## Bundling native runtime libraries
 
-`shalgalt-omr` depends on two native dynamic libraries that must travel inside the bundle,
-not just at build time:
+`shalgalt-omr` depends on two native libraries that must travel inside the bundle, not
+just at build time: **pdfium** (`pdfium-render`'s runtime library) and **OpenCV** (the CV
+pipeline). The teacher must never install or configure anything, so each library is
+shipped inside the per-OS package. How that happens differs by library and OS.
 
-- **pdfium** — `pdfium-render`'s runtime library (`pdfium.dll` / `libpdfium.so` /
-  `libpdfium.dylib`).
-- **OpenCV (Windows only)** — `opencv_world<NNN>.dll` (e.g. `opencv_world4100.dll` for
-  4.10.0). On Linux/macOS OpenCV is a system/build-time dependency, so nothing is
-  bundled there.
+### pdfium (runtime `dlopen`)
 
-These are fetched into `apps/desktop/resources/` by the fetch-binaries scripts and then
-referenced from `tauri.conf.json#bundle.resources` (owned by Track-Config).
+pdfium is `dlopen`'d at runtime by `pdfium-render`. It is fetched into
+`apps/desktop/resources/` and shipped via `tauri.conf.json#bundle.resources`
+(`resources/*`).
+
+- **Windows:** placed flat next to the `.exe` (see OpenCV table below); the exe-dir probe
+  finds it.
+- **Linux / macOS:** ships as a Tauri resource under `<resource_dir>/resources/`, which is
+  *not* the executable's directory. The desktop app resolves its resource dir via Tauri's
+  `PathResolver` and registers it with `shalgalt_cv::set_pdfium_dir(...)` at startup
+  (`apps/desktop/src/lib.rs` bootstrap). `shalgalt-cv`'s binding (`crates/shalgalt-cv/src/binding.rs`)
+  then probes, in order: the registered resource dir → the executable dir → the system
+  library.
+
+### OpenCV (link-time linked)
+
+OpenCV is a link-time (`NEEDED`/import) dependency, not `dlopen`'d, so each OS handles it
+differently:
+
+| OS | How OpenCV ships | Mechanism |
+| -- | ---------------- | --------- |
+| **Windows** | Monolithic `opencv_world<NNN>.dll` next to the `.exe` | `tauri.windows.conf.json` maps `resources/*.dll` → `""` (flat). `opencv_world` is resolved by the loader *before* `main()`, and Windows searches only the exe's own directory — never a `resources/` subdir — so `SetDllDirectory` cannot rescue it. |
+| **Linux (AppImage)** | The whole OpenCV `.so` chain + transitive deps, self-contained | Tauri's `linuxdeploy` follows the binary's `NEEDED` entries and copies them into the AppDir with an `$ORIGIN` rpath automatically. `release.yml` sets `APPIMAGE_EXTRACT_AND_RUN=1` + `NO_STRIP=true` and builds on `ubuntu-22.04` to keep the glibc floor low. |
+| **Linux (.deb)** | Depends on the distro's apt OpenCV | `bundle.linux.deb.depends` lists every module the app links (core/imgproc/imgcodecs/objdetect/calib3d/features2d/flann), each with cross-distro alternatives (`4.5d` jammy / `406` noble / `4.6`). The AppImage is the universal artifact; the `.deb` is the apt-integrated convenience and is distro-version-sensitive. |
+| **macOS** | OpenCV `.dylib` chain in `<App>.app/Contents/Frameworks/` | `dylibbundler` rewrites install_names to `@executable_path/../Frameworks/`; `apps/desktop/build.rs` bakes the matching rpath. **CI step not yet wired — see follow-up below.** |
+
+> **macOS — RC follow-up.** The rpath (`apps/desktop/build.rs`) and the helper script
+> ([`scripts/macos-bundle-dylibs.sh`](../scripts/macos-bundle-dylibs.sh)) are in place, but
+> the `release.yml` step that runs the script is **intentionally not wired yet**: it cannot
+> be validated without a macOS runner, and `tauri-action` builds+bundles+uploads in one
+> step (no clean hook to inject `dylibbundler` before the `.dmg` is created). Wire and debug
+> it during the first macOS RC tag — either as a post-build re-process (run the script on
+> the produced `.app`, recreate the `.dmg`, re-sign the updater `.app.tar.gz`, re-upload) or
+> a `beforeBundle` resource-staging variant. Until then the macOS bundle is not
+> self-contained (needs Homebrew OpenCV). macOS is distribution priority 2 and unsigned in
+> v0, so this does not block Windows/Linux releases.
+
+### Fetching the libraries
+
+pdfium (all OSes) and the Windows OpenCV DLL are fetched into `apps/desktop/resources/` by
+the fetch-binaries scripts. On Linux/macOS OpenCV is linked from the system at build time
+(apt `libopencv-dev` / `brew opencv`) and bundled by linuxdeploy/dylibbundler as above, so
+there is no OpenCV to pre-fetch there.
 
 | Script                                                       | OS              | Fetches                                  |
 | ------------------------------------------------------------ | --------------- | ---------------------------------------- |
