@@ -17,7 +17,7 @@ src/
   pdf.rs           — pdfium-render multi-page rasterization + single-image transcode.
                      `rasterize_sources` (batch) / `rasterize_source` (one) / `is_image_path`.
   preview.rs       — Single-page rasterization used by the P1 template editor.
-  perspective.rs   — 4-marker detection + `warpPerspective` (P3).
+  perspective.rs   — ArUco corner detection (≥3 of 4) + `findHomography` warp (P3).
   bubbles.rs       — Per-bubble fill-ratio reading + confidence scoring (P3).
 tests/
   pdfium_marker_raster.rs — Regression test that feeds bytes from `shalgalt-pdf` into
@@ -89,10 +89,14 @@ These are **locked**. Re-litigation requires an ADR under `docs/adr/`.
 
 - **Markers**: ArUco `DICT_6X6_50`. The four corner squares from P0/P1 are removed.
   Marker IDs: top-left `0`, top-right `1`, bottom-right `2`, bottom-left `3`.
+- **Alignment**: each detected marker contributes its four corners as homography
+  correspondences; the page aligns whenever **≥3 of 4** markers are found (`MIN_MARKERS`).
+  Fewer than 3 is a `BadRequest`. See ADR 0013.
 - **Thresholding**: adaptive (Gaussian, block size 35–51, C ≈ 7) — not Otsu — because
   schools photocopy sheets and the global histogram is unreliable.
-- **Deskew**: marker-driven. After ArUco detection, compute the homography to the ideal
-  unit square and `warpPerspective` once per page. No rotation-only fallback.
+- **Deskew**: marker-driven. After ArUco detection, fit the homography from marker corners
+  with `find_homography` (RANSAC) and `warpPerspective` once per page. No rotation-only
+  fallback.
 - **Confidence**: per bubble, fill ratio in `[0, 1]`. Decision rule:
   - `ratio < 0.35` → unfilled.
   - `ratio > 0.65` → filled.
