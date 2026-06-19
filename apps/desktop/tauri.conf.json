@@ -42,6 +42,48 @@
         "role": "Editor",
         "mimeType": "application/vnd.shalgalt-omr+zip"
       }
-    ]
+    ],
+    "resources": ["resources/*"],
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["English"]
+      },
+      "wix": {
+        "language": "en-US"
+      },
+      "certificateThumbprint": null,
+      "signCommand": null
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libopencv-core4.5d | libopencv-core406 | libopencv-core4.6",
+          "libopencv-imgproc4.5d | libopencv-imgproc406 | libopencv-imgproc4.6",
+          "libopencv-imgcodecs4.5d | libopencv-imgcodecs406 | libopencv-imgcodecs4.6",
+          "libopencv-objdetect4.5d | libopencv-objdetect406 | libopencv-objdetect4.6",
+          "libopencv-calib3d4.5d | libopencv-calib3d406 | libopencv-calib3d4.6",
+          "libopencv-features2d4.5d | libopencv-features2d406 | libopencv-features2d4.6",
+          "libopencv-flann4.5d | libopencv-flann406 | libopencv-flann4.6"
+        ]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "macOS": {
+      "signingIdentity": null,
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://filename24.github.io/shalgalt-omr/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMwRjIzOUVDQ0U4MDI1MDEKUldRQkpZRE83RG55d0hOWnJCNFdlWnZRMU9kTk5RMUZTRjVROXBCdENaMDRTVFFGbTNxQ1FsSGMK",
+      "dangerousInsecureTransportProtocol": false,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

@@ -153,6 +153,16 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
+    // Opt-in auto-update (P6, master plan §6.8). Registering the plugin only exposes the
+    // `check()` capability; it never runs on startup. The frontend gates the actual update
+    // check behind a user preference (default OFF) so offline schools never see prompts.
+    // Endpoints / pubkey / install mode are configured under `plugins.updater` in
+    // `tauri.conf.json`.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
     builder
         .plugin(
             // Persistent rotating log file in the OS log dir, plus stdout for `tauri dev`
@@ -237,6 +247,16 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
         dirs.data_dir.display(),
         DB_FILENAME
     );
+
+    // Register the bundled pdfium library location for the CV pipeline. On Linux
+    // (AppImage) and macOS (.app) the pdfium dynamic library ships as a Tauri resource
+    // under `<resource_dir>/resources/`, which is not the executable's own directory;
+    // `shalgalt-cv` probes this path before falling back to the exe dir and the system
+    // library. On Windows the DLL ships flat next to the exe, so this is a harmless
+    // extra probe. Resolved here, before any rasterization runs.
+    if let Ok(res_dir) = app.path().resource_dir() {
+        shalgalt_cv::set_pdfium_dir(res_dir.join("resources"));
+    }
 
     // Drop preview cache files older than 24h before the editor opens.
     commands::pdf::prune_old_previews(&dirs.cache_dir);

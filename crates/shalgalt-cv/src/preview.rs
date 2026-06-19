@@ -15,51 +15,15 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
-use pdfium_render::prelude::{PdfPageRenderRotation, PdfRenderConfig, Pdfium, PdfiumError};
+use pdfium_render::prelude::{PdfPageRenderRotation, PdfRenderConfig, PdfiumError};
 use sha2::{Digest, Sha256};
-use tracing::{info, warn};
+use tracing::info;
 
 use shalgalt_core::error::{AppError, AppResult};
 
 /// Width of the rendered first page in pixels. 2000px gives the editor plenty
 /// of detail for marker placement without producing huge PNGs.
 const TARGET_WIDTH: i32 = 2000;
-
-/// Bind to a pdfium dynamic library, trying the executable's directory first
-/// and then the system path. Returns `AppError::PdfiumUnavailable` if neither
-/// strategy succeeds.
-fn try_bind() -> AppResult<Pdfium> {
-    let library_name = Pdfium::pdfium_platform_library_name();
-
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let candidate = exe_dir.join(&library_name);
-            match Pdfium::bind_to_library(&candidate) {
-                Ok(bindings) => {
-                    info!("pdfium: bound to {}", candidate.display());
-                    return Ok(Pdfium::new(bindings));
-                }
-                Err(e) => {
-                    warn!(
-                        "pdfium: bind_to_library({}) failed: {e}",
-                        candidate.display()
-                    );
-                }
-            }
-        }
-    }
-
-    match Pdfium::bind_to_system_library() {
-        Ok(bindings) => {
-            info!("pdfium: bound to system library");
-            Ok(Pdfium::new(bindings))
-        }
-        Err(e) => {
-            warn!("pdfium: bind_to_system_library failed: {e}");
-            Err(AppError::PdfiumUnavailable)
-        }
-    }
-}
 
 /// Stable cache filename derived from the PDF's absolute path. Two imports of
 /// the same PDF share a rendered PNG; rebuilding requires deleting the cache
@@ -89,7 +53,7 @@ pub fn rasterize_first_page(pdf_path: &Path, cache_dir: &Path) -> AppResult<Path
         return Ok(dest);
     }
 
-    let pdfium = try_bind()?;
+    let pdfium = crate::binding::try_bind()?;
 
     let document = pdfium
         .load_pdf_from_file(pdf_path, None)

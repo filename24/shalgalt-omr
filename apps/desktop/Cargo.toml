@@ -62,6 +62,11 @@ tauri-plugin-log = "2"
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
+# Opt-in auto-update (P6, master plan §6.8). Reads the static `gh-pages` manifest
+# configured under `plugins.updater` in `tauri.conf.json`. Default OFF so offline
+# schools never see prompts — the frontend gates the actual `check()` call behind a
+# user preference, never on startup.
+tauri-plugin-updater = "2"
 
 # --- Database (Blueprint §4) ---
 # Tauri SQL plugin: defines migrations on the Rust side and is consumed from the frontend

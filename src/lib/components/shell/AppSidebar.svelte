@@ -6,6 +6,7 @@
   import ScanIcon from "@lucide/svelte/icons/scan-line";
   import ListChecksIcon from "@lucide/svelte/icons/list-checks";
   import ClipboardListIcon from "@lucide/svelte/icons/clipboard-list";
+  import SettingsIcon from "@lucide/svelte/icons/settings";
   import { mn } from "$lib/i18n";
   import ThemeToggle from "$lib/components/theme/ThemeToggle.svelte";
   import ComfortToggle from "$lib/components/theme/ComfortToggle.svelte";
@@ -16,6 +17,7 @@
     { href: "/grade", label: mn.nav.grade, icon: ScanIcon },
     { href: "/exams", label: mn.nav.exams, icon: ListChecksIcon },
     { href: "/results", label: mn.nav.results, icon: ClipboardListIcon },
+    { href: "/settings", label: mn.nav.settings, icon: SettingsIcon },
   ];
 </script>
 

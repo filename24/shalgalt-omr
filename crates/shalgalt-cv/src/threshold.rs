@@ -37,7 +37,11 @@ pub fn to_gray(src: &Mat) -> AppResult<Mat> {
         gray = src.clone();
         return Ok(gray);
     }
-    imgproc::cvt_color(src, &mut gray, imgproc::COLOR_BGR2GRAY, 0)
+    // Use the `_def` variant (omits all trailing default args) so this compiles across
+    // OpenCV versions: 4.11 added a 5th `AlgorithmHint` parameter to `cvtColor`, while
+    // 4.6/4.10 take only 4. We never set `dst_cn` (defaults to 0) or the hint, so the
+    // default-args form is behaviourally identical and version-agnostic.
+    imgproc::cvt_color_def(src, &mut gray, imgproc::COLOR_BGR2GRAY)
         .map_err(|e| AppError::Internal(anyhow::anyhow!("cvt_color BGR2GRAY: {e}")))?;
     Ok(gray)
 }

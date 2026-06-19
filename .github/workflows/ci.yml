@@ -92,6 +92,37 @@ jobs:
             exit 1
           fi
 
+  rust-modern-aruco:
+    name: Rust (modern ArUco check)
+    # The rust-check job runs on Ubuntu apt OpenCV 4.6, which compiles the LEGACY
+    # cv::aruco path only. Homebrew OpenCV is 4.7+, so this job is the one place in
+    # PR-time CI that compiles the MODERN cv::objdetect::ArucoDetector path used by
+    # the Windows (4.10) and macOS release builds. Without it a modern-path
+    # regression would surface only at release-tag time. A targeted `cargo check`
+    # on the single affected crate keeps the (pricier) macOS runner minutes small.
+    runs-on: macos-14
+    timeout-minutes: 30
+    env:
+      # Force the modern path so the guard is deterministic regardless of the exact
+      # Homebrew OpenCV version (always 4.7+, so the objdetect ArUco bindings exist).
+      OPENCV_FORCE_ARUCO: modern
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenCV (Homebrew)
+        run: brew install opencv pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-modern-aruco
+
+      - name: cargo check (modern ArUco path)
+        run: cargo check -p shalgalt-cv
+
   dev-build:
     name: Dev build (${{ matrix.platform.name }})
     # Skipped on pull_request to keep review feedback fast — manually trigger via the
