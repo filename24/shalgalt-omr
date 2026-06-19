@@ -248,6 +248,16 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
         DB_FILENAME
     );
 
+    // Register the bundled pdfium library location for the CV pipeline. On Linux
+    // (AppImage) and macOS (.app) the pdfium dynamic library ships as a Tauri resource
+    // under `<resource_dir>/resources/`, which is not the executable's own directory;
+    // `shalgalt-cv` probes this path before falling back to the exe dir and the system
+    // library. On Windows the DLL ships flat next to the exe, so this is a harmless
+    // extra probe. Resolved here, before any rasterization runs.
+    if let Ok(res_dir) = app.path().resource_dir() {
+        shalgalt_cv::set_pdfium_dir(res_dir.join("resources"));
+    }
+
     // Drop preview cache files older than 24h before the editor opens.
     commands::pdf::prune_old_previews(&dirs.cache_dir);
 

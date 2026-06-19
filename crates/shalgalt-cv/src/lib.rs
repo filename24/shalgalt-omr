@@ -17,6 +17,7 @@
 //! filesystem paths (never byte buffers crossing IPC) and reports progress via a
 //! `tokio::sync::mpsc::Sender<TaskProgress>` rather than blocking the caller.
 
+mod binding;
 pub mod bubbles;
 pub mod deskew;
 pub mod pdf;
@@ -25,6 +26,7 @@ mod pipeline;
 pub mod preview;
 pub mod threshold;
 
+pub use binding::set_pdfium_dir;
 pub use shalgalt_core::domain::{TaskProgress, TaskStage};
 
 use std::path::{Path, PathBuf};

@@ -45,7 +45,9 @@ jobs:
       matrix:
         platform:
           - name: linux-x86_64
-            runner: ubuntu-latest
+            # Build on the oldest supported Ubuntu so the AppImage's glibc floor stays
+            # low enough to run on older teacher machines (newer runners raise it).
+            runner: ubuntu-22.04
             # Native host target — leave tauri-action's `args` target unset.
             rust_target: ""
             tauri_target_arg: ""
@@ -208,6 +210,19 @@ jobs:
           if [ -z "$WINDOWS_CERTIFICATE" ]; then
             echo "::warning::WINDOWS_CERTIFICATE not set — producing an UNSIGNED Windows build (self-signed v0)."
           fi
+
+      # --- AppImage bundling knobs (Linux) ---------------------------------------
+      # Tauri's AppImage step runs linuxdeploy, which follows the binary's NEEDED
+      # entries and bundles the whole OpenCV .so chain (core/imgproc/imgcodecs/
+      # objdetect/calib3d/features2d/flann + transitive jpeg/png/tiff/tbb) into the
+      # AppDir with an $ORIGIN rpath — so OpenCV ships self-contained. These knobs make
+      # that reliable in CI: extract-and-run avoids FUSE (unavailable on GH runners),
+      # and NO_STRIP stops stripping that can break the bundled OpenCV libraries.
+      - name: Configure AppImage bundling env (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+          echo "NO_STRIP=true" >> "$GITHUB_ENV"
 
       # --- Tauri build + draft release upload ------------------------------------
       # tauri-action runs the config's beforeBuildCommand (pnpm build) itself, then
