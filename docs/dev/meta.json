@@ -1,0 +1,15 @@
+{
+  "title": "Developer",
+  "root": true,
+  "pages": [
+    "index",
+    "architecture",
+    "workspace",
+    "build",
+    "contributing",
+    "testing",
+    "adr",
+    "---HTTP API---",
+    "api"
+  ]
+}
