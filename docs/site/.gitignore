@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+.source/
+
+# Generated at build time (prebuild copies samples in from ../user/samples).
+public/samples/
+
+# Next.js generates this; safe to regenerate.
+next-env.d.ts

@@ -5,6 +5,19 @@
 > Full spec: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md). Folder structure and module
 > responsibilities: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
+## Documentation
+
+The full documentation site (developer docs in English + a Mongolian user manual + the HTTP
+API reference) is built with **Fumadocs** and published to GitHub Pages:
+
+- **Site**: https://filename24.github.io/shalgalt-omr/ (default Mongolian; English via the
+  locale switcher).
+- **Sources**: developer docs in [`docs/dev/`](docs/dev), user manual in
+  [`docs/user/`](docs/user), and the Fumadocs app in [`docs/site/`](docs/site). See
+  [ADR 0019](docs/adr/0019-docs-fumadocs-and-gh-pages.md) for the toolchain and deploy model.
+- **Build locally**: `cd docs/site && pnpm install && pnpm build` (static export into
+  `docs/site/out/`).
+
 ## Stack
 
 | Layer       | Tech                                                                  |
