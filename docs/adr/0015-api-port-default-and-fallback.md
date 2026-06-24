@@ -1,13 +1,14 @@
-# ADR 0015 — API port: less-common default, desktop auto-fallback, developer override
+---
+title: ADR 0015 — API port & fallback
+description: An uncommon default port (22345), desktop auto-fallback, and a developer environment override.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-17
-- **Deciders**: filename24
-- **Related issues**: P5-03/04/05 (the embedded + standalone HTTP API)
-- **Related ADRs**: [0013](0013-rest-api-v1-datastore.md) (the `/v1` surface),
-  [0014](0014-server-binary-and-rusqlite-store.md) (the two hosts that bind a port)
-- **Supersedes**: the `127.0.0.1:8080` / `0.0.0.0:8080` choice recorded in BLUEPRINT §2 and
-  master plan §6.6.
+<Callout type="success" title="Accepted · 2026-06-17">
+  **Deciders:** filename24 · **Related issues:** P5-03/04/05 (the embedded + standalone HTTP
+  API) · **Related ADRs:** ADR 0013 (the `/v1` surface), ADR 0014 (the two hosts that bind a
+  port) · **Supersedes:** the `127.0.0.1:8080` / `0.0.0.0:8080` choice recorded in
+  BLUEPRINT §2 and master plan §6.6.
+</Callout>
 
 ## Context
 
@@ -45,6 +46,13 @@ already configurable), but shared the contended default.
 
 ## Decision
 
+<Callout type="info" title="Decision">
+  Default both hosts to port **22345**. The desktop **auto-falls-back** to the next free port
+  (`[desired, desired+16)`) and isolates a bind failure so IPC always survives; the server
+  hard-fails so a fixed advertised port never silently moves. `SHALGALT_API_PORT` is the
+  developer override.
+</Callout>
+
 **1. Default port → 22345**, for both hosts. Desktop binds `127.0.0.1:22345`; the server's
 `--bind` default becomes `0.0.0.0:22345`.
 
@@ -81,3 +89,12 @@ still applies). The server keeps `--bind` for explicit control and does **not** 
   can copy the integration endpoint without opening the data dir.
 - Consider a server-side `--port-fallback` opt-in if headless deployments ever want it; not
   needed today.
+
+<Cards>
+  <Card href="/adr/0013-rest-api-v1-datastore" title="ADR 0013 — REST `/v1` & DataStore seam">
+    The `/v1` surface served on this port.
+  </Card>
+  <Card href="/adr/0014-server-binary-and-rusqlite-store" title="ADR 0014 — Standalone server & rusqlite store">
+    The two hosts (desktop, standalone server) that bind the port.
+  </Card>
+</Cards>

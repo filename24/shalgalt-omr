@@ -1,9 +1,11 @@
-# ADR 0004 — Generate TypeScript bindings from Rust via `ts-rs`
+---
+title: ADR 0004 — TypeScript bindings via ts-rs
+description: Generate the frontend's domain types from Rust with ts-rs and gate them in CI so the Rust/TS wire format never silently drifts.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-08
-- **Deciders**: filename24
-- **Implements**: P2-04
+<Callout type="success" title="Accepted · 2026-05-08">
+  **Deciders:** filename24 · **Implements:** P2-04
+</Callout>
 
 ## Context
 
@@ -25,8 +27,12 @@ schema would still accept the unknown shape.
 
 ## Decision
 
-Adopt `ts-rs = "10"` on `shalgalt-core`. Domain types derive `TS` and emit into
-`src/lib/types/generated/`. CI runs `cargo test -p shalgalt-core --quiet` followed by
+<Callout type="info" title="Decision">
+  Adopt **`ts-rs = "10"` on `shalgalt-core`** — domain types derive `TS` and emit into
+  `src/lib/types/generated/`.
+</Callout>
+
+CI runs `cargo test -p shalgalt-core --quiet` followed by
 `git diff --exit-code -- src/lib/types/generated`, so a Rust-side schema change that
 forgets re-generation fails the build.
 

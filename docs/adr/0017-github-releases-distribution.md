@@ -1,20 +1,21 @@
-# ADR 0017 — GitHub Releases distribution via `tauri-action` on `v*` tags
+---
+title: ADR 0017 — GitHub Releases distribution
+description: Ship desktop bundles and the standalone server through GitHub Releases via tauri-action on v* tags.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-19
-- **Deciders**: filename24
-- **Related issues**: P6-01 (`release.yml`), P6-02 (Windows bundle), P6-03 (standalone
-  server asset)
-- **Related ADRs**: [0001](0001-windows-opencv-strategy.md) (Windows OpenCV linkage —
-  the runtime DLL that must ship alongside the installer),
-  [0014](0014-server-binary-and-rusqlite-store.md) (the `shalgalt-server` binary that
-  becomes a Release asset), [0018](0018-optin-updater.md) (the updater that consumes
-  these Release assets)
-- **Master-plan note**: §16 reserves the nominal numbers 0011/0012 for the two P6 ADRs.
-  Those file numbers were already taken by the P4 file-format / `age` ADRs, and the
-  monotonic-no-gap naming rule (`README.md`) makes 0017/0018 the next free pair. §16's
-  table must be updated in the same PR to point at the real numbers (0017 distribution,
-  0018 updater).
+<Callout type="success" title="Accepted · 2026-06-19">
+  **Deciders:** filename24 · **Related issues:** P6-01 (`release.yml`), P6-02 (Windows bundle),
+  P6-03 (standalone server asset) · **Related ADRs:** ADR 0001 (Windows OpenCV linkage — the
+  runtime DLL that must ship alongside the installer), ADR 0014 (the `shalgalt-server` binary
+  that becomes a Release asset), ADR 0018 (the updater that consumes these Release assets)
+</Callout>
+
+<Callout type="warn" title="Master-plan note">
+  §16 reserves the nominal numbers 0011/0012 for the two P6 ADRs. Those file numbers were
+  already taken by the P4 file-format / `age` ADRs, and the monotonic-no-gap naming rule
+  (`README.md`) makes 0017/0018 the next free pair. §16's table must be updated in the same PR
+  to point at the real numbers (0017 distribution, 0018 updater).
+</Callout>
 
 ## Context
 
@@ -52,6 +53,13 @@ Three constraints make this non-trivial:
 | | Same Release, extra build step uploads `shalgalt-server` as an asset | **Chosen** — one tag, one Release, both products in lockstep. |
 
 ## Decision
+
+<Callout type="info" title="Decision">
+  `release.yml` triggers on `v*` tags and drives `tauri-action`, publishing the desktop
+  bundle and the standalone `shalgalt-server` binary to **one** Release per tag. Signing is
+  staged (self-signed Windows now, optional macOS notarization), and native runtime libraries
+  (`opencv_world`, `pdfium`) are bundled, not assumed.
+</Callout>
 
 **1. `release.yml` triggers on `v*` tags and drives `tauri-action`.** The workflow checks
 out the tag, installs the per-OS native toolchain (the OpenCV setup from ADR 0001 on
@@ -120,3 +128,15 @@ binary both find their native dependencies on a clean machine.
   common distros before flipping the Linux job from optional to required (P9).
 - **Installer diet** inherits ADR 0001's P5/P6 follow-up — feature-selective OpenCV build
   if footprint becomes a complaint vector.
+
+<Cards>
+  <Card href="/adr/0001-windows-opencv-strategy" title="ADR 0001 — Windows OpenCV strategy">
+    The Windows OpenCV linkage; the runtime DLL this workflow must bundle with the installer.
+  </Card>
+  <Card href="/adr/0014-server-binary-and-rusqlite-store" title="ADR 0014 — Standalone server & rusqlite store">
+    The `shalgalt-server` binary that becomes a Release asset alongside the desktop bundle.
+  </Card>
+  <Card href="/adr/0018-optin-updater" title="ADR 0018 — Opt-in updater">
+    The updater that consumes these Release assets and the `latest.json` manifest.
+  </Card>
+</Cards>

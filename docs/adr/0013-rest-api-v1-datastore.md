@@ -1,12 +1,14 @@
-# ADR 0013 — HTTP API: `/v1` versioning, a `DataStore` seam in core, and OpenAPI via `utoipa`
+---
+title: ADR 0013 — REST `/v1` & DataStore seam
+description: Versioned /v1 routes, a database-free DataStore trait in core, and OpenAPI generated from utoipa annotations.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-17
-- **Deciders**: filename24
-- **Related issues**: P5-03 (read endpoints), P5-04 (write endpoints), P5-06 (OpenAPI)
-- **Related ADRs**: [0003](0003-cargo-workspace-and-crate-boundaries.md) (crate
-  boundaries), [0014](0014-server-binary-and-rusqlite-store.md) (the hosts that inject a
-  store)
+<Callout type="success" title="Accepted · 2026-06-17">
+  **Deciders:** filename24 · **Related:** P5-03 (read endpoints), P5-04 (write endpoints),
+  P5-06 (OpenAPI) · **Related ADRs:** [0003](/adr/0003-cargo-workspace-and-crate-boundaries)
+  (crate boundaries), [0014](/adr/0014-server-binary-and-rusqlite-store) (the hosts that
+  inject a store).
+</Callout>
 
 ## Context
 
@@ -26,6 +28,12 @@ Two constraints shape the design:
    cannot be duplicated per host.
 
 ## Decision
+
+<Callout type="info" title="Decision">
+  Version all resource routes under `/v1/`, route persistence through a database-free
+  `DataStore` trait in core, keep wire DTOs separate from `domain::*`, generate OpenAPI from
+  `utoipa` annotations, and reuse the IPC error envelope for REST responses.
+</Callout>
 
 **1. Version under `/v1/`.** All resource routes are `/v1/{exams,templates,results}`.
 `/healthz` and `/openapi.json` sit outside the version prefix (they are service metadata,
@@ -69,3 +77,12 @@ existing `{ code, message }` body with a derived status (`BadRequest` → 400, `
 - Pagination on `/v1/results` is deferred until result volumes justify it; today the desktop
   browser paginates client-side.
 - A future `/v2/` (if ever needed) keeps `/v1/` alive for one release for integrators.
+
+<Cards>
+  <Card href="/adr/0003-cargo-workspace-and-crate-boundaries" title="ADR 0003 — Cargo workspace & crate boundaries">
+    The crate boundaries that keep the router in core and persistence out of it.
+  </Card>
+  <Card href="/adr/0014-server-binary-and-rusqlite-store" title="ADR 0014 — Standalone server & rusqlite store">
+    The hosts that inject a concrete `DataStore` behind this seam.
+  </Card>
+</Cards>

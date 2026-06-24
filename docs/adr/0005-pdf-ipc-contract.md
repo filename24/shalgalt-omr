@@ -1,9 +1,11 @@
-# ADR 0005 — PDF generation IPC contract
+---
+title: ADR 0005 — PDF generation IPC contract
+description: Path-string commands and on-disk results for the PDF render/preview IPC — never PDF bytes or data URLs across the Tauri bridge.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-08
-- **Deciders**: filename24
-- **Implements**: P2-07 / P2-08
+<Callout type="success" title="Accepted · 2026-05-08">
+  **Deciders:** filename24 · **Implements:** P2-07 / P2-08
+</Callout>
 
 ## Context
 
@@ -23,7 +25,10 @@ ADR records exactly *how* the new PDF commands honor the rule.
 
 ## Decision
 
-Two `tauri::command` handlers ship in `apps/desktop/src/commands/pdf.rs`:
+<Callout type="info" title="Decision">
+  Ship **two `tauri::command` handlers in `apps/desktop/src/commands/pdf.rs`** that take
+  path strings and write results to disk — no bytes cross the IPC boundary.
+</Callout>
 
 ```rust
 #[tauri::command]
@@ -90,3 +95,15 @@ Conventions:
   from `ts-rs`-derived structs.
 - Multi-variant batch export (P5) reuses this command — the `variant` parameter is
   already plumbed through to `PdfOptions::variant`.
+
+<Cards>
+  <Card href="/adr/0002-pdf-generator-printpdf" title="ADR 0002 — PDF generator: printpdf">
+    The renderer behind these commands, including its bubble geometry and determinism contract.
+  </Card>
+  <Card href="/adr/0003-cargo-workspace-and-crate-boundaries" title="ADR 0003 — Cargo workspace & crate boundaries">
+    The path-only Rule 1 boundary that this IPC contract keeps the `commands::pdf` module inside.
+  </Card>
+  <Card href="/adr/0004-ts-rs-type-codegen" title="ADR 0004 — TypeScript bindings via ts-rs">
+    The generated bindings whose Tauri parameter integration the follow-up depends on.
+  </Card>
+</Cards>

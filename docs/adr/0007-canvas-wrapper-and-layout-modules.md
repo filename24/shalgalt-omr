@@ -1,11 +1,12 @@
-# ADR 0007 — Canvas wrapper + layout-module split for `shalgalt-pdf`
+---
+title: ADR 0007 — Canvas wrapper & layout modules
+description: A Canvas drawing-surface wrapper plus a module-per-visual-element layout split for shalgalt-pdf.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-09
-- **Deciders**: filename24
-- **Related issues**: #75 (P2-06 follow-up)
-- **Supersedes**: ADR 0002 §"Bubble geometry" (geometry now lives in
-  [`docs/MONGOLIAN_OMR_SPEC.md`](../MONGOLIAN_OMR_SPEC.md))
+<Callout type="success" title="Accepted · 2026-05-09">
+  **Deciders:** filename24 · **Related:** #75 (P2-06 follow-up) · **Supersedes:** ADR 0002
+  §"Bubble geometry" (geometry now lives in `docs/MONGOLIAN_OMR_SPEC.md`).
+</Callout>
 
 ## Context
 
@@ -60,7 +61,10 @@ re-litigate them:
 
 ## Decision
 
-Adopt **B + D**.
+<Callout type="info" title="Decision">
+  Adopt **B + D**: a `Canvas` thin wrapper as the only emitter of text-related `Op`s,
+  plus a **module-per-visual-element** layout split.
+</Callout>
 
 ### B — `Canvas` wrapper
 
@@ -88,21 +92,31 @@ wrapper does not yet cover (graphics-state save/restore, text-matrix rotation in
 
 ### D — Module-per-element layout
 
-```
-src/layout/
-├── mod.rs
-├── markers.rs           # 4 corner alignment squares
-├── header.rs            # 2-column page header (title left + school right)
-├── bubble_grid.rs       # circles only — labels owned by labels.rs
-├── labels.rs            # row labels (right-aligned)
-├── manual_entry.rs      # cipher handwriting underlines
-├── numeric_block.rs     # delegates to bubble_grid
-├── section_headers.rs   # 1-Р ХЭСЭГ / 2.x stickers
-└── sidebar.rs           # top-right horizontal САНАМЖ block
-```
+<Files>
+  <Folder name="src/layout" defaultOpen>
+    <File name="mod.rs" />
+    <File name="markers.rs" />
+    <File name="header.rs" />
+    <File name="bubble_grid.rs" />
+    <File name="labels.rs" />
+    <File name="manual_entry.rs" />
+    <File name="numeric_block.rs" />
+    <File name="section_headers.rs" />
+    <File name="sidebar.rs" />
+  </Folder>
+</Files>
+
+- `markers.rs` — 4 corner alignment squares
+- `header.rs` — 2-column page header (title left + school right)
+- `bubble_grid.rs` — circles only — labels owned by `labels.rs`
+- `labels.rs` — row labels (right-aligned)
+- `manual_entry.rs` — cipher handwriting underlines
+- `numeric_block.rs` — delegates to `bubble_grid`
+- `section_headers.rs` — 1-Р ХЭСЭГ / 2.x stickers
+- `sidebar.rs` — top-right horizontal САНАМЖ block
 
 Each module is ≤ 100 LOC. The split matches the spec sections in
-[`docs/MONGOLIAN_OMR_SPEC.md`](../MONGOLIAN_OMR_SPEC.md) one-to-one — when the spec
+`docs/MONGOLIAN_OMR_SPEC.md` one-to-one — when the spec
 gains a new visual element, exactly one new submodule lands.
 
 ## Consequences
@@ -132,7 +146,13 @@ gains a new visual element, exactly one new submodule lands.
 - ADR 0008 documents the in-circle bubble-label decision that the Canvas wrapper
   enabled.
 - Layout-spec changes follow the procedure in
-  [`docs/MONGOLIAN_OMR_SPEC.md`](../MONGOLIAN_OMR_SPEC.md) §7 — issue + spec doc + TS
+  `docs/MONGOLIAN_OMR_SPEC.md` §7 — issue + spec doc + TS
   preset + Rust fixture + golden regen, all in the same PR.
 - A future LayoutMap sidecar (AMC's `.xy` pattern, master-plan D4) will plug into the
   Canvas at the call site without changing the wrapper API.
+
+<Cards>
+  <Card href="/adr/0008-bubble-label-position" title="ADR 0008 — Bubble label position">
+    The in-circle bubble-label decision that the Canvas wrapper enabled.
+  </Card>
+</Cards>
