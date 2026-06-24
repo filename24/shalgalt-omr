@@ -1,0 +1,1042 @@
+# ADR index (https://filename24.github.io/shalgalt-omr/en/docs/dev/adr)
+
+
+
+# Architecture Decision Records [#architecture-decision-records]
+
+ADRs record significant architectural or operational choices, the alternatives considered,
+and the consequences accepted. Write one when a decision is hard to reverse, when multiple
+credible options exist with non-obvious trade-offs, or when a future contributor would
+otherwise re-litigate the same question. The canonical files live in `docs/adr/`.
+
+| ID   | Title                                                                       | Status   |
+| ---- | --------------------------------------------------------------------------- | -------- |
+| 0001 | Windows OpenCV install strategy                                             | Accepted |
+| 0002 | PDF generator: `printpdf`                                                   | Accepted |
+| 0003 | Cargo workspace + crate boundaries                                          | Accepted |
+| 0004 | Generate TypeScript bindings from Rust via `ts-rs`                          | Accepted |
+| 0005 | PDF generation IPC contract                                                 | Accepted |
+| 0006 | Light-default theme + comfortable typography mode                           | Accepted |
+| 0007 | Canvas wrapper + per-element layout modules in `shalgalt-pdf`               | Accepted |
+| 0008 | Bubble label position: inside the circle                                    | Accepted |
+| 0009 | Corner markers: ArUco `DICT_6X6_50`, IDs 0..3 (TL/TR/BR/BL)                 | Accepted |
+| 0010 | Per-bubble fill measurement, decision bands, confidence formula             | Accepted |
+| 0011 | `.shalgalt` project file: zip container with a plaintext manifest           | Accepted |
+| 0012 | Optional `.shalgalt` encryption: `age` passphrase recipients, ASCII-armored | Accepted |
+| 0013 | HTTP API: `/v1` versioning, `DataStore` seam, OpenAPI via `utoipa`          | Accepted |
+| 0014 | Standalone server + shared `rusqlite` `DataStore`                           | Accepted |
+| 0015 | API port: default 22345, desktop auto-fallback, env override                | Accepted |
+| 0016 | Partial-marker homography recovery                                          | Accepted |
+| 0017 | Distribution via GitHub Releases (`tauri-action`)                           | Accepted |
+| 0018 | Opt-in `tauri-plugin-updater` with static `gh-pages` manifest               | Accepted |
+| 0019 | Documentation site: Fumadocs, deployed to GitHub Pages                      | Accepted |
+
+> The full text of each ADR (Status / Date / Deciders / Context / Options / Decision /
+> Consequences / Follow-up) lives in `docs/adr/NNNN-*.md` in the repository. Re-litigating a
+> locked decision requires a new ADR plus a master-plan update in the same PR.
+
+
+# Architecture (https://filename24.github.io/shalgalt-omr/en/docs/dev/architecture)
+
+
+
+# Architecture [#architecture]
+
+## Stack [#stack]
+
+| Layer          | Technology                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| Frontend       | SvelteKit 5 (adapter-static, SSG), Svelte 5 runes, TailwindCSS v4                         |
+| UI kit         | shadcn-svelte (bits-ui + tailwind-variants), `@lucide/svelte` icons                       |
+| Editor / UI    | svelte-konva (Canvas), paneforge (IDE panes)                                              |
+| Native shell   | Tauri 2.0 + plugins: sql, dialog, fs, opener, log, single-instance, window-state, updater |
+| Core           | Rust — opencv-rust, pdfium-render, rust\_xlsxwriter, printpdf                             |
+| Persistence    | `tauri-plugin-sql` + SQLite (a single file in Tauri's `app_data_dir`)                     |
+| Background API | axum on `127.0.0.1:22345` (default; auto-fallback if busy)                                |
+| Async          | tokio (`full`)                                                                            |
+
+## High-level flow [#high-level-flow]
+
+```text
+          ┌──────────────────────────── SvelteKit frontend ───────────────────────────┐
+          │  routes/ (dashboard, editor, grade, exams, review, results, settings)      │
+          │  lib/db (tauri-plugin-sql)   lib/ipc (Rust command wrappers)   lib/i18n    │
+          └───────────────┬───────────────────────────────────┬───────────────────────┘
+                          │ tauri-plugin-sql                   │ Tauri IPC (path strings only)
+                          ▼                                    ▼
+                    ┌──────────┐                  ┌──────────────────────────────────┐
+                    │  SQLite  │                  │  apps/desktop (Tauri host)        │
+                    └──────────┘                  │   commands/  api harness  events  │
+                                                  └───────────────┬───────────────────┘
+                                                                  │ calls into pure crates
+                       ┌──────────────────────────────────────────┼───────────────────────────┐
+                       ▼                         ▼                 ▼                ▼
+                shalgalt-core            shalgalt-cv        shalgalt-pdf     shalgalt-fileformat
+              (domain, grading,        (pdfium + OpenCV    (printpdf OMR     (.shalgalt zip +
+               axum router, xlsx,       pipeline,           sheet renderer)   age encryption)
+               AppError, DataStore)     TaskProgress)
+```
+
+The desktop host (`apps/desktop`) is the only place that knows about Tauri. The four
+`crates/` are pure Rust and are reused by the standalone server (`apps/server`).
+
+## The four hard rules [#the-four-hard-rules]
+
+Every PR must respect these. They are the load-bearing invariants of the system.
+
+### Rule 1 — IPC carries path strings, never bytes [#rule-1--ipc-carries-path-strings-never-bytes]
+
+Tauri commands take `pdf_path: String` / `image_path: String`, never image or PDF buffers.
+Result images are written to disk and the frontend loads them through the
+`asset://localhost/` protocol. This avoids the "memory mirage" where multi-hundred-MB scans
+would be serialized across the IPC boundary. The `.shalgalt` reader/writer
+(`shalgalt-fileformat`) streams entries for the same reason — a project never lands in a
+single `Vec<u8>`.
+
+### Rule 2 — No UI freeze on batch work [#rule-2--no-ui-freeze-on-batch-work]
+
+Long-running work (grading a stack of sheets) runs in a `tokio::spawn`ed task. Progress is
+reported by emitting `task-progress` events with snake\_case stage names
+(`TaskProgress` / `TaskStage` in `shalgalt-core::domain::progress`). The command thread
+returns immediately.
+
+### Rule 3 — One template, one JSON column [#rule-3--one-template-one-json-column]
+
+`OmrTemplate` (markers + bubble groups + answer key) serializes as **a single JSON document**
+into one `TEXT` column (`templates.json_schema`). It is never split into multiple columns or
+denormalized. Coordinates are &#x2A;*normalized to `[0, 1]`** so a template works across DPIs and
+page sizes. The Rust struct (`shalgalt-core::domain::template`) and the TypeScript interface
+(`src/lib/types/`) are kept in sync by `ts-rs` codegen — never hand-edit the generated TS.
+
+### Rule 4 — The axum router never owns its lifecycle [#rule-4--the-axum-router-never-owns-its-lifecycle]
+
+The `Router` and CORS layer are built in `shalgalt-core::api`. That crate never calls
+`axum::serve`, never binds a port, and never reads environment variables. The host owns the
+lifecycle: `apps/desktop` wraps the router in a `tokio::spawn` + oneshot graceful-shutdown
+harness; `apps/server` runs it as the process's main task. Routes are versioned under
+`/v1/`; breaking changes require a version bump and an ADR.
+
+## Database ownership [#database-ownership]
+
+All database access goes through `tauri-plugin-sql`. There is **no `sqlx` pool on the Rust
+side**. Migrations are defined in Rust (`apps/desktop/src/lib.rs`, SQL embedded via
+`include_str!`). The frontend reads and writes through `src/lib/db/*`. Rust commands never
+touch the database: when a Rust task produces data that must be persisted (e.g. grading
+results), it emits an event and the frontend writes it. The one exception is the standalone
+server, which uses a separate read-mostly `rusqlite` `DataStore` in `shalgalt-store`
+(see [ADR 0014](/dev/adr)).
+
+## See also [#see-also]
+
+* [Workspace map](/dev/workspace) — what each crate and app owns.
+* [HTTP API reference](/dev/api) — the `/v1/` surface.
+* The per-crate `AGENTS.md` files are authoritative for module-shape decisions.
+
+
+# Build & run (https://filename24.github.io/shalgalt-omr/en/docs/dev/build)
+
+
+
+# Build & run [#build--run]
+
+shalgalt-omr depends on native libraries (OpenCV for the CV pipeline, pdfium at runtime,
+plus the platform webview toolkit for Tauri). Install the system prerequisites first, then
+the JS and Rust toolchains.
+
+## System prerequisites [#system-prerequisites]
+
+### Debian / Ubuntu [#debian--ubuntu]
+
+```bash
+sudo apt update
+sudo apt install -y \
+  build-essential pkg-config libssl-dev \
+  libopencv-dev clang libclang-dev \
+  libgtk-3-dev libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev librsvg2-dev
+```
+
+### macOS (Homebrew) [#macos-homebrew]
+
+```bash
+brew install opencv pkg-config llvm
+```
+
+### Windows [#windows]
+
+Per [ADR 0001](/dev/adr) the project uses the upstream OpenCV prebuilt self-extractor. LLVM
+(for opencv-rust's bindgen) ships with recent Visual Studio installs; otherwise install it
+from llvm.org.
+
+```powershell
+# 1) Download and extract OpenCV to C:\tools\opencv
+$url = "https://github.com/opencv/opencv/releases/download/4.10.0/opencv-4.10.0-windows.exe"
+Invoke-WebRequest $url -OutFile opencv.exe
+Start-Process .\opencv.exe -ArgumentList '-o"C:\tools" -y' -Wait
+Remove-Item opencv.exe
+
+# 2) Set env vars (persist with setx or via your shell profile)
+$env:OPENCV_LINK_LIBS     = "opencv_world4100"
+$env:OPENCV_LINK_PATHS    = "C:\tools\opencv\build\x64\vc16\lib"
+$env:OPENCV_INCLUDE_PATHS = "C:\tools\opencv\build\include"
+$env:LIBCLANG_PATH        = "C:\Program Files\LLVM\bin"
+
+# 3) Put the OpenCV runtime DLL directory on PATH
+$env:Path = "C:\tools\opencv\build\x64\vc16\bin;$env:Path"
+```
+
+> Bumping OpenCV means updating three places: the snippet above, the `OPENCV_VERSION`
+> job-level env in `.github/workflows/ci.yml`, and [ADR 0001](/dev/adr).
+
+### pdfium (runtime, all platforms) [#pdfium-runtime-all-platforms]
+
+`pdfium-render` looks up the pdfium dynamic library at runtime. Download a release for your
+OS from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) and place
+it next to the executable, or extend `LD_LIBRARY_PATH` (Linux) / `DYLD_LIBRARY_PATH` (macOS)
+/ `PATH` (Windows). Release bundles ship pdfium as a bundled resource.
+
+## Toolchains [#toolchains]
+
+* **Node** ≥ 20 and **pnpm** (the repo pins versions via `package.json` / `pnpm-lock.yaml`).
+* **Rust** stable (`rustup`), with `cargo fmt` and `clippy` components.
+
+## Common commands [#common-commands]
+
+| Command               | Purpose                                                           |
+| --------------------- | ----------------------------------------------------------------- |
+| `pnpm install`        | Install JS dependencies.                                          |
+| `pnpm dev`            | SvelteKit dev server only (browser, no Tauri webview).            |
+| `pnpm tauri dev`      | Native window + Rust core (auto-runs Vite). The default flow.     |
+| `pnpm check`          | `svelte-kit sync` + `svelte-check`.                               |
+| `pnpm build`          | Build SvelteKit assets (consumed by `tauri build`).               |
+| `pnpm tauri build`    | Production native bundle.                                         |
+| `pnpm generate-types` | Regenerate TS bindings from Rust (`cargo test -p shalgalt-core`). |
+
+Run these at the workspace root for the Rust side:
+
+```bash
+cargo check --workspace --all-targets --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
+cargo test --workspace
+```
+
+## First run [#first-run]
+
+On first launch the SQL plugin creates the SQLite file in the OS-specific data directory
+(e.g. Linux `~/.local/share/dev.filename.shalgalt-omr/`, macOS
+`~/Library/Application Support/dev.filename.shalgalt-omr/`) and applies migrations
+automatically.
+
+## Running the standalone HTTP server [#running-the-standalone-http-server]
+
+```bash
+export SHALGALT_API_TOKEN="a-strong-random-token"
+cargo run -p shalgalt-server -- --db /path/to/db.sqlite
+```
+
+See the [HTTP API reference](/dev/api) for CLI flags, bind address, and auth behaviour.
+
+
+# Contributing (https://filename24.github.io/shalgalt-omr/en/docs/dev/contributing)
+
+
+
+# Contributing [#contributing]
+
+## Branching model [#branching-model]
+
+* **`stable`** — release branch. CI publishes from here. Never commit directly.
+* **`develop`** — integration branch. Feature PRs land here.
+* **`feat/<phase>-<topic>`** — work branches off `develop`. One feature per PR.
+
+`session/*` branches are local isolation only and must never be pushed to the remote.
+
+## Commit conventions [#commit-conventions]
+
+Conventional Commits, one short imperative subject line:
+
+```text
+<type>: <description>
+
+<optional body explaining the *why* if the diff doesn't>
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `ci`.
+
+## Language rules (mandatory) [#language-rules-mandatory]
+
+Two languages, no overlap:
+
+* **Code and documentation are English** — every comment, doc comment, identifier, log
+  message, error string, commit message, PR description, and Markdown file in the repo.
+* **End-user UI text is Mongolian** (Cyrillic) — page titles, buttons, labels, validation
+  and toast messages, help text. UI strings come from the single string table at
+  `src/lib/i18n/`; components never hard-code copy.
+
+`AppError.code` stays English (it is a stable identifier); the frontend maps the code to a
+Mongolian message in the string table. A reviewer should treat any non-English string in
+source or docs as a blocker, and any hard-coded user-facing string outside the i18n table
+as a blocker too.
+
+## The four hard rules [#the-four-hard-rules]
+
+A change is rejected if it violates any of [the four architecture rules](/dev/architecture):
+path-strings-only IPC, no UI freeze on batch work, single-JSON template format, and the
+host-owned axum lifecycle. When in doubt, read the relevant crate's `AGENTS.md`.
+
+## ADRs [#adrs]
+
+Architectural or operational decisions that are hard to reverse get an ADR under
+`docs/adr/` (`NNNN-kebab-title.md`, no gaps). Re-litigating a locked decision requires a new
+ADR **plus** a master-plan update in the same PR. See the [ADR index](/dev/adr).
+
+## PR checklist [#pr-checklist]
+
+Before requesting review:
+
+* [ ] `cargo fmt --all -- --check` is clean.
+* [ ] `cargo clippy --workspace --all-targets --all-features -- -D warnings` is clean.
+* [ ] `cargo test --workspace` passes (unit + integration + ts-rs export).
+* [ ] `pnpm check` passes (no Rust↔TS type drift).
+* [ ] New behaviour has tests; coverage target is 80%+.
+* [ ] No non-English strings in code/docs; no hard-coded UI copy outside the i18n table.
+* [ ] No secrets committed; the axum server still binds `127.0.0.1` by default.
+* [ ] Branch is rebased on `develop` and conflicts are resolved.
+
+## Continuous integration [#continuous-integration]
+
+CI runs on every push to `develop`/`stable` and on PRs targeting them:
+
+| Job          | Purpose                                                                |
+| ------------ | ---------------------------------------------------------------------- |
+| `web-check`  | `pnpm install --frozen-lockfile`, `svelte-kit sync`, `pnpm check`.     |
+| `rust-check` | apt deps → `cargo fmt --check` → `clippy -D warnings` → `cargo check`. |
+
+Both jobs must be green before merge. Release bundling (signed installers, pdfium download,
+packaging) and the updater manifest are handled by `release.yml` on `v*` tags. The
+documentation site is built and published to GitHub Pages by `docs.yml`.
+
+
+# Overview (https://filename24.github.io/shalgalt-omr/en/docs/dev)
+
+
+
+# shalgalt-omr — Developer Documentation [#shalgalt-omr--developer-documentation]
+
+shalgalt-omr is a **local-first OMR (Optical Mark Recognition) grading IDE**: a Tauri 2
+desktop application with a SvelteKit frontend and a Rust core that grades scanned OMR PDFs
+fully offline, persists results in SQLite, and exposes an optional background HTTP API for
+integrations.
+
+This site has two audiences:
+
+* **Developer documentation** (this section, English) — architecture, the Cargo workspace
+  map, how to build and run on each OS, the contribution workflow, the ADR index, and the
+  HTTP API reference.
+* **Хэрэглэгчийн гарын авлага** (the *User* section, Mongolian) — installation and
+  day-to-day use of the application.
+
+## What it does [#what-it-does]
+
+1. **Design** an OMR answer sheet in a visual editor (ArUco corner markers + bubble groups).
+2. **Generate** a printable PDF of that sheet.
+3. **Grade** stacks of scanned/photographed sheets offline using an OpenCV pipeline
+   (adaptive threshold, auto-deskew, per-bubble confidence scoring).
+4. **Review** low-confidence sheets bubble-by-bubble.
+5. **Export** results to Excel, or share a whole project as an encrypted `.shalgalt` file.
+
+## Core principles [#core-principles]
+
+* **Offline-first.** No telemetry, no crash reporting, no analytics. Nothing leaves the
+  machine unless the user explicitly exports it. The optional HTTP API binds to
+  `127.0.0.1` by default.
+* **Two languages, no overlap.** All **code and documentation are English**; all
+  **end-user UI text is Mongolian** (Cyrillic). See the language conventions in the repo
+  `AGENTS.md`.
+* **Stable contracts.** Four hard rules (IPC path-strings only, no UI freeze on batch work,
+  a single-JSON template format, an axum router that never owns its own lifecycle) are
+  enforced on every PR.
+
+## Where to start [#where-to-start]
+
+* New to the codebase? Read [Architecture](/dev/architecture) then the
+  [Workspace map](/dev/workspace).
+* Trying to build it? Jump to [Build & run](/dev/build).
+* Contributing a change? See [Contributing](/dev/contributing) and [Testing](/dev/testing).
+* Integrating over HTTP? See the [HTTP API reference](/dev/api).
+
+> The authoritative sources remain the repository's `AGENTS.md` files (one per crate) and
+> the master plan at `.claude/PRPs/plans/shalgalt-omr-master.plan.md`. This site condenses
+> them; where they disagree, the code wins for behaviour and the per-package `AGENTS.md`
+> wins for module-shape decisions.
+
+
+# Testing (https://filename24.github.io/shalgalt-omr/en/docs/dev/testing)
+
+
+
+# Testing [#testing]
+
+## Rust [#rust]
+
+Unit tests live in `#[cfg(test)]` modules next to the code; integration tests live in each
+crate's `tests/` directory (one binary per file). Run everything from the workspace root:
+
+```bash
+cargo test --workspace            # unit + integration + ts-rs export
+cargo test -p shalgalt-core --doc # doc tests
+```
+
+Notable suites:
+
+* **`shalgalt-core`** — `template_serde` round-trips an `OmrTemplate` against a golden
+  fixture (`tests/fixtures/template-v1.json`), catching accidental Rule 3 schema breakage.
+  The grading engine has unit coverage for scoring, partial answer keys, and confidence
+  banding. The `/v1/` router is exercised in-process over a `MemoryStore` without binding a
+  socket.
+* **`shalgalt-fileformat`** — `roundtrip` (write → read, encrypted and plaintext, streamed
+  1 MiB entry, deterministic order, manifest-has-no-PII), `bad_passphrase`, and
+  `forward_compat` (a `format_version` newer than supported is refused before any
+  decryption).
+* **`shalgalt-cv`** — fixture-driven detection tests under `tests/fixtures/`.
+
+## Frontend [#frontend]
+
+```bash
+pnpm test          # vitest run
+pnpm check         # svelte-kit sync + svelte-check (also catches Rust↔TS type drift)
+```
+
+Unit tests cover utilities, data transforms, and stores. Type generation drift (Rust struct
+vs generated TS) surfaces as a `pnpm check` failure.
+
+## Generated artifacts used by docs [#generated-artifacts-used-by-docs]
+
+Two examples produce artifacts the documentation consumes — they are also a lightweight
+smoke test that the public APIs still compile:
+
+```bash
+# OpenAPI document feeding the HTTP API reference (P7-03)
+cargo run -p shalgalt-core --example dump_openapi -- docs/site/openapi.json
+
+# The three sample .shalgalt projects shipped with the user manual (P7-04)
+cargo run -p shalgalt-fileformat --example generate_samples
+```
+
+## Coverage target [#coverage-target]
+
+The repo targets &#x2A;*80%+** coverage on business logic. Prefer fixing the implementation over
+weakening a test; only change a test when the test itself is wrong.
+
+
+# Workspace map (https://filename24.github.io/shalgalt-omr/en/docs/dev/workspace)
+
+
+
+# Workspace map [#workspace-map]
+
+The repository is a Cargo workspace with a SvelteKit frontend at the root. Rust code lives
+under `apps/` (host binaries) and `crates/` (pure libraries). A single `Cargo.lock` and
+`target/` live at the workspace root.
+
+```text
+docs/                  — BLUEPRINT, ARCHITECTURE, ADRs, and this documentation site.
+src/                   — SvelteKit frontend.
+  routes/              — Pages: dashboard, editor, grade, exams, review, results, settings.
+  lib/
+    db/                — tauri-plugin-sql adapters (templates, results, students; getDb singleton).
+    ipc/               — Rust-only command wrappers (scan, export, pdf). No DB CRUD here.
+    i18n/              — Mongolian string table (single source of truth for UI copy).
+    stores/            — Svelte 5 runes stores (progress / currentTemplate / session / comfort).
+    components/        — UI (shell, editor, grader, review canvas, results); ui/ = shadcn copies.
+    types/             — Shapes mirroring Rust domain; generated/ is written by ts-rs.
+
+apps/
+  desktop/             — Tauri shell: IPC commands, axum harness, migrations, event plumbing.
+  server/              — Standalone HTTP server binary (shalgalt-server).
+
+crates/
+  shalgalt-core/       — Domain models, grading engine, axum router, AppError, xlsx export,
+                         DataStore seam. Pure Rust. Home of Rule 3.
+  shalgalt-store/      — rusqlite DataStore for the HTTP API. The one place a second SQLite
+                         connection lives.
+  shalgalt-pdf/        — printpdf-based OMR sheet generator (embedded Noto Sans + Noto Sans
+                         Mongolian).
+  shalgalt-cv/         — pdfium + OpenCV pipeline; emits TaskProgress.
+  shalgalt-fileformat/ — .shalgalt zip container + age encryption.
+```
+
+## Crate responsibilities [#crate-responsibilities]
+
+| Crate / app           | Owns                                                                | Must NOT contain                                          |
+| --------------------- | ------------------------------------------------------------------- | --------------------------------------------------------- |
+| `shalgalt-core`       | Domain types, grading, axum `Router`, `AppError`, xlsx, OpenAPI doc | `tauri`, OpenCV, pdfium, port binding, env reads, DB code |
+| `shalgalt-cv`         | pdfium rasterization + OpenCV detection + confidence scoring        | Tauri, the axum router                                    |
+| `shalgalt-pdf`        | printpdf rendering of a template to a printable sheet               | Tauri, OpenCV                                             |
+| `shalgalt-fileformat` | Streaming `.shalgalt` read/write, age crypto wrapper                | The `OmrTemplate` struct (lives in core), Tauri           |
+| `shalgalt-store`      | `rusqlite` `DataStore` impl for the server                          | The plugin-sql write path                                 |
+| `apps/desktop`        | Tauri host: commands, migrations, axum spawn + shutdown harness     | Pure domain logic (delegate to crates)                    |
+| `apps/server`         | Standalone process: CLI args, bind, auth, CORS allow-list           | Re-implementing the router (reuse core's)                 |
+
+Each Cargo member has its own `AGENTS.md` (with `CLAUDE.md` as a symlink) describing
+package-specific rules and locked algorithmic decisions. Treat those files as authoritative
+for anything inside that package.
+
+## Type generation (ts-rs) [#type-generation-ts-rs]
+
+Domain models that cross the IPC boundary derive `ts_rs::TS` and export TypeScript
+interfaces into `src/lib/types/generated/` when `cargo test -p shalgalt-core` runs. The
+frontend script `pnpm generate-types` wraps the same command. A drift between the Rust struct
+and the generated TS fails `pnpm check` in CI — this is the mechanical enforcement of
+Rule 3.
+
+
+# Загвар засварлагч (https://filename24.github.io/shalgalt-omr/en/docs/user/editor)
+
+
+
+# Загвар засварлагч [#загвар-засварлагч]
+
+Засварлагч нь хариултын хуудасны **загвар** (template) зохиох газар юм. Загвар нь дараах
+хэсгүүдээс бүрдэнэ:
+
+* **Булангийн тэмдэг (ArUco)** — хуудасны 4 буланд байрлах бөгөөд програм хуудсыг танихад
+  ашиглана. Анхдагчаар бэлэн ирнэ.
+* **Бөмбөлгийн бүлэг** — асуулт бүрийн сонголтын бөмбөлгүүд (жишээ нь A, B, C, D).
+* **Сурагчийн дугаар** ба **Хувилбар**-ын бүлэг (заавал биш).
+
+## Үндсэн алхмууд [#үндсэн-алхмууд]
+
+1. **Хяналтын самбар → Шинэ загвар** дарж засварлагчийг нээнэ. Эсвэл одоо байгаа загвараа
+   нээнэ.
+2. Шаардлагатай бол **дэвсгэр зураг** (хэвлэсэн хуудасны зураг/PDF) импортлон, түүн дээрээ
+   бөмбөлгүүдээ тааруулна.
+3. **Бөмбөлгийн бүлэг нэмэх** товчоор асуултуудаа нэмж, тоо, зай, оноог тохируулна.
+4. **Хадгалах** дарна. **Буцаах / Дахих** (undo/redo) товчлуурууд дэмжигдэнэ.
+5. **PDF болгон гаргах** товчоор хэвлэхэд бэлэн хуудас үүсгэнэ.
+
+> 📷 &#x2A;Дэлгэцийн зураг: Засварлагчийн хэрэгслийн мөр (шинэ/нээх/хадгалах/буцаах/гаргах).*
+
+## Зөвлөмж [#зөвлөмж]
+
+* Бүх координат **0–1 хооронд хувь**-аар хадгалагдах тул нэг загвар янз бүрийн хэмжээ,
+  чанартай хэвлэлд тохирно.
+* Хэвлэхдээ масштабыг 100% байлгана — [Хэвлэх зөвлөмж](/user/printing).
+
+
+# Шалгалт удирдах (https://filename24.github.io/shalgalt-omr/en/docs/user/exams)
+
+
+
+# Шалгалт удирдах [#шалгалт-удирдах]
+
+**Шалгалт** нь нэг загвар дээр суурилсан, өөрийн **хариултын түлхүүр**-тэй нэгж юм. Нэг
+шалгалт олон **хувилбар**-тай байж болно (жишээ нь A, B хувилбар).
+
+## Шалгалт үүсгэх [#шалгалт-үүсгэх]
+
+1. **Шалгалт** цэс рүү орно.
+2. **Шинэ шалгалт** дарж нэр өгч, ашиглах **загвар**-аа сонгоно.
+3. Үүссэн шалгалт жагсаалтад нэр, загвар, хувилбарын тоо, огнооны хамт харагдана.
+
+## Хариултын түлхүүр (хувилбар) оруулах [#хариултын-түлхүүр-хувилбар-оруулах]
+
+Шалгалтаа нээгээд хувилбар нэмнэ. Зөв хариултыг оруулах **хоёр арга**:
+
+1. **Гараар** — асуулт бүрийн зөв хариултыг сонгоно.
+2. **Сканнердан уншуулах** — багшийн бөглөсөн нэг хуудсыг сканнердаж, програмаар уншуулаад,
+   зэрэгцүүлэн шалгаж хадгална.
+
+> 📷 &#x2A;Дэлгэцийн зураг: Шалгалтын дэлгэрэнгүй — хувилбарын жагсаалт ба хариултын түлхүүр засах.*
+
+## Тэмдэглэл [#тэмдэглэл]
+
+* Хариултын түлхүүр нь тухайн шалгалтын **асуултуудын багц** юм. Хэрэв зарим асуултад түлхүүр
+  оруулаагүй бол (хэсэгчилсэн шалгалт) тэдгээр асуултыг дүгнэхдээ алгасна.
+
+
+# Excel рүү гаргах (https://filename24.github.io/shalgalt-omr/en/docs/user/export)
+
+
+
+# Excel рүү гаргах ба дүн үзэх [#excel-рүү-гаргах-ба-дүн-үзэх]
+
+## Дүнгийн жагсаалт [#дүнгийн-жагсаалт]
+
+**Дүн** цэс нь хийгдсэн дүгнэлтүүдийн түүхийг харуулна. Та **загвар**-аар, мөн **шалгах
+шаардлагатай** эсэхээр шүүж, хуудаслан үзэж болно. Мөр бүр загвар, огноо, хуудасны тоо,
+шалгах шаардлагатай хуудасны тоог харуулна.
+
+## Дэлгэрэнгүй үзэх [#дэлгэрэнгүй-үзэх]
+
+Дүгнэлт сонгоход:
+
+* Зүүн талд **сурагч бүрийн оноо**-ны жагсаалт.
+* Голд сонгосон сурагчийн **хуудасны зураг**, мета мэдээлэл, **асуулт тус бүрийн үр дүн**
+  (зөв/буруу/хоосон).
+
+> 📷 &#x2A;Дэлгэцийн зураг: Дүгнэлтийн дэлгэрэнгүй — сурагчийн жагсаалт ба асуултын задаргаа.*
+
+## Excel рүү гаргах [#excel-рүү-гаргах]
+
+**Excel рүү гаргах** товчоор дүнг `.xlsx` файл болгон татаж авна. Хүснэгтэд сурагчдын оноо,
+асуулт бүрийн үр дүн зэрэг багтана. Баганын гарчиг зэрэг бүх текст **монгол хэл**-ээр гарна.
+
+
+# Дүгнэх (https://filename24.github.io/shalgalt-omr/en/docs/user/grading)
+
+
+
+# Дүгнэх [#дүгнэх]
+
+Дүгнэх дэлгэц нь сканнердсан буюу гар утсаар авсан хуудаснуудыг **багцаар** автоматаар уншиж
+оноо тавина.
+
+## Алхмууд [#алхмууд]
+
+1. **Дүгнэх** цэс рүү орно.
+2. Сканнердсан &#x2A;*PDF файл(ууд)**-аа сонгоно (олон файл/олон хуудас дэмжигдэнэ).
+3. Дүгнэх **шалгалт** ба **хувилбар**-аа сонгоно. Олон хувилбартай үед **автомат таних**-ийг
+   идэвхжүүлж болно — хуудас бүрийн хувилбарын бүлгээс уншина.
+4. **Эхлүүлэх** дарна. Явц **дэвшилтийн мөр**-өөр харагдана (хуудас засварлах, тэмдэг таних,
+   бөмбөлөг хэмжих гэх мэт үе шатууд). Энэ хооронд програм **царцахгүй**.
+5. Дуусахад нийт хуудас, дундаж оноо, **шалгах шаардлагатай** хуудасны тоо харагдана.
+
+> 📷 &#x2A;Дэлгэцийн зураг: Дүгнэх дэлгэц — файл сонголт, хувилбар, дэвшилтийн мөр.*
+
+## Итгэлийн оноо ба шалгах шаардлага [#итгэлийн-оноо-ба-шалгах-шаардлага]
+
+Программ бөмбөлөг бүрийн дүүргэлтийг хэмжиж **итгэлийн оноо** тооцно. Хэрэв аль нэг бөмбөлгийн
+итгэл эргэлзээтэй мужид (хагас будсан) орвол тухайн хуудсыг **шалгах шаардлагатай** гэж
+тэмдэглэнэ. Эдгээрийг [Гараар шалгах](/user/review) дэлгэцэд засна.
+
+## Зөвлөмж [#зөвлөмж]
+
+* Сканнердах чанар үр дүнд шууд нөлөөлнө — [Сканнердах зөвлөмж](/user/scanning)-ийг үзнэ үү.
+
+
+# Introduction (https://filename24.github.io/shalgalt-omr/en/docs/user)
+
+
+
+# shalgalt-omr — User Manual [#shalgalt-omr--user-manual]
+
+**shalgalt-omr** reads and grades OMR (fill-the-bubble) answer sheets automatically,
+**fully offline**, on your own computer. As a teacher you can:
+
+1. **Design a template** — draw the answer-sheet layout in a visual editor.
+2. **Generate a printable PDF** of that template.
+3. **Grade** scanned or phone-photographed sheets automatically.
+4. **Review** low-confidence sheets by hand.
+5. **Export** results to Excel, or share a whole project as a `.shalgalt` file.
+
+> The interface of the application itself is in **Mongolian only**. This English manual is a
+> translation of the Mongolian user guide; some pages may fall back to Mongolian until their
+> translation is added.
+
+## Where to start [#where-to-start]
+
+* First time? → [Quick start](/user/quick-start).
+* A specific feature → [Editor](/user/editor), [Exams](/user/exams),
+  [Grading](/user/grading), [Manual review](/user/review), [Export](/user/export),
+  [Project files](/user/project-files).
+* Printing / phone-scanning tips → [Printing](/user/printing), [Scanning](/user/scanning).
+* Something went wrong → [Troubleshooting](/user/troubleshooting).
+
+## Privacy [#privacy]
+
+The app needs **no internet** and sends **nothing** anywhere. Student data stays on your
+computer. See the [Privacy statement](/user/privacy).
+
+
+# Хэвлэх зөвлөмж (https://filename24.github.io/shalgalt-omr/en/docs/user/printing)
+
+
+
+# Хэвлэх зөвлөмж [#хэвлэх-зөвлөмж]
+
+Хариултын хуудсыг зөв хэвлэх нь автомат таних чанарт шууд нөлөөлнө.
+
+* **Масштаб 100%.** "Fit to page" / "хуудсанд багтаах" сонголтыг **унтраа**. Багасгаж/томруулж
+  хэвлэвэл бөмбөлгийн байрлал зөрж таних алдаа гарна.
+* **Тод хар бэх, хангалттай тонер.** Бүдэг хэвлэлт булангийн ArUco тэмдгийг таниулахад хүндрэл
+  учруулна.
+* **Цагаан, гялбаагүй (matte) A4 цаас.** Өнгөт эсвэл гялгар цаас сканнердахад туссан гэрэл
+  үүсгэж болзошгүй.
+* **Хуудсыг бүтнээр нь хэвлэ** — 4 булангийн тэмдэг бүгд гарсан эсэхийг шалга.
+* Олон хувь хэвлэхдээ нэгийг туршиж сканнердан үзээд дараа нь олноор хэвлэвэл найдвартай.
+
+
+# Нууцлалын мэдэгдэл (https://filename24.github.io/shalgalt-omr/en/docs/user/privacy)
+
+
+
+# Нууцлалын мэдэгдэл [#нууцлалын-мэдэгдэл]
+
+shalgalt-omr нь **нууцлалыг эн тэргүүнд** тавьсан, бүрэн офлайн программ юм.
+
+* **Интернэт шаарддаггүй.** Дүгнэх, хадгалах, гаргах бүх үйлдэл таны компьютер дээр явагдана.
+* **Ямар ч мэдээлэл гадагш илгээдэггүй.** Телеметр, алдааны тайлан, аналитик **байхгүй**.
+* **Сурагчдын мэдээлэл зөвхөн локал** өгөгдлийн санд хадгалагдана.
+* `.shalgalt` файлыг хуваалцахдаа **нууц үгээр шифрлэх** боломжтой. Шифрлэсэн үед ч төслийн
+  ерөнхий мэдээллийн (manifest) хэсэгт **хувийн мэдээлэл агуулагдахгүй**.
+* Зөвхөн &#x2A;*локал бүртгэл (log)** хөтлөгдөж, тодорхой хэмжээнд эргэлдэж шинэчлэгдэнэ.
+
+> Автомат шинэчлэлт (auto-update) нь **анхдагчаар унтраалттай** тул офлайн орчинд ажилладаг
+> сургуулиуд ямар нэг сүлжээний хүсэлт хүлээж авахгүй. Та тохиргооноос гараар асааж болно.
+
+
+# Төслийн файл (.shalgalt) (https://filename24.github.io/shalgalt-omr/en/docs/user/project-files)
+
+
+
+# Төслийн файл (`.shalgalt`) [#төслийн-файл-shalgalt]
+
+`.shalgalt` файл нь **бүхэл шалгалтын төсөл**-ийг (загвар + хариултын түлхүүр + дүгнэсэн
+хуудаснууд + сурагчдын жагсаалт) нэг файлд багтаасан хэлбэр юм. Үүгээр та өөр компьютер
+руу зөөх, эсвэл хамтран ажиллагсадтайгаа хуваалцаж болно.
+
+## Онцлог [#онцлог]
+
+* Нэг файл, ердийн zip хэлбэртэй тул шифрлээгүй үед ямар ч zip програмаар нээж үзэж болно.
+* **Нэмэлтээр нууцлах боломжтой** — нууц үг (passphrase) тавьж бүх агуулгыг шифрлэнэ.
+* Гарчиг, огноо, хуудасны тоо зэргийг агуулсан **manifest хэсэг нь үргэлж задгай** байдаг тул
+  нууц үг оруулахаас өмнө төслийн ерөнхий мэдээллийг урьдчилан харж болно. Энэ хэсэгт
+  сурагчдын хувийн мэдээлэл **байхгүй**.
+
+## Нээх ба хадгалах [#нээх-ба-хадгалах]
+
+* **Нээх** — `.shalgalt` файл дээр давхар товшиход програм нээгдэж, шифрлэсэн бол нууц үг
+  асууна. Агуулга нь таны локал санд сэргээгдэнэ.
+* **Хадгалах / Гаргах** — төслөө `.shalgalt` болгон гаргахдаа нууц үг тавих эсэхээ сонгоно.
+
+> 📷 &#x2A;Дэлгэцийн зураг: Төсөл нээх — нууц үг асуух цонх.*
+
+## Жишээ файлууд [#жишээ-файлууд]
+
+Гурван бэлэн жишээ төслийг [Жишээ файлууд](/user/samples) хэсгээс татаж аваад туршиж үзэж
+болно (нээлттэй / шифрлэсэн / PDF-тэй).
+
+
+# Quick start (https://filename24.github.io/shalgalt-omr/en/docs/user/quick-start)
+
+
+
+# Quick start [#quick-start]
+
+This page walks you from **install → first template → first grade run**.
+
+## 1. Install [#1-install]
+
+1. Download the build for your OS from the
+   [Releases page](https://github.com/filename24/shalgalt-omr/releases) (Windows
+   `.exe`/`.msi`, macOS `.dmg`, Linux `.AppImage`/`.deb`) and install it.
+2. On first launch the database is created automatically on your computer. No setup needed.
+
+> 📷 &#x2A;Screenshot: Dashboard (home). Checklist: `docs/user/screenshots-needed.md`.*
+
+## 2. Design a template [#2-design-a-template]
+
+1. On the **Dashboard**, click **New template** to open the [Editor](/user/editor).
+2. Place the four corner **ArUco markers** (provided by default).
+3. Add **bubble groups** for your questions (e.g. A–D), plus **Student ID** and **Variant**
+   groups if needed.
+4. Click **Save**.
+
+> 📷 &#x2A;Screenshot: Editor toolbar and a bubble group.*
+
+## 3. Generate a printable PDF [#3-generate-a-printable-pdf]
+
+Click **Export PDF** in the editor to save a print-ready sheet. Mind the
+[printing tips](/user/printing) (100% scale, solid black ink).
+
+## 4. Create an exam and answer key [#4-create-an-exam-and-answer-key]
+
+1. Go to **Exams → New exam** and pick the template you just made.
+2. Add an &#x2A;*answer key (variant)** to the exam — choose the correct answers by hand, or
+   **scan** one filled sheet to read them in.
+
+> 📷 &#x2A;Screenshot: Exam detail — editing the answer key.*
+
+## 5. Grade the sheets [#5-grade-the-sheets]
+
+1. Open **Grade**.
+2. Select the scanned &#x2A;*PDF file(s)**.
+3. Choose which **exam / variant** to grade against (multi-variant auto-detect is available).
+4. Click **Start**. Progress shows in a bar — the app never freezes.
+
+> 📷 &#x2A;Screenshot: Grade screen — file selection and progress bar.*
+
+## 6. Review flagged sheets [#6-review-flagged-sheets]
+
+When grading finishes, sheets that **need review** are flagged. Use the
+[Manual review](/user/review) screen to check bubbles one by one.
+
+## 7. Export results [#7-export-results]
+
+From **Results**, view the scores and click **Export to Excel**. See [Export](/user/export).
+
+***
+
+You can download the ready-made [sample projects](/user/samples) to try these steps.
+
+
+# Гараар шалгах (https://filename24.github.io/shalgalt-omr/en/docs/user/review)
+
+
+
+# Гараар шалгах [#гараар-шалгах]
+
+Дүгнэлтийн дараа **шалгах шаардлагатай** гэж тэмдэглэгдсэн хуудсуудыг энд гар аргаар
+нягталж засна.
+
+## Алхмууд [#алхмууд]
+
+1. Дүгнэлт дуусахад гарах холбоосоор, эсвэл тухайн ажлын (job) дэлгэцээс **Гараар шалгах**
+   руу орно.
+2. Зүүн талд хуудаснуудын &#x2A;*жижиг зураг (thumbnail)** жагсаалт харагдана.
+3. Голд сонгосон хуудасны зураг дээр **бөмбөлгийн давхарга** харагдана. Бөмбөлгийг дарж
+   төлвийг солино: **будсан → хоосон → эргэлзээтэй**.
+4. Шаардлагатай бол хуудасны **хувилбар**-ыг дахин сонгож зөв болгоно.
+5. Засвар хийсний дараа тухайн хуудас **дахин дүгнэгдэнэ**. Эцэст нь **Хадгалах**.
+
+> 📷 &#x2A;Дэлгэцийн зураг: Гараар шалгах — thumbnail жагсаалт, бөмбөлгийн давхаргатай зураг.*
+
+## Зөвлөмж [#зөвлөмж]
+
+* Зөвхөн **эргэлзээтэй** бөмбөлгүүдэд анхаарлаа хандуулна — програм аль нь эргэлзээтэйг
+  ялган тэмдэглэдэг.
+
+
+# Сканнердах зөвлөмж (https://filename24.github.io/shalgalt-omr/en/docs/user/scanning)
+
+
+
+# Сканнердах зөвлөмж [#сканнердах-зөвлөмж]
+
+Хуудсыг гар утсаар буюу сканнераар авахдаа дараахыг анхаарвал таних чанар нэмэгдэнэ.
+
+## Ерөнхий [#ерөнхий]
+
+* **Жигд гэрэлтүүлэг.** Сүүдэр, гялбаа (туссан гэрэл) үүсгэхгүй байх. Цонхны гэрэл налуу
+  тусвал сүүдэр үүсдэг.
+* **Шулуун өнцөг.** Хуудсыг дээрээс нь, аль болох тэгш авна. Хазайсан зургийг програм
+  тодорхой хэмжээнд засдаг ч хэт налуу нь алдаа өгнө.
+* **Бүх 4 булан** зурагт багтсан байх ёстой — булангийн тэмдгүүд таних түлхүүр.
+
+## Гар утсаар (CamScanner гэх мэт) [#гар-утсаар-camscanner-гэх-мэт]
+
+* **Баримт (document) горим**-оор авч, **PDF** хэлбэрээр экспортлоно.
+* Боломжтой бол **өнгөт/саарал** хэвээр үлдээ — програм өөрөө хар-цагаан болгож боловсруулна.
+* Хэт өндөр шахалт (compression) -аас зайлсхий; бөмбөлгийн ирмэг бүдгэрч болзошгүй.
+* Олон хуудсыг **нэг PDF** болгон нэгтгэвэл нэг дор багцаар дүгнэхэд хялбар.
+
+## Сканнераар [#сканнераар]
+
+* **200–300 DPI** хангалттай. Хэт өндөр DPI файлыг л томруулна, чанар нэмэгдэхгүй.
+* Хэвтээ/босоо чигийг хуудасны загвартай тааруул.
+
+
+# Алдаа засах ба түгээмэл асуулт (https://filename24.github.io/shalgalt-omr/en/docs/user/troubleshooting)
+
+
+
+# Алдаа засах ба түгээмэл асуулт (FAQ) [#алдаа-засах-ба-түгээмэл-асуулт-faq]
+
+### Хуудсыг таниж чадахгүй / булангийн тэмдэг олдсонгүй [#хуудсыг-таниж-чадахгүй--булангийн-тэмдэг-олдсонгүй]
+
+* 4 булангийн **ArUco тэмдэг** бүгд зурагт бүтэн орсон эсэхийг шалга.
+* Хэвлэлт бүдэг бол [Хэвлэх зөвлөмж](/user/printing)-ийн дагуу дахин хэвлэ.
+* Зураг хэт хазайсан/бүдэг бол [Сканнердах зөвлөмж](/user/scanning)-ийг дага.
+
+### Олон хуудас "шалгах шаардлагатай" гэж гарч байна [#олон-хуудас-шалгах-шаардлагатай-гэж-гарч-байна]
+
+* Бөмбөлгүүд хагас будагдсан буюу баллуурдсан байж магадгүй. [Гараар шалгах](/user/review)
+  дэлгэцэд нягтлан зас.
+* Хэвлэлтийн масштаб 100% биш бол бөмбөлгийн байрлал зөрж болзошгүй.
+
+### Хувилбар буруу таних [#хувилбар-буруу-таних]
+
+* Хуудасны **Хувилбар** бүлэг зөв бөглөгдсөн эсэхийг шалга. Шаардвал гараар шалгах дэлгэцээс
+  хувилбарыг дахин сонго.
+
+### Шифрлэсэн `.shalgalt` файл нээгдэхгүй [#шифрлэсэн-shalgalt-файл-нээгдэхгүй]
+
+* **Нууц үг** зөв эсэхийг шалга. Файлын ерөнхий мэдээллийн **hint** (сануулга) -ыг харж болно.
+
+### Дүн Excel рүү гарахгүй [#дүн-excel-рүү-гарахгүй]
+
+* Бичих эрхтэй фолдер сонгосон эсэхээ шалга.
+
+### Интернэт хэрэгтэй юу? [#интернэт-хэрэгтэй-юу]
+
+* **Үгүй.** Программ бүрэн офлайн ажиллана. [Нууцлал](/user/privacy)-ыг үзнэ үү.
+
+
+# Жишээ файлууд (https://filename24.github.io/shalgalt-omr/en/docs/user/samples)
+
+
+
+# Жишээ `.shalgalt` файлууд [#жишээ-shalgalt-файлууд]
+
+Програмыг туршихад зориулсан **гурван бэлэн жишээ төсөл**. Эдгээр нь зөвхөн жишээ бөгөөд
+**жинхэнэ сурагчийн мэдээлэл агуулаагүй**.
+
+| Файл                        | Тайлбар                                                                     | Нууц үг         |
+| --------------------------- | --------------------------------------------------------------------------- | --------------- |
+| `sample-open.shalgalt`      | Шифрлээгүй, PDF-гүй (хамгийн жижиг). Ямар ч zip програмаар нээж үзэж болно. | —               |
+| `sample-with-pdf.shalgalt`  | Шифрлээгүй, хэвлэх `exam.pdf`-тэй.                                          | —               |
+| `sample-encrypted.shalgalt` | Нууц үгээр шифрлэсэн, PDF-тэй.                                              | `shalgalt-2026` |
+
+## Татаж авах [#татаж-авах]
+
+Файлуудыг репозиторын `docs/user/samples/` хавтаснаас үзэж/татаж авна:
+
+* [Жишээ файлуудыг GitHub дээр үзэх](https://github.com/filename24/shalgalt-omr/tree/stable/docs/user/samples)
+* Шууд татах:
+  [sample-open.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-open.shalgalt)
+  ·
+  [sample-with-pdf.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-with-pdf.shalgalt)
+  ·
+  [sample-encrypted.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-encrypted.shalgalt)
+
+## Бүтэц [#бүтэц]
+
+Жишээ төсөл бүр дараах хэсгүүдийг агуулна:
+
+* `manifest.json` — гарчиг, огноо, хуудасны тоо (үргэлж задгай).
+* `template.json` — 5 асуулттай (A–D) загвар.
+* `answer-keys.json` — A, B хоёр хувилбарын зөв хариулт.
+* `metadata.json`, `students.csv` — хичээл, анги, сурагчдын жагсаалт.
+* `exam.pdf` — (зөвхөн PDF-тэй хувилбарт) хэвлэх хуудас.
+
+## Дахин үүсгэх [#дахин-үүсгэх]
+
+Эдгээр файлыг кодоос дахин үүсгэхдээ:
+
+```bash
+cargo run -p shalgalt-fileformat --example generate_samples
+```
+
+Эх өгөгдөл нь `docs/user/samples/_payload/` дотор задгай байдлаар хадгалагдсан тул засаад
+дахин үүсгэж болно.
+
+
+# Storyboard: Шифрлэсэн төсөл хуваалцах (https://filename24.github.io/shalgalt-omr/en/docs/user/walkthroughs/encrypted-project)
+
+
+
+# Storyboard — Шифрлэсэн төсөл хуваалцах (≈3 мин) [#storyboard--шифрлэсэн-төсөл-хуваалцах-3-мин]
+
+| # | Дэлгэц / үйлдэл                     | Дуу (нэрлэгч)                                               | Тэмдэглэл                               |
+| - | ----------------------------------- | ----------------------------------------------------------- | --------------------------------------- |
+| 1 | Дүгнэсэн шалгалт нээлттэй байна     | "Бэлэн болсон төслөө аюулгүй хуваалцъя."                    | [Төслийн файл](/user/project-files)     |
+| 2 | "Гаргах" → нууц үг тавих сонголт    | "Гаргахдаа нууц үг тавьж шифрлэнэ."                         | passphrase оруулах                      |
+| 3 | `.shalgalt` файл үүснэ              | "Бүх агуулга шифрлэгдэнэ — зөвхөн ерөнхий мэдээлэл задгай." | manifest задгай                         |
+| 4 | Файлыг хамтран ажиллагсадад илгээнэ | "Файлаа имэйл/USB-ээр дамжуулна."                           | офлайн ч болно                          |
+| 5 | Хүлээн авагч давхар товшино         | "Нээхэд нууц үг асууна."                                    | hint харагдана                          |
+| 6 | Нууц үг оруулж сэргээнэ             | "Зөв нууц үгээр төсөл сэргэнэ."                             | [Жишээ: `shalgalt-2026`](/user/samples) |
+
+> Жишээ болгон `sample-encrypted.shalgalt` (нууц үг: `shalgalt-2026`)-ийг ашиглаж болно.
+
+
+# Storyboard: Эхний шалгалтыг дүгнэх (https://filename24.github.io/shalgalt-omr/en/docs/user/walkthroughs/first-grade)
+
+
+
+# Storyboard — Эхний шалгалтыг дүгнэх (≈5 мин) [#storyboard--эхний-шалгалтыг-дүгнэх-5-мин]
+
+| # | Дэлгэц / үйлдэл                           | Дуу (нэрлэгч)                                             | Тэмдэглэл                         |
+| - | ----------------------------------------- | --------------------------------------------------------- | --------------------------------- |
+| 1 | Хяналтын самбар нээгдэнэ                  | "shalgalt-omr-оор эхний шалгалтаа хэрхэн дүгнэхийг үзье." | Лого, нүүр хуудас                 |
+| 2 | "Шинэ загвар" дарж засварлагч руу орно    | "Эхлээд хариултын хуудасны загвараа зохионо."             | [Загвар засварлагч](/user/editor) |
+| 3 | Бөмбөлгийн бүлэг нэмж хадгална            | "Асуултуудаа нэмээд хадгалъя."                            | undo/redo харуул                  |
+| 4 | "PDF болгон гаргах"                       | "Дараа нь хэвлэх хуудсыг гаргана."                        | Масштаб 100% сануул               |
+| 5 | Шалгалт үүсгэж, хариултын түлхүүр оруулна | "Шалгалт үүсгэж зөв хариултаа оруулна."                   | [Шалгалт](/user/exams)            |
+| 6 | "Дүгнэх" — PDF сонгож, эхлүүлнэ           | "Сканнердсан хуудаснуудаа сонгоод эхлүүлнэ."              | Дэвшилтийн мөр                    |
+| 7 | Эргэлзээтэй хуудсыг гараар шалгана        | "Эргэлзээтэй хуудсыг гар аргаар нягтална."                | [Гараар шалгах](/user/review)     |
+| 8 | "Дүн" — Excel рүү гаргана                 | "Эцэст нь дүнг Excel-рүү гаргана."                        | [Excel рүү гаргах](/user/export)  |
+
+Жишээ өгөгдөл болгон [жишээ файлууд](/user/samples)-ыг ашиглаж болно.
+
+
+# Видео зааврын төлөвлөгөө (https://filename24.github.io/shalgalt-omr/en/docs/user/walkthroughs)
+
+
+
+# Видео зааврын төлөвлөгөө (storyboard) [#видео-зааврын-төлөвлөгөө-storyboard]
+
+Дараах нь ирээдүйд бэлтгэх танилцуулга видеонуудын **дүр зураг** (storyboard) юм. Видео хараахан
+байхгүй ч эдгээр төлөвлөгөө нь дэс дараалал болон [Хурдан эхлэх](/user/quick-start) гарын
+авлагатай уялдана.
+
+* [Эхний шалгалтыг дүгнэх (5 минут)](/user/walkthroughs/first-grade)
+* [Шифрлэсэн төсөл хуваалцах (3 минут)](/user/walkthroughs/encrypted-project)
+
+> Видео бичлэгийн жинхэнэ дэлгэцийн зургийн жагсаалтыг `docs/screenshots-needed.md`-ээс
+> үзнэ үү.
+
+
+# Create_exam (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/exams/create_exam)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# Get_exam (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/exams/get_exam)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# List_exams (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/exams/list_exams)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# Healthz (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/meta/healthz)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# Get_template (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/templates/get_template)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# List_templates (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/templates/list_templates)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# Create_result (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/results/create_result)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+
+
+# List_results (https://filename24.github.io/shalgalt-omr/en/docs/dev/api/results/list_results)
+
+
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+

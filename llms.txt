@@ -1,0 +1,51 @@
+# Docs
+
+- Developer
+  - [Overview](https://filename24.github.io/shalgalt-omr/mn/docs/dev): Developer documentation for shalgalt-omr — a local-first OMR grading IDE.
+  - [Architecture](https://filename24.github.io/shalgalt-omr/mn/docs/dev/architecture): Layers, data flow, and the four hard rules that every PR must respect.
+  - [Workspace map](https://filename24.github.io/shalgalt-omr/mn/docs/dev/workspace): The Cargo workspace — what each app and crate owns.
+  - [Build & run](https://filename24.github.io/shalgalt-omr/mn/docs/dev/build): System prerequisites and build/run commands for each OS.
+  - [Contributing](https://filename24.github.io/shalgalt-omr/mn/docs/dev/contributing): Branching model, commit conventions, language rules, and the PR checklist.
+  - [Testing](https://filename24.github.io/shalgalt-omr/mn/docs/dev/testing): How the Rust and frontend test suites are organized and run.
+  - [ADR index](https://filename24.github.io/shalgalt-omr/mn/docs/dev/adr): Architecture Decision Records — significant, hard-to-reverse choices.
+
+  - **HTTP API**
+  - HTTP API: REST API reference generated from the OpenAPI spec.
+    - Exams
+      - [Create_exam](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/exams/create_exam)
+      - [Get_exam](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/exams/get_exam)
+      - [List_exams](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/exams/list_exams)
+    - Meta
+      - [Healthz](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/meta/healthz)
+    - Results
+      - [Create_result](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/results/create_result)
+      - [List_results](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/results/list_results)
+    - Templates
+      - [Get_template](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/templates/get_template)
+      - [List_templates](https://filename24.github.io/shalgalt-omr/mn/docs/dev/api/templates/list_templates)
+- Хэрэглэгчийн гарын авлага
+  - [Танилцуулга](https://filename24.github.io/shalgalt-omr/mn/docs/user): shalgalt-omr — шалгалтын хариултын хуудсыг офлайн байдлаар автоматаар дүгнэх программ.
+  - [Хурдан эхлэх](https://filename24.github.io/shalgalt-omr/mn/docs/user/quick-start): Суулгахаас эхлээд эхний шалгалтыг дүгнэх хүртэлх алхмууд.
+
+  - **Боломжууд**
+  - [Загвар засварлагч](https://filename24.github.io/shalgalt-omr/mn/docs/user/editor): Хариултын хуудасны загварыг визуал засварлагчид зохиох.
+  - [Шалгалт удирдах](https://filename24.github.io/shalgalt-omr/mn/docs/user/exams): Шалгалт үүсгэх, хариултын түлхүүр (хувилбар) оруулах.
+  - [Дүгнэх](https://filename24.github.io/shalgalt-omr/mn/docs/user/grading): Сканнердсан хуудаснуудыг багцаар автоматаар дүгнэх.
+  - [Гараар шалгах](https://filename24.github.io/shalgalt-omr/mn/docs/user/review): Эргэлзээтэй хуудсуудыг бөмбөлөг бүрчлэн нягтлан засах.
+  - [Excel рүү гаргах](https://filename24.github.io/shalgalt-omr/mn/docs/user/export): Шалгалтын дүнг Excel хүснэгт болгон гаргах, дүнгийн жагсаалт үзэх.
+  - [Төслийн файл (.shalgalt)](https://filename24.github.io/shalgalt-omr/mn/docs/user/project-files): Бүх шалгалтын төслийг нэг файлд хадгалах, хуваалцах, нээх.
+
+  - **Зөвлөмж**
+  - [Хэвлэх зөвлөмж](https://filename24.github.io/shalgalt-omr/mn/docs/user/printing): Хариултын хуудсыг зөв хэвлэх — цаас, бэх, масштаб.
+  - [Сканнердах зөвлөмж](https://filename24.github.io/shalgalt-omr/mn/docs/user/scanning): Гар утас болон сканнераар хуудас авах — гэрэл, өнцөг, тохиргоо.
+  - [Алдаа засах ба түгээмэл асуулт](https://filename24.github.io/shalgalt-omr/mn/docs/user/troubleshooting): Түгээмэл тулгардаг асуудлууд ба шийдэл.
+  - [Нууцлалын мэдэгдэл](https://filename24.github.io/shalgalt-omr/mn/docs/user/privacy): Ямар ч мэдээлэл гадагш илгээдэггүй — бүрэн офлайн.
+
+  - **Жишээ**
+  - Жишээ файлууд
+    - [Жишээ файлууд](https://filename24.github.io/shalgalt-omr/mn/docs/user/samples): Бэлэн .shalgalt жишээ төслүүд — нээлттэй, шифрлэсэн, PDF-тэй.
+    - _payload
+  - Видео заавар
+    - [Видео зааврын төлөвлөгөө](https://filename24.github.io/shalgalt-omr/mn/docs/user/walkthroughs): Танин мэдэх видеонуудын дүр зураг (storyboard).
+    - [Storyboard: Эхний шалгалтыг дүгнэх](https://filename24.github.io/shalgalt-omr/mn/docs/user/walkthroughs/first-grade): 5 минутын танилцуулга видеоны дүр зураг.
+    - [Storyboard: Шифрлэсэн төсөл хуваалцах](https://filename24.github.io/shalgalt-omr/mn/docs/user/walkthroughs/encrypted-project): 3 минутын танилцуулга видеоны дүр зураг.
