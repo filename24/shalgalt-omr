@@ -1,15 +1,11 @@
 import { source } from '@/lib/source';
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from 'fumadocs-ui/layouts/docs/page';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/components/mdx';
 import { openapi } from '@/lib/openapi';
 import { OpenAPIPage } from '@/components/api-page';
+import { getLastEdit } from '@/lib/last-edit';
 
 // Content authors write absolute cross-page links like `/dev/architecture` or
 // `/user/quick-start` (the dev/ and user/ content trees). The pages actually live under
@@ -31,9 +27,14 @@ export default async function Page(props: {
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const lastUpdate = await getLastEdit(page);
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage
+      toc={page.data.toc}
+      full={page.data.full}
+      lastUpdate={lastUpdate ?? undefined}
+    >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
