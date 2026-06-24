@@ -1,0 +1,23 @@
+{
+  "title": "User Manual",
+  "root": true,
+  "pages": [
+    "index",
+    "quick-start",
+    "---Features---",
+    "editor",
+    "exams",
+    "grading",
+    "review",
+    "export",
+    "project-files",
+    "---Tips---",
+    "printing",
+    "scanning",
+    "troubleshooting",
+    "privacy",
+    "---Examples---",
+    "samples",
+    "walkthroughs"
+  ]
+}

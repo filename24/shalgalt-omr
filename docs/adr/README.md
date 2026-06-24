@@ -43,3 +43,7 @@ reasoning*, not the prose volume.
 | [0013](0013-rest-api-v1-datastore.md) | HTTP API: `/v1` versioning, `DataStore` seam in core, OpenAPI via `utoipa` | Accepted |
 | [0014](0014-server-binary-and-rusqlite-store.md) | Standalone server + shared `rusqlite` `DataStore`, read path split from plugin-sql writes | Accepted |
 | [0015](0015-api-port-default-and-fallback.md) | API port: less-common default (22345), desktop auto-fallback, `SHALGALT_API_PORT` override | Accepted |
+| [0016](0016-partial-marker-homography.md) | Partial-marker homography recovery | Accepted |
+| [0017](0017-github-releases-distribution.md) | Distribution via GitHub Releases (`tauri-action`) | Accepted |
+| [0018](0018-optin-updater.md) | Opt-in `tauri-plugin-updater` with static `gh-pages` manifest | Accepted |
+| [0019](0019-docs-fumadocs-and-gh-pages.md) | Documentation site: Fumadocs, deployed to GitHub Pages | Accepted |

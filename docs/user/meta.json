@@ -1,0 +1,23 @@
+{
+  "title": "Хэрэглэгчийн гарын авлага",
+  "root": true,
+  "pages": [
+    "index",
+    "quick-start",
+    "---Боломжууд---",
+    "editor",
+    "exams",
+    "grading",
+    "review",
+    "export",
+    "project-files",
+    "---Зөвлөмж---",
+    "printing",
+    "scanning",
+    "troubleshooting",
+    "privacy",
+    "---Жишээ---",
+    "samples",
+    "walkthroughs"
+  ]
+}

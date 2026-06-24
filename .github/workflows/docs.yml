@@ -1,0 +1,65 @@
+# Build the Fumadocs documentation site and publish it to GitHub Pages.
+#
+# The site is a self-contained Next.js app in docs/site/ that builds a fully static export
+# (output: export) into docs/site/out/. It is published to the ROOT of the gh-pages branch
+# with keep_files: true so it coexists with the updater manifest (latest.json) that
+# release.yml publishes to the same branch (ADR 0018, ADR 0019).
+#
+#   https://filename24.github.io/shalgalt-omr/           -> documentation (default: Mongolian)
+#   https://filename24.github.io/shalgalt-omr/en/        -> English
+#   https://filename24.github.io/shalgalt-omr/latest.json -> updater manifest (untouched)
+name: docs
+
+on:
+  push:
+    branches: [stable]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Serialize docs deploys so two runs never race on the gh-pages branch.
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build and publish docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs/site/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: docs/site
+        run: pnpm install --frozen-lockfile
+
+      # Builds the OpenAPI reference MDX from the committed docs/site/openapi.json and then
+      # runs `next build` (output: export). NODE_ENV=production turns on basePath/assetPrefix.
+      - name: Build static site
+        working-directory: docs/site
+        run: pnpm build
+
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./docs/site/out
+          keep_files: true
+          commit_message: "docs: publish documentation site (${{ github.sha }})"

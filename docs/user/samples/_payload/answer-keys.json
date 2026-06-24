@@ -1,0 +1,25 @@
+{
+  "exam_title": "Жишээ шалгалт — 5 асуулт (A–D)",
+  "variants": [
+    {
+      "variant": "A",
+      "answers": [
+        { "question": "1", "answer_index": 0 },
+        { "question": "2", "answer_index": 2 },
+        { "question": "3", "answer_index": 1 },
+        { "question": "4", "answer_index": 3 },
+        { "question": "5", "answer_index": 0 }
+      ]
+    },
+    {
+      "variant": "B",
+      "answers": [
+        { "question": "1", "answer_index": 3 },
+        { "question": "2", "answer_index": 1 },
+        { "question": "3", "answer_index": 2 },
+        { "question": "4", "answer_index": 0 },
+        { "question": "5", "answer_index": 1 }
+      ]
+    }
+  ]
+}

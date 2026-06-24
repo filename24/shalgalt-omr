@@ -12,6 +12,17 @@ vite.config.ts.timestamp-*
 # Cargo workspace target dir lives at the repo root after the P2-01 layout switch.
 /target/
 
+# Fumadocs documentation site (docs/site) build artifacts (P7 / ADR 0019). The Next.js app
+# source is committed; its install/build outputs are not. `node_modules` is ignored above.
+/docs/site/.next/
+/docs/site/out/
+/docs/site/.source/
+/docs/site/public/samples/
+/docs/site/next-env.d.ts
+# Generated from docs/site/openapi.json at build time (prebuild). The generated MDX bakes in
+# absolute spec paths, so it is regenerated per build rather than committed.
+/docs/dev/api/
+
 # Local-only translations and per-issue body drafts. The English master plan
 # at `.claude/PRPs/plans/shalgalt-omr-master.plan.md` and the body template
 # are committed; everything below was source material for one-shot GitHub
