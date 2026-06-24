@@ -13,6 +13,12 @@ export const docs = defineDocs({
   dir: '..',
   docs: {
     files: ['dev/**/*.{md,mdx}', 'user/**/*.{md,mdx}'],
+    // Keep the processed Markdown around so the LLM integrations
+    // (llms.txt / llms-full.txt / per-page .md routes, see lib/get-llm-text.ts)
+    // can emit `page.data.getText('processed')`.
+    postprocess: {
+      includeProcessedMarkdown: true,
+    },
   },
   meta: {
     files: ['dev/**/*.{json,yaml}', 'user/**/*.{json,yaml}'],

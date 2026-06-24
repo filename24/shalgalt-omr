@@ -53,6 +53,11 @@ jobs:
       # runs `next build` (output: export). NODE_ENV=production turns on basePath/assetPrefix.
       - name: Build static site
         working-directory: docs/site
+        # GITHUB_TOKEN raises the GitHub API rate limit so the per-page
+        # "last updated" lookups (lib/last-edit.ts) don't hit the 60 req/hr
+        # unauthenticated cap. Absent locally → lookups are skipped gracefully.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm build
 
       - name: Publish to gh-pages
