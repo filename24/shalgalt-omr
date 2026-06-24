@@ -2,13 +2,13 @@
 
 
 
-# Workspace map [#workspace-map]
-
 The repository is a Cargo workspace with a SvelteKit frontend at the root. Rust code lives
 under `apps/` (host binaries) and `crates/` (pure libraries). A single `Cargo.lock` and
 `target/` live at the workspace root.
 
-```text
+## Layout [#layout]
+
+```text title="Workspace layout"
 docs/                  — BLUEPRINT, ARCHITECTURE, ADRs, and this documentation site.
 src/                   — SvelteKit frontend.
   routes/              — Pages: dashboard, editor, grade, exams, review, results, settings.
@@ -47,9 +47,11 @@ crates/
 | `apps/desktop`        | Tauri host: commands, migrations, axum spawn + shutdown harness     | Pure domain logic (delegate to crates)                    |
 | `apps/server`         | Standalone process: CLI args, bind, auth, CORS allow-list           | Re-implementing the router (reuse core's)                 |
 
-Each Cargo member has its own `AGENTS.md` (with `CLAUDE.md` as a symlink) describing
-package-specific rules and locked algorithmic decisions. Treat those files as authoritative
-for anything inside that package.
+<Callout type="info" title="Per-package AGENTS.md is authoritative">
+  Each Cargo member has its own `AGENTS.md` (with `CLAUDE.md` as a symlink) describing
+  package-specific rules and locked algorithmic decisions. Treat those files as
+  authoritative for anything inside that package.
+</Callout>
 
 ## Type generation (ts-rs) [#type-generation-ts-rs]
 
@@ -57,4 +59,4 @@ Domain models that cross the IPC boundary derive `ts_rs::TS` and export TypeScri
 interfaces into `src/lib/types/generated/` when `cargo test -p shalgalt-core` runs. The
 frontend script `pnpm generate-types` wraps the same command. A drift between the Rust struct
 and the generated TS fails `pnpm check` in CI — this is the mechanical enforcement of
-Rule 3.
+[Rule 3](/dev/architecture).

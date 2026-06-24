@@ -2,10 +2,11 @@
 
 
 
-# Жишээ `.shalgalt` файлууд [#жишээ-shalgalt-файлууд]
+Програмыг туршихад зориулсан **гурван бэлэн жишээ төсөл**.
 
-Програмыг туршихад зориулсан **гурван бэлэн жишээ төсөл**. Эдгээр нь зөвхөн жишээ бөгөөд
-**жинхэнэ сурагчийн мэдээлэл агуулаагүй**.
+<Callout type="info" title="Анхаар">
+  Эдгээр нь зөвхөн жишээ бөгөөд **жинхэнэ сурагчийн мэдээлэл агуулаагүй**.
+</Callout>
 
 | Файл                        | Тайлбар                                                                     | Нууц үг         |
 | --------------------------- | --------------------------------------------------------------------------- | --------------- |
@@ -17,17 +18,41 @@
 
 Файлуудыг репозиторын `docs/user/samples/` хавтаснаас үзэж/татаж авна:
 
-* [Жишээ файлуудыг GitHub дээр үзэх](https://github.com/filename24/shalgalt-omr/tree/stable/docs/user/samples)
-* Шууд татах:
-  [sample-open.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-open.shalgalt)
-  ·
-  [sample-with-pdf.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-with-pdf.shalgalt)
-  ·
-  [sample-encrypted.shalgalt](https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-encrypted.shalgalt)
+<Cards>
+  <Card href="https://github.com/filename24/shalgalt-omr/tree/stable/docs/user/samples" title="GitHub дээр үзэх">
+    Жишээ файлуудыг репозитор дотор нээж үзэх.
+  </Card>
+
+  <Card href="https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-open.shalgalt" title="sample-open.shalgalt">
+    Шифрлээгүй, PDF-гүй жишээг шууд татах.
+  </Card>
+
+  <Card href="https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-with-pdf.shalgalt" title="sample-with-pdf.shalgalt">
+    Хэвлэх PDF-тэй жишээг шууд татах.
+  </Card>
+
+  <Card href="https://raw.githubusercontent.com/filename24/shalgalt-omr/stable/docs/user/samples/sample-encrypted.shalgalt" title="sample-encrypted.shalgalt">
+    Нууц үгээр шифрлэсэн жишээг шууд татах.
+  </Card>
+</Cards>
 
 ## Бүтэц [#бүтэц]
 
 Жишээ төсөл бүр дараах хэсгүүдийг агуулна:
+
+<Files>
+  <File name="manifest.json" />
+
+  <File name="template.json" />
+
+  <File name="answer-keys.json" />
+
+  <File name="metadata.json" />
+
+  <File name="students.csv" />
+
+  <File name="exam.pdf" />
+</Files>
 
 * `manifest.json` — гарчиг, огноо, хуудасны тоо (үргэлж задгай).
 * `template.json` — 5 асуулттай (A–D) загвар.

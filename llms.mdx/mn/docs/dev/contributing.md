@@ -2,21 +2,21 @@
 
 
 
-# Contributing [#contributing]
-
 ## Branching model [#branching-model]
 
 * **`stable`** — release branch. CI publishes from here. Never commit directly.
 * **`develop`** — integration branch. Feature PRs land here.
 * **`feat/<phase>-<topic>`** — work branches off `develop`. One feature per PR.
 
-`session/*` branches are local isolation only and must never be pushed to the remote.
+<Callout type="warn" title="Never push session branches">
+  `session/*` branches are local isolation only and must never be pushed to the remote.
+</Callout>
 
 ## Commit conventions [#commit-conventions]
 
 Conventional Commits, one short imperative subject line:
 
-```text
+```text title="Commit message format"
 <type>: <description>
 
 <optional body explaining the *why* if the diff doesn't>
@@ -28,16 +28,24 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, `perf`, `ci`.
 
 Two languages, no overlap:
 
-* **Code and documentation are English** — every comment, doc comment, identifier, log
-  message, error string, commit message, PR description, and Markdown file in the repo.
-* **End-user UI text is Mongolian** (Cyrillic) — page titles, buttons, labels, validation
-  and toast messages, help text. UI strings come from the single string table at
-  `src/lib/i18n/`; components never hard-code copy.
+<Cards>
+  <Card title="Code and documentation → English">
+    Every comment, doc comment, identifier, log message, error string, commit message, PR
+    description, and Markdown file in the repo.
+  </Card>
 
-`AppError.code` stays English (it is a stable identifier); the frontend maps the code to a
-Mongolian message in the string table. A reviewer should treat any non-English string in
-source or docs as a blocker, and any hard-coded user-facing string outside the i18n table
-as a blocker too.
+  <Card title="End-user UI text → Mongolian (Cyrillic)">
+    Page titles, buttons, labels, validation and toast messages, help text. UI strings come
+    from the single string table at `src/lib/i18n/`; components never hard-code copy.
+  </Card>
+</Cards>
+
+<Callout type="warn" title="Reviewer blockers">
+  `AppError.code` stays English (it is a stable identifier); the frontend maps the code to a
+  Mongolian message in the string table. A reviewer should treat any non-English string in
+  source or docs as a blocker, and any hard-coded user-facing string outside the i18n table
+  as a blocker too.
+</Callout>
 
 ## The four hard rules [#the-four-hard-rules]
 
@@ -49,7 +57,8 @@ host-owned axum lifecycle. When in doubt, read the relevant crate's `AGENTS.md`.
 
 Architectural or operational decisions that are hard to reverse get an ADR under
 `docs/adr/` (`NNNN-kebab-title.md`, no gaps). Re-litigating a locked decision requires a new
-ADR **plus** a master-plan update in the same PR. See the [ADR index](/dev/adr).
+ADR **plus** a master-plan update in the same PR. See [how we write ADRs](/dev/adr) and the
+full [Architecture Decisions](/adr) collection.
 
 ## PR checklist [#pr-checklist]
 

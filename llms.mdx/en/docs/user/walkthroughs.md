@@ -2,14 +2,21 @@
 
 
 
-# Видео зааврын төлөвлөгөө (storyboard) [#видео-зааврын-төлөвлөгөө-storyboard]
-
 Дараах нь ирээдүйд бэлтгэх танилцуулга видеонуудын **дүр зураг** (storyboard) юм. Видео хараахан
 байхгүй ч эдгээр төлөвлөгөө нь дэс дараалал болон [Хурдан эхлэх](/user/quick-start) гарын
 авлагатай уялдана.
 
-* [Эхний шалгалтыг дүгнэх (5 минут)](/user/walkthroughs/first-grade)
-* [Шифрлэсэн төсөл хуваалцах (3 минут)](/user/walkthroughs/encrypted-project)
+<Cards>
+  <Card href="/user/walkthroughs/first-grade" title="Эхний шалгалтыг дүгнэх (5 минут)">
+    Загвар зохиохоос Excel рүү гаргах хүртэлх бүх дараалал.
+  </Card>
 
-> Видео бичлэгийн жинхэнэ дэлгэцийн зургийн жагсаалтыг `docs/screenshots-needed.md`-ээс
-> үзнэ үү.
+  <Card href="/user/walkthroughs/encrypted-project" title="Шифрлэсэн төсөл хуваалцах (3 минут)">
+    Төслөө нууц үгээр шифрлэн аюулгүй дамжуулах.
+  </Card>
+</Cards>
+
+<Callout type="info" title="Анхаар">
+  Видео бичлэгийн жинхэнэ дэлгэцийн зургийн жагсаалтыг `docs/screenshots-needed.md`-ээс
+  үзнэ үү.
+</Callout>

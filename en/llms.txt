@@ -1,5 +1,26 @@
 # Docs
 
+- Architecture Decisions
+  - [Architecture Decisions](https://filename24.github.io/shalgalt-omr/en/docs/adr): The significant, hard-to-reverse choices behind shalgalt-omr — what we picked, the alternatives, and the consequences accepted.
+  - [ADR 0001 — Windows OpenCV strategy](https://filename24.github.io/shalgalt-omr/en/docs/adr/0001-windows-opencv-strategy): Provision OpenCV at Windows build time via the prebuilt upstream self-extractor rather than vcpkg, Chocolatey, or LFS-vendored binaries.
+  - [ADR 0002 — PDF generator: printpdf](https://filename24.github.io/shalgalt-omr/en/docs/adr/0002-pdf-generator-printpdf): Adopt the pure-Rust printpdf engine with embedded Noto fonts and lock the OMR bubble geometry the CV pipeline depends on.
+  - [ADR 0003 — Cargo workspace & crate boundaries](https://filename24.github.io/shalgalt-omr/en/docs/adr/0003-cargo-workspace-and-crate-boundaries): Split the single P0 crate into a Cargo workspace of app hosts and pure library crates so the grading core is reusable without Tauri.
+  - [ADR 0004 — TypeScript bindings via ts-rs](https://filename24.github.io/shalgalt-omr/en/docs/adr/0004-ts-rs-type-codegen): Generate the frontend's domain types from Rust with ts-rs and gate them in CI so the Rust/TS wire format never silently drifts.
+  - [ADR 0005 — PDF generation IPC contract](https://filename24.github.io/shalgalt-omr/en/docs/adr/0005-pdf-ipc-contract): Path-string commands and on-disk results for the PDF render/preview IPC — never PDF bytes or data URLs across the Tauri bridge.
+  - [ADR 0006 — Light theme & comfort typography](https://filename24.github.io/shalgalt-omr/en/docs/adr/0006-light-theme-and-comfort-typography): Make light the default theme via mode-watcher with dark opt-in, and add a one-toggle comfortable type scale driven by CSS variables.
+  - [ADR 0007 — Canvas wrapper & layout modules](https://filename24.github.io/shalgalt-omr/en/docs/adr/0007-canvas-wrapper-and-layout-modules): A Canvas drawing-surface wrapper plus a module-per-visual-element layout split for shalgalt-pdf.
+  - [ADR 0008 — Bubble label position](https://filename24.github.io/shalgalt-omr/en/docs/adr/0008-bubble-label-position): Option labels are printed inside the bubble circle, matching the Mongolian-school OMR idiom and AMC prior art.
+  - [ADR 0009 — ArUco corner markers](https://filename24.github.io/shalgalt-omr/en/docs/adr/0009-aruco-markers): DICT_6X6_50 markers with IDs 0–3 in TL/TR/BR/BL order replace anonymous corner squares.
+  - [ADR 0010 — Fill measurement & confidence](https://filename24.github.io/shalgalt-omr/en/docs/adr/0010-confidence-band): Per-bubble fill scoring on the warped canvas, the confidence formula, and the locked [0.35, 0.65] needs-review bands.
+  - [ADR 0011 — `.shalgalt` project file](https://filename24.github.io/shalgalt-omr/en/docs/adr/0011-shalgalt-file-format): A zip container with an always-plaintext manifest, streaming read/write, and a fixed internal layout for exam projects.
+  - [ADR 0012 — Optional age encryption](https://filename24.github.io/shalgalt-omr/en/docs/adr/0012-age-encryption): Passphrase-based, ASCII-armored age encryption applied per-entry to .shalgalt payloads, leaving the manifest readable.
+  - [ADR 0013 — REST `/v1` & DataStore seam](https://filename24.github.io/shalgalt-omr/en/docs/adr/0013-rest-api-v1-datastore): Versioned /v1 routes, a database-free DataStore trait in core, and OpenAPI generated from utoipa annotations.
+  - [ADR 0014 — Standalone server & rusqlite store](https://filename24.github.io/shalgalt-omr/en/docs/adr/0014-server-binary-and-rusqlite-store): A shared rusqlite DataStore implementation, with the desktop's read path split from plugin-sql writes.
+  - [ADR 0015 — API port & fallback](https://filename24.github.io/shalgalt-omr/en/docs/adr/0015-api-port-default-and-fallback): An uncommon default port (22345), desktop auto-fallback, and a developer environment override.
+  - [ADR 0016 — Partial-marker homography](https://filename24.github.io/shalgalt-omr/en/docs/adr/0016-partial-marker-homography): Recover perspective from 3 of 4 ArUco markers using per-corner correspondences and RANSAC.
+  - [ADR 0017 — GitHub Releases distribution](https://filename24.github.io/shalgalt-omr/en/docs/adr/0017-github-releases-distribution): Ship desktop bundles and the standalone server through GitHub Releases via tauri-action on v* tags.
+  - [ADR 0018 — Opt-in updater](https://filename24.github.io/shalgalt-omr/en/docs/adr/0018-optin-updater): tauri-plugin-updater with a static gh-pages manifest, default OFF so offline schools never see a prompt.
+  - [ADR 0019 — Documentation site](https://filename24.github.io/shalgalt-omr/en/docs/adr/0019-docs-fumadocs-and-gh-pages): Adopt Fumadocs as the single docs framework for dev docs, the Mongolian user manual, and the API reference, deployed to GitHub Pages.
 - Developer
   - [Overview](https://filename24.github.io/shalgalt-omr/en/docs/dev): Developer documentation for shalgalt-omr — a local-first OMR grading IDE.
   - [Architecture](https://filename24.github.io/shalgalt-omr/en/docs/dev/architecture): Layers, data flow, and the four hard rules that every PR must respect.
@@ -7,7 +28,7 @@
   - [Build & run](https://filename24.github.io/shalgalt-omr/en/docs/dev/build): System prerequisites and build/run commands for each OS.
   - [Contributing](https://filename24.github.io/shalgalt-omr/en/docs/dev/contributing): Branching model, commit conventions, language rules, and the PR checklist.
   - [Testing](https://filename24.github.io/shalgalt-omr/en/docs/dev/testing): How the Rust and frontend test suites are organized and run.
-  - [ADR index](https://filename24.github.io/shalgalt-omr/en/docs/dev/adr): Architecture Decision Records — significant, hard-to-reverse choices.
+  - [Architecture decisions](https://filename24.github.io/shalgalt-omr/en/docs/dev/adr): How shalgalt-omr records architectural decisions — what an ADR is, when to write one, and the template to follow.
 
   - **HTTP API**
   - HTTP API: REST API reference generated from the OpenAPI spec.

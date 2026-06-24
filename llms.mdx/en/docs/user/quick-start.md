@@ -2,60 +2,82 @@
 
 
 
-# Quick start [#quick-start]
-
 This page walks you from **install → first template → first grade run**.
 
-## 1. Install [#1-install]
+<Steps>
+  <Step>
+    ### Install [#install]
 
-1. Download the build for your OS from the
-   [Releases page](https://github.com/filename24/shalgalt-omr/releases) (Windows
-   `.exe`/`.msi`, macOS `.dmg`, Linux `.AppImage`/`.deb`) and install it.
-2. On first launch the database is created automatically on your computer. No setup needed.
+    1. Download the build for your OS from the
+       [Releases page](https://github.com/filename24/shalgalt-omr/releases) (Windows
+       `.exe`/`.msi`, macOS `.dmg`, Linux `.AppImage`/`.deb`) and install it.
+    2. On first launch the database is created automatically on your computer. No setup needed.
 
-> 📷 &#x2A;Screenshot: Dashboard (home). Checklist: `docs/user/screenshots-needed.md`.*
+    <Callout type="info" title="Screenshot">
+      Dashboard (home). Checklist: `docs/user/screenshots-needed.md`.
+    </Callout>
+  </Step>
 
-## 2. Design a template [#2-design-a-template]
+  <Step>
+    ### Design a template [#design-a-template]
 
-1. On the **Dashboard**, click **New template** to open the [Editor](/user/editor).
-2. Place the four corner **ArUco markers** (provided by default).
-3. Add **bubble groups** for your questions (e.g. A–D), plus **Student ID** and **Variant**
-   groups if needed.
-4. Click **Save**.
+    1. On the **Dashboard**, click **New template** to open the [Editor](/user/editor).
+    2. Place the four corner **ArUco markers** (provided by default).
+    3. Add **bubble groups** for your questions (e.g. A–D), plus **Student ID** and **Variant**
+       groups if needed.
+    4. Click **Save**.
 
-> 📷 &#x2A;Screenshot: Editor toolbar and a bubble group.*
+    <Callout type="info" title="Screenshot">
+      Editor toolbar and a bubble group.
+    </Callout>
+  </Step>
 
-## 3. Generate a printable PDF [#3-generate-a-printable-pdf]
+  <Step>
+    ### Generate a printable PDF [#generate-a-printable-pdf]
 
-Click **Export PDF** in the editor to save a print-ready sheet. Mind the
-[printing tips](/user/printing) (100% scale, solid black ink).
+    Click **Export PDF** in the editor to save a print-ready sheet. Mind the
+    [printing tips](/user/printing) (100% scale, solid black ink).
+  </Step>
 
-## 4. Create an exam and answer key [#4-create-an-exam-and-answer-key]
+  <Step>
+    ### Create an exam and answer key [#create-an-exam-and-answer-key]
 
-1. Go to **Exams → New exam** and pick the template you just made.
-2. Add an &#x2A;*answer key (variant)** to the exam — choose the correct answers by hand, or
-   **scan** one filled sheet to read them in.
+    1. Go to **Exams → New exam** and pick the template you just made.
+    2. Add an &#x2A;*answer key (variant)** to the exam — choose the correct answers by hand, or
+       **scan** one filled sheet to read them in.
 
-> 📷 &#x2A;Screenshot: Exam detail — editing the answer key.*
+    <Callout type="info" title="Screenshot">
+      Exam detail — editing the answer key.
+    </Callout>
+  </Step>
 
-## 5. Grade the sheets [#5-grade-the-sheets]
+  <Step>
+    ### Grade the sheets [#grade-the-sheets]
 
-1. Open **Grade**.
-2. Select the scanned &#x2A;*PDF file(s)**.
-3. Choose which **exam / variant** to grade against (multi-variant auto-detect is available).
-4. Click **Start**. Progress shows in a bar — the app never freezes.
+    1. Open **Grade**.
+    2. Select the scanned &#x2A;*PDF file(s)**.
+    3. Choose which **exam / variant** to grade against (multi-variant auto-detect is available).
+    4. Click **Start**. Progress shows in a bar — the app never freezes.
 
-> 📷 &#x2A;Screenshot: Grade screen — file selection and progress bar.*
+    <Callout type="info" title="Screenshot">
+      Grade screen — file selection and progress bar.
+    </Callout>
+  </Step>
 
-## 6. Review flagged sheets [#6-review-flagged-sheets]
+  <Step>
+    ### Review flagged sheets [#review-flagged-sheets]
 
-When grading finishes, sheets that **need review** are flagged. Use the
-[Manual review](/user/review) screen to check bubbles one by one.
+    When grading finishes, sheets that **need review** are flagged. Use the
+    [Manual review](/user/review) screen to check bubbles one by one.
+  </Step>
 
-## 7. Export results [#7-export-results]
+  <Step>
+    ### Export results [#export-results]
 
-From **Results**, view the scores and click **Export to Excel**. See [Export](/user/export).
+    From **Results**, view the scores and click **Export to Excel**. See [Export](/user/export).
+  </Step>
+</Steps>
 
-***
-
-You can download the ready-made [sample projects](/user/samples) to try these steps.
+<Callout type="info" title="Tip">
+  You can download the ready-made [sample projects](/user/samples) to try these steps.
+</Callout>
