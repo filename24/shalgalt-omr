@@ -492,7 +492,6 @@ export const mn = {
       title: "Түргэн үйлдэл",
       newExam: "Шинэ сорил",
       openProject: "Төсөл нээх",
-      openProjectComingSoon: "Удахгүй (P4)",
       gradePdf: "PDF шалгах",
     },
     recentExams: {

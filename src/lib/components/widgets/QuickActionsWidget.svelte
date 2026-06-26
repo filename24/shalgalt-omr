@@ -1,6 +1,5 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { toast } from "svelte-sonner";
 
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card";
@@ -9,11 +8,15 @@
   import ScanLineIcon from "@lucide/svelte/icons/scan-line";
 
   import { mn } from "$lib/i18n";
+  import { pickShalgalt } from "$lib/picker";
 
-  function openProject() {
-    // Project-file format lands with #P4-01..03; for P2 the action is a
-    // graceful "coming soon" toast rather than a broken file dialog.
-    toast.info(mn.dashboard.actions.openProjectComingSoon);
+  // Pick a `.shalgalt` file and hand it to the shared "Open with" import page,
+  // which owns the passphrase prompt + restore flow (same path as the exams
+  // list "Open file" button).
+  async function openProject(): Promise<void> {
+    const path = await pickShalgalt();
+    if (!path) return;
+    void goto(`/exams/import?path=${encodeURIComponent(path)}`);
   }
 </script>
 
