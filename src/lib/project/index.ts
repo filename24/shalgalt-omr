@@ -38,6 +38,13 @@ export interface AssembleProjectOptions {
   /** When set, the job's answer key and graded sheets are bundled too. */
   jobId?: number;
   title: string;
+  /**
+   * When set to a non-empty string, the container is encrypted with this age
+   * passphrase and the manifest's `encrypted` flag is set accordingly. The same
+   * passphrase MUST be forwarded to `project_save` / `project_export`: the Rust
+   * writer rejects any archive where `manifest.encrypted !== passphrase.is_some()`.
+   */
+  passphrase?: string;
 }
 
 export interface AssembledProject {
@@ -127,7 +134,10 @@ export async function assembleProject(
     // RFC 3339 / ISO 8601 — matches the Rust `chrono::DateTime<Utc>` serde format.
     created_at: new Date().toISOString(),
     sheet_count: sheetCount,
-    encrypted: false,
+    // Derived from the passphrase so the flag always matches reality. The caller
+    // forwards the same passphrase to project_export; the Rust writer enforces
+    // `manifest.encrypted === passphrase.is_some()`.
+    encrypted: Boolean(opts.passphrase),
     // TODO(P4-04): populate `exam_id` once exam rows are wired in.
   };
 

@@ -9,6 +9,9 @@
   import type { ExamSummary } from "$lib/types/exam";
   import type { TemplateSummary } from "$lib/types/template";
   import { examNameSchema } from "$lib/types/exam";
+  import { pickShalgalt, pickShalgaltSavePath } from "$lib/picker";
+  import { assembleProject } from "$lib/project";
+  import { projectExport } from "$lib/ipc/project";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -18,6 +21,8 @@
   import * as Dialog from "$lib/components/ui/dialog";
   import PlusIcon from "@lucide/svelte/icons/plus";
   import Trash2Icon from "@lucide/svelte/icons/trash-2";
+  import DownloadIcon from "@lucide/svelte/icons/download";
+  import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
 
   let exams = $state<ExamSummary[] | null>(null);
   let templates = $state<TemplateSummary[]>([]);
@@ -31,6 +36,32 @@
   // Delete-dialog state.
   let deleteTarget = $state<ExamSummary | null>(null);
   let deleting = $state(false);
+
+  // Id of the exam currently being exported, so its row button can show busy.
+  let exportingId = $state<number | null>(null);
+
+  // Export-dialog state. The dialog is open while `exportTarget` is set; it lets
+  // the user choose whether to password-protect (age-encrypt) the `.shalgalt`.
+  let exportTarget = $state<ExamSummary | null>(null);
+  let exportEncrypt = $state(false);
+  let exportPassphrase = $state("");
+  let exportPassphraseConfirm = $state("");
+
+  const exportPassphraseMismatch = $derived(
+    exportEncrypt &&
+      exportPassphraseConfirm.length > 0 &&
+      exportPassphrase !== exportPassphraseConfirm,
+  );
+
+  // Block confirm while busy, or — when encryption is on — until a non-empty
+  // passphrase is entered and confirmed identically (a typo'd passphrase would
+  // make the file permanently unreadable).
+  const canExport = $derived(
+    exportingId === null &&
+      (!exportEncrypt ||
+        (exportPassphrase.length > 0 &&
+          exportPassphrase === exportPassphraseConfirm)),
+  );
 
   const canCreate = $derived(
     !creating &&
@@ -103,6 +134,60 @@
     }
   }
 
+  /**
+   * Pick a `.shalgalt` file and hand it to the existing "Open with" import
+   * page, which owns the passphrase prompt + `restoreProject` flow. Routing
+   * there instead of re-opening inline keeps a single import code path.
+   */
+  async function openFile(): Promise<void> {
+    const path = await pickShalgalt();
+    if (!path) return;
+    void goto(`/exams/import?path=${encodeURIComponent(path)}`);
+  }
+
+  /** Open the export dialog for one exam, resetting the encryption fields. */
+  function openExport(exam: ExamSummary): void {
+    exportTarget = exam;
+    exportEncrypt = false;
+    exportPassphrase = "";
+    exportPassphraseConfirm = "";
+  }
+
+  function closeExport(): void {
+    exportTarget = null;
+  }
+
+  /**
+   * Export the dialog's exam to a `.shalgalt` container: assemble its template
+   * (and any bundled job data) into a manifest + entries, pick a destination,
+   * then write the archive via `project_export`. When the user enabled
+   * encryption, the passphrase is passed to both `assembleProject` (so the
+   * manifest's `encrypted` flag is set) and `project_export` (so the payload is
+   * age-encrypted); the Rust writer enforces that the two agree.
+   */
+  async function confirmExport(): Promise<void> {
+    const exam = exportTarget;
+    if (!exam || !canExport) return;
+    const passphrase = exportEncrypt ? exportPassphrase : undefined;
+    exportingId = exam.id;
+    try {
+      const { manifestJson, entries } = await assembleProject({
+        templateId: exam.template_id,
+        title: exam.name,
+        passphrase,
+      });
+      const outputPath = await pickShalgaltSavePath(`${exam.name}.shalgalt`);
+      if (!outputPath) return;
+      await projectExport({ manifestJson, entries, outputPath, passphrase });
+      toast.success(mn.exams.toasts.exported, { description: exam.name });
+      exportTarget = null;
+    } catch (e) {
+      toast.error(mn.exams.toasts.exportFailed, { description: String(e) });
+    } finally {
+      exportingId = null;
+    }
+  }
+
   function formatDate(iso: string): string {
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString();
@@ -115,10 +200,16 @@
       <h2 class="text-2xl font-bold tracking-tight">{mn.exams.title}</h2>
       <p class="text-muted-foreground text-sm">{mn.exams.subtitle}</p>
     </div>
-    <Button onclick={openCreate}>
-      <PlusIcon />
-      {mn.exams.newExam}
-    </Button>
+    <div class="flex items-center gap-2">
+      <Button variant="outline" onclick={openFile}>
+        <FolderOpenIcon />
+        {mn.exams.openFile}
+      </Button>
+      <Button onclick={openCreate}>
+        <PlusIcon />
+        {mn.exams.newExam}
+      </Button>
+    </div>
   </header>
 
   <Card.Root>
@@ -162,6 +253,15 @@
                     {formatDate(exam.created_at)}
                   </td>
                   <td class="px-2 py-2 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onclick={() => openExport(exam)}
+                      disabled={exportingId === exam.id}
+                      aria-label={mn.exams.exportExam}
+                    >
+                      <DownloadIcon class="size-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -223,6 +323,70 @@
       </Button>
       <Button onclick={confirmCreate} disabled={!canCreate}>
         {mn.exams.create.confirm}
+      </Button>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root
+  open={exportTarget !== null}
+  onOpenChange={(o) => {
+    if (!o) closeExport();
+  }}
+>
+  <Dialog.Content>
+    <Dialog.Header>
+      <Dialog.Title>{mn.exams.export.title}</Dialog.Title>
+      <Dialog.Description>{mn.exams.export.subtitle}</Dialog.Description>
+    </Dialog.Header>
+    <div class="space-y-4 py-2">
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          bind:checked={exportEncrypt}
+          class="border-input text-primary focus-visible:ring-ring size-4 rounded border focus-visible:ring-1 focus-visible:outline-none"
+        />
+        {mn.exams.export.encryptLabel}
+      </label>
+      {#if exportEncrypt}
+        <p class="text-muted-foreground text-xs">
+          {mn.exams.export.encryptHint}
+        </p>
+        <div class="space-y-1.5">
+          <Label for="export-passphrase">
+            {mn.exams.export.passphraseLabel}
+          </Label>
+          <Input
+            id="export-passphrase"
+            type="password"
+            bind:value={exportPassphrase}
+            placeholder={mn.exams.export.passphrasePlaceholder}
+          />
+        </div>
+        <div class="space-y-1.5">
+          <Label for="export-passphrase-confirm">
+            {mn.exams.export.confirmLabel}
+          </Label>
+          <Input
+            id="export-passphrase-confirm"
+            type="password"
+            bind:value={exportPassphraseConfirm}
+            placeholder={mn.exams.export.confirmPlaceholder}
+          />
+          {#if exportPassphraseMismatch}
+            <p class="text-destructive text-xs">
+              {mn.exams.export.mismatch}
+            </p>
+          {/if}
+        </div>
+      {/if}
+    </div>
+    <Dialog.Footer>
+      <Button variant="outline" onclick={closeExport}>
+        {mn.exams.export.cancel}
+      </Button>
+      <Button onclick={confirmExport} disabled={!canExport}>
+        {mn.exams.export.confirm}
       </Button>
     </Dialog.Footer>
   </Dialog.Content>

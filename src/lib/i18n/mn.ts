@@ -366,6 +366,8 @@ export const mn = {
     title: "Сорилууд",
     subtitle: "Сорил болон хариултын түлхүүрийг эндээс удирдана.",
     newExam: "Шинэ сорил",
+    openFile: "Файл нээх",
+    exportExam: "Файлд хадгалах",
     empty: "Сорил үүсээгүй байна. Дээрх товчоор шинэ сорил үүсгэнэ үү.",
     column: {
       name: "Нэр",
@@ -381,6 +383,19 @@ export const mn = {
       templatePlaceholder: "Загвар сонгоно уу",
       templateEmpty: "Загвар үүсээгүй байна. Эхлээд Загвар засварлагч руу очно уу.",
       confirm: "Үүсгэх",
+      cancel: "Болих",
+    },
+    export: {
+      title: "Файлд хадгалах",
+      subtitle: "Сорилыг .shalgalt файл болгон хадгална.",
+      encryptLabel: "Нууц үгээр хамгаалах",
+      encryptHint: "Асаавал энэ файлыг нээхэд нууц үг шаардана.",
+      passphraseLabel: "Нууц үг",
+      passphrasePlaceholder: "Нууц үг оруулна уу",
+      confirmLabel: "Нууц үг давтах",
+      confirmPlaceholder: "Нууц үгээ дахин оруулна уу",
+      mismatch: "Нууц үг таарахгүй байна.",
+      confirm: "Хадгалах",
       cancel: "Болих",
     },
     detail: {
@@ -466,6 +481,8 @@ export const mn = {
       variantSaved: "Хувилбар хадгалагдлаа",
       variantDeleted: "Хувилбар устгагдлаа",
       saveFailed: "Хадгалах үед алдаа гарлаа",
+      exported: "Сорил файлд хадгалагдлаа",
+      exportFailed: "Файлд хадгалахад алдаа гарлаа",
     },
   },
   dashboard: {
@@ -475,7 +492,6 @@ export const mn = {
       title: "Түргэн үйлдэл",
       newExam: "Шинэ сорил",
       openProject: "Төсөл нээх",
-      openProjectComingSoon: "Удахгүй (P4)",
       gradePdf: "PDF шалгах",
     },
     recentExams: {
