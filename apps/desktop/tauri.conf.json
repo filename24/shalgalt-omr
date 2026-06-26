@@ -4,9 +4,9 @@
   "version": "0.6.0-rc.1",
   "identifier": "dev.filename.shalgalt-omr",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm setup:binaries && pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm setup:binaries && pnpm build",
     "frontendDist": "../../build"
   },
   "app": {

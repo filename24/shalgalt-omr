@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "cd apps/desktop && tauri",
-    "generate-types": "cargo test -p shalgalt-core --quiet"
+    "generate-types": "cargo test -p shalgalt-core --quiet",
+    "setup:binaries": "node scripts/fetch-binaries.mjs",
+    "postinstall": "node scripts/fetch-binaries.mjs"
   },
   "license": "MIT",
   "dependencies": {
