@@ -1,9 +1,11 @@
-# ADR 0002 — PDF generation via `printpdf`, OMR bubble geometry
+---
+title: "ADR 0002 — PDF generator: printpdf"
+description: Adopt the pure-Rust printpdf engine with embedded Noto fonts and lock the OMR bubble geometry the CV pipeline depends on.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-08
-- **Deciders**: filename24
-- **Related issues**: #16 (P2-05), #17 (P2-06)
+<Callout type="success" title="Accepted · 2026-05-08">
+  **Deciders:** filename24 · **Related issues:** #16 (P2-05), #17 (P2-06)
+</Callout>
 
 ## Context
 
@@ -32,7 +34,9 @@ sidebar). Two coupled decisions land here so P3 (CV pipeline) does not re-litiga
 
 ### Engine
 
-Adopt **Option A — `printpdf` 0.9.x**.
+<Callout type="info" title="Decision">
+  Adopt **Option A — `printpdf` 0.9.x**.
+</Callout>
 
 Rationale (priority order):
 
@@ -98,3 +102,12 @@ language without updating the other will be caught by the golden-file test.
 - P2-12 — record this ADR alongside the rest of the P2 ADR set.
 - P3-01 — document the CV-side acceptance numbers (blob radius window, threshold
   parameters) that were calibrated against the geometry above.
+
+<Cards>
+  <Card href="/adr/0007-canvas-wrapper-and-layout-modules" title="ADR 0007 — Canvas wrapper & layout modules">
+    The drawing-surface abstraction and per-element layout modules built on top of this engine.
+  </Card>
+  <Card href="/adr/0009-aruco-markers" title="ADR 0009 — ArUco corner markers">
+    Replaces the placeholder square markers with `DICT_6X6_50` bitmaps during the P3-01 CV migration.
+  </Card>
+</Cards>

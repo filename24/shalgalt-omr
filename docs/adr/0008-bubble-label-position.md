@@ -1,9 +1,12 @@
-# ADR 0008 — Bubble label position: inside the circle
+---
+title: ADR 0008 — Bubble label position
+description: Option labels are printed inside the bubble circle, matching the Mongolian-school OMR idiom and AMC prior art.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-09
-- **Deciders**: filename24
-- **Related issues**: #75 (P2-06 follow-up), original ACK criterion in #17 (P2-06)
+<Callout type="success" title="Accepted · 2026-05-09">
+  **Deciders:** filename24 · **Related:** #75 (P2-06 follow-up), original ACK criterion in
+  #17 (P2-06).
+</Callout>
 
 ## Context
 
@@ -26,8 +29,7 @@ draw on.
 | C. Column header strip per section | one row of `A B C D E` above each block | OMRChecker, OpenMCR, Indian-style sheets | Adds a section-anchored marker; CV must skip the strip |
 | D. No label, key only | nothing on the printed sheet | Stylised, modern templates | Student must memorise meaning |
 
-The market survey documented in
-[`memory/project_omr_market_research.md`](../../.claude/projects/-home-coder-shalgalt-omr/memory/project_omr_market_research.md)
+The market survey documented in `memory/project_omr_market_research.md`
 shows AMC (FOSS reference implementation) lands on B. Mongolian general-school cards
 match — see the reference photo at the time of issue #75. OMRChecker and OpenMCR
 land on C, but their inputs are *bitmap* OMR sheets where the column header is also a
@@ -36,15 +38,17 @@ markers (P3-01) for that role.
 
 ## Decision
 
-Adopt **Option B — labels drawn INSIDE each circle**.
+<Callout type="info" title="Decision">
+  Adopt **Option B — labels drawn INSIDE each circle.**
+</Callout>
 
 ```rust
 canvas.text_centered_in_circle(cx_mm, cy_mm, r_mm, ch, font);
 ```
 
-implemented in [`canvas.rs`](../../crates/shalgalt-pdf/src/canvas.rs) (see ADR 0007).
+implemented in `crates/shalgalt-pdf/src/canvas.rs` (see ADR 0007).
 Auto-fits the font to ≈ 65 % of the bubble diameter (≈ 6 pt for the 3 mm bubble locked
-in [`docs/MONGOLIAN_OMR_SPEC.md`](../MONGOLIAN_OMR_SPEC.md) §4), within the OMR-spec
+in `docs/MONGOLIAN_OMR_SPEC.md` §4), within the OMR-spec
 target range of 6–8 pt for in-bubble identifiers.
 
 ### Why this works for CV
@@ -58,14 +62,14 @@ circle and dwarfs the glyph's contribution. With:
 - Threshold for "filled" (per master plan §6.5): bubble fraction ≥ 0.35
 
 the printed label contributes ≈ 14 % fill, well below the 0.35 threshold. The
-[`labels_layout.rs`](../../crates/shalgalt-pdf/tests/labels_layout.rs) regression test
+`crates/shalgalt-pdf/tests/labels_layout.rs` regression test
 pins the upper bound on text-op count so the renderer cannot silently regress to
 Option A and double-count labels.
 
 ### Section-header semantics
 
 Sub-block stickers (`2.1`, `2.2`, `2.3`, `2.4`) and parent labels (`1-Р ХЭСЭГ`,
-`2-Р ХЭСЭГ`) are emitted by [`section_headers.rs`](../../crates/shalgalt-pdf/src/layout/section_headers.rs)
+`2-Р ХЭСЭГ`) are emitted by `crates/shalgalt-pdf/src/layout/section_headers.rs`
 and are NOT a column-header strip — they label the *block*, not each column position.
 Шифр / Вариант suppress their headers (the geometry is self-evident).
 
@@ -90,7 +94,16 @@ and are NOT a column-header strip — they label the *block*, not each column po
 ## Follow-up
 
 - The legibility / fill-fraction trade-off is parameterised in
-  [`crates/shalgalt-pdf/src/canvas.rs`](../../crates/shalgalt-pdf/src/canvas.rs) — the
+  `crates/shalgalt-pdf/src/canvas.rs` — the
   `0.65` ratio in `text_centered_in_circle` is the lever to revise if classroom
   testing reports glyphs are bleeding into the answer mark.
 - ADR 0007 covers the wrapper that this decision relies on.
+
+<Cards>
+  <Card href="/adr/0007-canvas-wrapper-and-layout-modules" title="ADR 0007 — Canvas wrapper & layout modules">
+    The `Canvas` wrapper whose `text_centered_in_circle` helper this decision relies on.
+  </Card>
+  <Card href="/adr/0010-confidence-band" title="ADR 0010 — Fill measurement & confidence">
+    How the CV pipeline measures bubble fill that this label placement must not disturb.
+  </Card>
+</Cards>

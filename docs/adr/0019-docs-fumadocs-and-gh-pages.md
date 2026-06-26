@@ -1,8 +1,12 @@
-# 0019 — Documentation site: Fumadocs, deployed to GitHub Pages
+---
+title: ADR 0019 — Documentation site
+description: Adopt Fumadocs as the single docs framework for dev docs, the Mongolian user manual, and the API reference, deployed to GitHub Pages.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-22
-- **Deciders**: filename24 (maintainer)
+<Callout type="success" title="Accepted · 2026-06-22">
+  **Deciders:** filename24 (maintainer) · **Supersedes:** the mdBook/VitePress/redoc tooling
+  choice in master plan §12 (updated in the same change set that introduced this ADR).
+</Callout>
 
 ## Context
 
@@ -18,7 +22,7 @@ particular (`redoc`) sits awkwardly between the two sites. For a single-maintain
 project the operational cost of three toolchains is the dominant concern (master plan
 §19 lists "single-maintainer bus factor" as a tracked risk).
 
-## Options
+## Options considered
 
 1. **mdBook + VitePress + redoc** (original plan). Three pipelines. mdBook is Rust-native
    (fits the crate docs story) but its theme and search are basic and it has no first-class
@@ -39,8 +43,11 @@ project the operational cost of three toolchains is the dominant concern (master
 
 ## Decision
 
-Adopt **Fumadocs** as the single documentation framework for P7, deployed as a fully
-static site to the existing `gh-pages` branch.
+<Callout type="info" title="Decision">
+  Adopt **Fumadocs** as the single documentation framework for P7 — developer docs, the
+  Mongolian user manual, and the HTTP API reference in one site — deployed as a fully static
+  build to the existing `gh-pages` branch.
+</Callout>
 
 - The Next.js docs app lives in **`docs/site/`** as an isolated package (its own
   `package.json`, not part of the root SvelteKit install) so its Next.js dependency tree
@@ -107,7 +114,8 @@ Because both workflows use `keep_files: true`, neither clobbers the other's outp
 - **Follow-up**: per-release PDF exports of both manuals (master plan §12) are deferred to
   a later docs iteration; the static HTML site is the v1.0 deliverable.
 
-## Supersedes
-
-The mdBook/VitePress/redoc tooling choice in master plan §12. The section has been updated
-in the same change set that introduced this ADR.
+<Cards>
+  <Card href="/adr/0018-optin-updater" title="ADR 0018 — Opt-in updater">
+    The `gh-pages` updater manifest (`latest.json`) this docs deploy coexists with via `keep_files`.
+  </Card>
+</Cards>

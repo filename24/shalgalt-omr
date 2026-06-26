@@ -1,11 +1,13 @@
-# ADR 0016 — Corner-based homography: align from 3 of 4 ArUco markers
+---
+title: ADR 0016 — Partial-marker homography
+description: Recover perspective from 3 of 4 ArUco markers using per-corner correspondences and RANSAC.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-19
-- **Deciders**: filename24
-- **Related issues**: follow-up to P3-01 (ArUco markers) / ADR 0009
-- **Refines**: ADR 0009 — relaxes the implicit "all four markers required" behaviour of
-  the perspective-alignment step while keeping every other ADR 0009 decision intact.
+<Callout type="success" title="Accepted · 2026-06-19">
+  **Deciders:** filename24 · **Related issues:** follow-up to P3-01 (ArUco markers) / ADR 0009 ·
+  **Refines:** ADR 0009 — relaxes the implicit "all four markers required" behaviour of the
+  perspective-alignment step while keeping every other ADR 0009 decision intact.
+</Callout>
 
 ## Context
 
@@ -35,9 +37,11 @@ throwing away 12 of the 16 corner points the detector already provides.
 
 ## Decision
 
-Use each marker's **four corners** as homography correspondences and fit with
-`calib3d::find_homography` (RANSAC, 3 px reprojection threshold). Align whenever **at
-least 3 of the 4** markers are detected.
+<Callout type="info" title="Decision">
+  Use each marker's **four corners** as homography correspondences and fit with
+  `calib3d::find_homography` (RANSAC, 3 px reprojection threshold). Align whenever **at least
+  3 of the 4** markers are detected.
+</Callout>
 
 - Each detected marker contributes 4 correspondences, so three markers give 12 points
   spanning three page corners — well-conditioned for a perspective fit. Four markers give
@@ -82,3 +86,12 @@ geometry to within a fraction of a pixel.
   worth supporting; it is intentionally excluded here to avoid degenerate fits.
 - `find_homography`'s RANSAC threshold (3 px) is calibrated against the 1700×2400
   canonical canvas; P8 may tune it against representative phone/MFP fixtures.
+
+<Cards>
+  <Card href="/adr/0009-aruco-markers" title="ADR 0009 — ArUco corner markers">
+    The four `DICT_6X6_50` markers (IDs 0–3, TL/TR/BR/BL) this ADR realigns from when one is lost.
+  </Card>
+  <Card href="/adr/0010-confidence-band" title="ADR 0010 — Fill measurement & confidence">
+    The per-bubble fill scoring and `> 0.65` threshold the alignment feeds into.
+  </Card>
+</Cards>

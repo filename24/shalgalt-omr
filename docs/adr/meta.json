@@ -1,0 +1,26 @@
+{
+  "title": "Architecture Decisions",
+  "root": true,
+  "pages": [
+    "index",
+    "0001-windows-opencv-strategy",
+    "0002-pdf-generator-printpdf",
+    "0003-cargo-workspace-and-crate-boundaries",
+    "0004-ts-rs-type-codegen",
+    "0005-pdf-ipc-contract",
+    "0006-light-theme-and-comfort-typography",
+    "0007-canvas-wrapper-and-layout-modules",
+    "0008-bubble-label-position",
+    "0009-aruco-markers",
+    "0010-confidence-band",
+    "0011-shalgalt-file-format",
+    "0012-age-encryption",
+    "0013-rest-api-v1-datastore",
+    "0014-server-binary-and-rusqlite-store",
+    "0015-api-port-default-and-fallback",
+    "0016-partial-marker-homography",
+    "0017-github-releases-distribution",
+    "0018-optin-updater",
+    "0019-docs-fumadocs-and-gh-pages"
+  ]
+}

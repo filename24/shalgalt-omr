@@ -1,16 +1,19 @@
-# ADR 0018 — Opt-in updater: `tauri-plugin-updater` + static `gh-pages` manifest, default OFF
+---
+title: ADR 0018 — Opt-in updater
+description: tauri-plugin-updater with a static gh-pages manifest, default OFF so offline schools never see a prompt.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-19
-- **Deciders**: filename24
-- **Related issues**: P6-04 (integrate `tauri-plugin-updater`)
-- **Related ADRs**: [0017](0017-github-releases-distribution.md) (the Release assets and
-  signatures this manifest points at), [0006](0006-light-theme-and-comfort-typography.md)
-  (the preferences surface where the opt-in toggle lives next to the theme controls)
-- **Master-plan note**: §16 nominally reserves number 0012 for "Opt-in updater"; that
-  file number is taken by the P4 `age`-encryption ADR. Under the monotonic-no-gap naming
-  rule this ADR is **0018** (paired with 0017 for distribution). §16's table must be
-  reconciled to the real numbers in the same PR.
+<Callout type="success" title="Accepted · 2026-06-19">
+  **Deciders:** filename24 · **Related issues:** P6-04 (integrate `tauri-plugin-updater`) ·
+  **Related ADRs:** ADR 0017 (the Release assets and signatures this manifest points at),
+  ADR 0006 (the preferences surface where the opt-in toggle lives next to the theme controls)
+</Callout>
+
+<Callout type="warn" title="Master-plan note">
+  §16 nominally reserves number 0012 for "Opt-in updater"; that file number is taken by the P4
+  `age`-encryption ADR. Under the monotonic-no-gap naming rule this ADR is **0018** (paired
+  with 0017 for distribution). §16's table must be reconciled to the real numbers in the same PR.
+</Callout>
 
 ## Context
 
@@ -45,6 +48,12 @@ Where does the update manifest live, and what is the default behavior?
 | | **`tauri-plugin-updater` minisign signatures** | **Chosen** — the bundle + manifest are signed with the updater keypair; the public key is compiled into the app and verifies every update. |
 
 ## Decision
+
+<Callout type="info" title="Decision">
+  Wire `tauri-plugin-updater` but keep it **opt-in, default OFF**: no check fires on launch
+  until a teacher enables it. The update manifest is a static `latest.json` on `gh-pages`, and
+  every update is **minisign-verified** against a public key embedded in the app.
+</Callout>
 
 **1. The updater is opt-in and OFF by default.** `tauri-plugin-updater` is wired in, but
 no update check fires on launch. A **"Check for updates" toggle** lives in app
@@ -112,3 +121,12 @@ identifiers, mapped to Mongolian in the table).
 - **String-table keys** for the updater UI land with the toggle implementation (P6-04).
 - **Verify default-OFF** is asserted in the v1.0 acceptance checklist (master plan §17 —
   "Auto-updater is **off** by default").
+
+<Cards>
+  <Card href="/adr/0017-github-releases-distribution" title="ADR 0017 — GitHub Releases distribution">
+    The Release assets and signatures the `latest.json` manifest points at.
+  </Card>
+  <Card href="/adr/0006-light-theme-and-comfort-typography" title="ADR 0006 — Light theme & comfort typography">
+    The preferences surface where the opt-in toggle lives next to the theme controls.
+  </Card>
+</Cards>

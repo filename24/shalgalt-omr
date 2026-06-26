@@ -1,10 +1,13 @@
-# ADR 0011 — `.shalgalt` project file: a zip container with a plaintext manifest
+---
+title: ADR 0011 — `.shalgalt` project file
+description: A zip container with an always-plaintext manifest, streaming read/write, and a fixed internal layout for exam projects.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-31
-- **Deciders**: filename24
-- **Related issues**: P4-01 (`shalgalt-fileformat` crate skeleton), P4-03 (Tauri commands)
-- **Related ADRs**: [0012](0012-age-encryption.md) (optional `age` encryption layer)
+<Callout type="success" title="Accepted · 2026-05-31">
+  **Deciders:** filename24 · **Related:** P4-01 (`shalgalt-fileformat` crate skeleton),
+  P4-03 (Tauri commands) · **Related ADRs:** [0012](/adr/0012-age-encryption) (optional
+  `age` encryption layer).
+</Callout>
 
 ## Context
 
@@ -37,7 +40,10 @@ We need a container format that:
 
 ## Decision
 
-Adopt a **zip container** with the extension `.shalgalt`, and a fixed internal layout:
+<Callout type="info" title="Decision">
+  Adopt a **zip container** with the extension `.shalgalt`, an always-plaintext
+  `manifest.json` preview surface, and a fixed internal layout.
+</Callout>
 
 ```
 example.shalgalt   (zip)
@@ -52,7 +58,7 @@ example.shalgalt   (zip)
 Key sub-decisions:
 
 - **`manifest.json` is always plaintext**, even when the rest of the archive is encrypted
-  (see [0012](0012-age-encryption.md)). It is the only entry a reader may buffer whole — it
+  (see [0012](/adr/0012-age-encryption)). It is the only entry a reader may buffer whole — it
   is tiny. It MUST NOT contain student PII, because anyone can read it without the passphrase.
   Its required keys are `format_version`, `title`, `created_at` (RFC 3339), `sheet_count`,
   `encrypted`; `exam_id` and `hint` are optional.
@@ -91,10 +97,16 @@ Key sub-decisions:
 
 ## Follow-up
 
-- [0012](0012-age-encryption.md) records the optional `age` passphrase encryption layered on
+- [0012](/adr/0012-age-encryption) records the optional `age` passphrase encryption layered on
   top of this container.
 - P4-03 wires `project_open` / `project_save` / `project_export` Tauri commands onto this
   crate and adds the `$lib/ipc/project.ts` frontend wrapper.
 - P4-07 registers the `.shalgalt` extension with the OS so a double-click opens the app.
 - A future `format_version: 2` (if the layout ever changes) must ship with a migration note and
   a loader that still reads version 1.
+
+<Cards>
+  <Card href="/adr/0012-age-encryption" title="ADR 0012 — Optional age encryption">
+    The optional `age` passphrase encryption layered on top of this container.
+  </Card>
+</Cards>

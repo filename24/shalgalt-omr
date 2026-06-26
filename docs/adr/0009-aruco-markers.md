@@ -1,11 +1,12 @@
-# ADR 0009 — Corner markers: ArUco DICT_6X6_50, IDs 0..3 in TL/TR/BR/BL order
+---
+title: ADR 0009 — ArUco corner markers
+description: DICT_6X6_50 markers with IDs 0–3 in TL/TR/BR/BL order replace anonymous corner squares.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-10
-- **Deciders**: filename24
-- **Related issues**: P3-01 (ArUco markers), supersedes the P0/P1 corner-square markers
-- **Supersedes**: implicit "solid corner squares" decision baked into the original
-  P0 template editor.
+<Callout type="success" title="Accepted · 2026-05-10">
+  **Deciders:** filename24 · **Related:** P3-01 (ArUco markers) · **Supersedes:** the
+  implicit "solid corner squares" decision baked into the original P0/P1 template editor.
+</Callout>
 
 ## Context
 
@@ -37,7 +38,9 @@ slot resolution is built into detection.
 
 ## Decision
 
-Adopt **`DICT_6X6_50` with marker IDs `[0, 1, 2, 3]` in TL/TR/BR/BL order**.
+<Callout type="info" title="Decision">
+  Adopt **`DICT_6X6_50` with marker IDs `[0, 1, 2, 3]` in TL/TR/BR/BL order.**
+</Callout>
 
 Rationale:
 
@@ -80,10 +83,17 @@ Rationale:
 
 ## Follow-up
 
-- ADR 0010 covers the per-bubble confidence band and the
-  `[0.35, 0.65]` "needs review" decision rule that consumes the markers' warped
-  output.
 - Real-scan validation lands in P8 hardening once we have representative MFP and
   phone fixtures from a partner school. Until then, the synthetic fixtures in
   `crates/shalgalt-cv/tests/fixtures/` (P3-09) lock the ArUco detection path
   against regressions.
+
+<Cards>
+  <Card href="/adr/0010-confidence-band" title="ADR 0010 — Fill measurement & confidence">
+    Consumes the markers' warped output: the per-bubble confidence band and the
+    `[0.35, 0.65]` "needs review" decision rule.
+  </Card>
+  <Card href="/adr/0016-partial-marker-homography" title="ADR 0016 — Partial-marker homography">
+    Recovering perspective when fewer than four of these markers are detected.
+  </Card>
+</Cards>

@@ -1,9 +1,11 @@
-# ADR 0001 — Windows OpenCV install strategy
+---
+title: ADR 0001 — Windows OpenCV strategy
+description: Provision OpenCV at Windows build time via the prebuilt upstream self-extractor rather than vcpkg, Chocolatey, or LFS-vendored binaries.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-02
-- **Deciders**: filename24
-- **Supersedes**: README.md "Windows" placeholder
+<Callout type="success" title="Accepted · 2026-05-02">
+  **Deciders:** filename24 · **Supersedes:** README.md "Windows" placeholder
+</Callout>
 
 ## Context
 
@@ -29,7 +31,9 @@ CI dev-build matrix landing across Linux and macOS, Windows is the missing third
 
 ## Decision
 
-Adopt **Option B — prebuilt `opencv-X.Y.Z-windows.exe` from upstream releases**.
+<Callout type="info" title="Decision">
+  Adopt **Option B — prebuilt `opencv-X.Y.Z-windows.exe` from upstream releases**.
+</Callout>
 
 Rationale, in priority order:
 
@@ -54,9 +58,9 @@ Rationale, in priority order:
 
 OpenCV **4.10.0**. Bumping requires updating both:
 
-- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — the `OPENCV_VERSION`
+- [`.github/workflows/ci.yml`](https://github.com/filename24/shalgalt-omr/blob/stable/.github/workflows/ci.yml) — the `OPENCV_VERSION`
   job-level env var (drives the download URL and the `opencv_world<NNN>` DLL name).
-- [`README.md`](../../README.md) — the Windows install snippet.
+- [`README.md`](https://github.com/filename24/shalgalt-omr/blob/stable/README.md) — the Windows install snippet.
 
 The shortened DLL name follows OpenCV's convention: dots stripped, no padding. So
 `4.10.0` → `opencv_world4100.dll`, `4.5.5` → `opencv_world455.dll`.

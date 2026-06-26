@@ -11,16 +11,30 @@ import { openapi } from '@/lib/openapi';
 import { OpenAPIPage } from '@/components/api-page';
 import { getLastEdit } from '@/lib/last-edit';
 import { githubBlobUrl, markdownUrl } from '@/lib/repo';
+import { Card } from 'fumadocs-ui/components/card';
 
-// Content authors write absolute cross-page links like `/dev/architecture` or
-// `/user/quick-start` (the dev/ and user/ content trees). The pages actually live under
-// `/{locale}/docs/...`, so localize those links here before delegating to Fumadocs' default
-// anchor (which prepends the Next.js basePath). External and in-page links pass through.
+// Content authors write absolute cross-page links like `/dev/architecture`,
+// `/user/quick-start`, or `/adr/0009-aruco-markers` (the dev/, user/, and adr/ content
+// trees). The pages actually live under `/{locale}/docs/...`. Rewrite internal links into
+// the localized route before delegating to the underlying component.
+const INTERNAL_LINK = /^\/(dev|user|adr)(\/|$)/;
+const localizeHref = (lang: string, href?: string) =>
+  href && INTERNAL_LINK.test(href) ? `/${lang}/docs${href}` : href;
+
+// Anchor used for plain Markdown links. External and in-page links pass through Fumadocs'
+// default anchor (which prepends the Next.js basePath).
 function localizedAnchor(lang: string) {
   const Anchor = defaultMdxComponents.a as React.FC<React.ComponentProps<'a'>>;
   return function A({ href, ...props }: React.ComponentProps<'a'>) {
-    const h = href && /^\/(dev|user)(\/|$)/.test(href) ? `/${lang}/docs${href}` : href;
-    return <Anchor href={h} {...props} />;
+    return <Anchor href={localizeHref(lang, href)} {...props} />;
+  };
+}
+
+// `<Card href="/dev/..." />` renders its own anchor (not the Markdown `a`), so it needs the
+// same locale rewriting to keep cross-tree navigation cards working under `/{locale}/docs`.
+function localizedCard(lang: string) {
+  return function LocalizedCard({ href, ...props }: React.ComponentProps<typeof Card>) {
+    return <Card href={localizeHref(lang, href)} {...props} />;
   };
 }
 
@@ -55,6 +69,7 @@ export default async function Page(props: {
         <MDX
           components={getMDXComponents({
             a: localizedAnchor(params.lang),
+            Card: localizedCard(params.lang),
             // Preload the spec on the server so the client renderer gets serialized data
             // (no filesystem path read on the client; output stays static).
             OpenAPIPage: async (props) => (

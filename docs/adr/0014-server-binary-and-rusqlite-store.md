@@ -1,11 +1,13 @@
-# ADR 0014 — Standalone server + a shared `rusqlite` `DataStore`, read path split from plugin-sql writes
+---
+title: ADR 0014 — Standalone server & rusqlite store
+description: A shared rusqlite DataStore implementation, with the desktop's read path split from plugin-sql writes.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-06-17
-- **Deciders**: filename24
-- **Related issues**: P5-05 (`apps/server` binary), P5-03/04 (the endpoints it serves)
-- **Related ADRs**: [0013](0013-rest-api-v1-datastore.md) (the `DataStore` seam + DTOs),
-  [0003](0003-cargo-workspace-and-crate-boundaries.md) (workspace boundaries)
+<Callout type="success" title="Accepted · 2026-06-17">
+  **Deciders:** filename24 · **Related issues:** P5-05 (`apps/server` binary), P5-03/04 (the
+  endpoints it serves) · **Related ADRs:** ADR 0013 (the `DataStore` seam + DTOs), ADR 0003
+  (workspace boundaries)
+</Callout>
 
 ## Context
 
@@ -32,6 +34,13 @@ a second writer?
 | | CLI flags + token in env | **Chosen** — flags for config, `SHALGALT_API_TOKEN` in env (a secret belongs in env, not argv). |
 
 ## Decision
+
+<Callout type="info" title="Decision">
+  Introduce a shared **`crates/shalgalt-store`** crate exporting a `rusqlite`-backed
+  `SqliteStore` (read/write, server) plus a `DeferredReadOnlyStore` (read-only, desktop), so
+  one store implementation serves both hosts while core stays database-free and plugin-sql
+  remains the single writer.
+</Callout>
 
 **1. New crate `crates/shalgalt-store`.** It depends on `shalgalt-core` (for the trait +
 DTOs) and `rusqlite` (`bundled`), and exports `SqliteStore` implementing `DataStore`, plus
@@ -89,3 +98,12 @@ binding a socket. Layer order: auth inside CORS, so the CORS preflight (`OPTIONS
 - **Pagination.** List endpoints are currently unbounded (see ADR 0013 — the desktop
   browser paginates client-side). A server-enforced page-size cap on `/v1/results` lands
   when result volumes warrant it.
+
+<Cards>
+  <Card href="/adr/0013-rest-api-v1-datastore" title="ADR 0013 — REST `/v1` & DataStore seam">
+    The `DataStore` seam and DTOs this crate implements, and the versioned route surface.
+  </Card>
+  <Card href="/adr/0003-cargo-workspace-and-crate-boundaries" title="ADR 0003 — Cargo workspace & crate boundaries">
+    The workspace rules (§8.1/§8.2) that keep the rusqlite code out of core.
+  </Card>
+</Cards>

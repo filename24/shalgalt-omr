@@ -1,9 +1,11 @@
-# ADR 0003 — Cargo workspace + crate boundaries
+---
+title: ADR 0003 — Cargo workspace & crate boundaries
+description: Split the single P0 crate into a Cargo workspace of app hosts and pure library crates so the grading core is reusable without Tauri.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-08
-- **Deciders**: filename24
-- **Implements**: P2-01 / P2-02 / P2-03
+<Callout type="success" title="Accepted · 2026-05-08">
+  **Deciders:** filename24 · **Implements:** P2-01 / P2-02 / P2-03
+</Callout>
 
 ## Context
 
@@ -23,7 +25,12 @@ or duplicate the domain types. Neither is acceptable.
 
 ## Decision
 
-Convert the repository to a Cargo workspace with the following members:
+<Callout type="info" title="Decision">
+  Convert the repository to a **Cargo workspace** with `apps/*` hosts and pure
+  `crates/*` libraries.
+</Callout>
+
+The workspace members:
 
 ```
 apps/desktop/        Tauri 2 binary (IPC commands, axum spawn loop)
@@ -64,3 +71,15 @@ Constraints enforced by `cargo check`:
   from the workspace shape.
 - ADR 0005 records the IPC payload shape for the new `commands::pdf` module and how
   it stays inside the workspace's path-only Rule 1.
+
+<Cards>
+  <Card href="/adr/0002-pdf-generator-printpdf" title="ADR 0002 — PDF generator: printpdf">
+    The pure-Rust PDF engine that the `shalgalt-pdf` workspace crate is built around.
+  </Card>
+  <Card href="/adr/0004-ts-rs-type-codegen" title="ADR 0004 — TypeScript bindings via ts-rs">
+    The type-binding contract that follows naturally from the workspace shape.
+  </Card>
+  <Card href="/adr/0005-pdf-ipc-contract" title="ADR 0005 — PDF generation IPC contract">
+    The IPC payload shape for `commands::pdf` and how it honors the path-only Rule 1.
+  </Card>
+</Cards>

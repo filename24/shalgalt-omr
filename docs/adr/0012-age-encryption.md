@@ -1,10 +1,12 @@
-# ADR 0012 — Optional `.shalgalt` encryption: `age` passphrase recipients, ASCII-armored
+---
+title: ADR 0012 — Optional age encryption
+description: Passphrase-based, ASCII-armored age encryption applied per-entry to .shalgalt payloads, leaving the manifest readable.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-31
-- **Deciders**: filename24
-- **Related issues**: P4-02 (`age` passphrase encryption layer)
-- **Related ADRs**: [0011](0011-shalgalt-file-format.md) (the `.shalgalt` zip container)
+<Callout type="success" title="Accepted · 2026-05-31">
+  **Deciders:** filename24 · **Related:** P4-02 (`age` passphrase encryption layer) ·
+  **Related ADRs:** [0011](/adr/0011-shalgalt-file-format) (the `.shalgalt` zip container).
+</Callout>
 
 ## Context
 
@@ -19,7 +21,7 @@ Constraints:
 1. **Passphrase, not key files.** Teachers are non-technical (master plan §7, "design for older
    teachers"). Asking them to manage X25519 key pairs is a non-starter. A single passphrase they
    choose and remember is the only usable model.
-2. **The manifest must stay readable.** Per [0011](0011-shalgalt-file-format.md), the dashboard
+2. **The manifest must stay readable.** Per [0011](/adr/0011-shalgalt-file-format), the dashboard
    previews `manifest.json` without a passphrase. So encryption must be **per-entry**, wrapping
    every file *except* the manifest — not a whole-archive blob.
 3. **Streaming (Rule 1).** Encrypting a hundred-MB PDF must not buffer it in memory.
@@ -40,8 +42,12 @@ Constraints:
 
 ## Decision
 
-Encrypt with the **`age`** crate (`str4d/rage`, the reference Rust implementation), using a
-**passphrase (scrypt) recipient**, and **ASCII armor** on every encrypted entry. Concretely:
+<Callout type="info" title="Decision">
+  Encrypt with the **`age`** crate (`str4d/rage`) using a **passphrase (scrypt) recipient** and
+  **ASCII armor** on every encrypted entry, leaving `manifest.json` in plaintext.
+</Callout>
+
+Concretely:
 
 - **What is encrypted:** every zip entry *except* `manifest.json`. `manifest.encrypted = true`
   records the choice so a reader knows a passphrase is required for content (but not for the
@@ -99,3 +105,9 @@ Encrypt with the **`age`** crate (`str4d/rage`, the reference Rust implementatio
   assertion (originally slated for P8 hardening) is already covered by
   `tests/roundtrip.rs::encrypted_archive_contains_no_payload_plaintext`, which guards against an
   accidental bypass of the encrypt path.
+
+<Cards>
+  <Card href="/adr/0011-shalgalt-file-format" title="ADR 0011 — `.shalgalt` project file">
+    The zip container this encryption layer wraps, entry by entry.
+  </Card>
+</Cards>

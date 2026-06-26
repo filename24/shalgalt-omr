@@ -1,9 +1,12 @@
-# ADR 0010 — Per-bubble fill measurement, decision bands, and confidence formula
+---
+title: ADR 0010 — Fill measurement & confidence
+description: Per-bubble fill scoring on the warped canvas, the confidence formula, and the locked [0.35, 0.65] needs-review bands.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-10
-- **Deciders**: filename24
-- **Related issues**: P3-02 (adaptive thresholding), P3-04 (per-bubble confidence)
+<Callout type="success" title="Accepted · 2026-05-10">
+  **Deciders:** filename24 · **Related:** P3-02 (adaptive thresholding), P3-04 (per-bubble
+  confidence).
+</Callout>
 
 ## Context
 
@@ -19,6 +22,12 @@ Two engineering questions remain:
 2. What does `confidence` mean, and how is it computed?
 
 ## Decision — measurement
+
+<Callout type="info" title="Decision">
+  Measure `fill` as the mean ink fraction inside a sample disc strictly within the printed
+  bubble, taken from the continuous `255 − gray` signal — **not** from an
+  adaptive-threshold binary.
+</Callout>
 
 For each bubble:
 
@@ -104,3 +113,13 @@ This ADR locks the bands; reopening requires a new ADR plus a master-plan update
   ratios from real student answers.
 - Per-bubble confidence is consumed by the manual-review queue (P3-07). The
   ordering rule (`asc_by_confidence`) lands with that queue's UI.
+
+<Cards>
+  <Card href="/adr/0009-aruco-markers" title="ADR 0009 — ArUco corner markers">
+    The marker-driven perspective warp that produces the canonical canvas this
+    measurement samples.
+  </Card>
+  <Card href="/adr/0008-bubble-label-position" title="ADR 0008 — Bubble label position">
+    Why the in-circle printed label stays well below the 0.35 fill threshold.
+  </Card>
+</Cards>

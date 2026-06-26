@@ -1,9 +1,11 @@
-# ADR 0006 — Light-default theme + comfortable typography mode
+---
+title: ADR 0006 — Light theme & comfort typography
+description: Make light the default theme via mode-watcher with dark opt-in, and add a one-toggle comfortable type scale driven by CSS variables.
+---
 
-- **Status**: Accepted
-- **Date**: 2026-05-08
-- **Deciders**: filename24
-- **Implements**: P2-09 / P2-10
+<Callout type="success" title="Accepted · 2026-05-08">
+  **Deciders:** filename24 · **Implements:** P2-09 / P2-10
+</Callout>
 
 ## Context
 
@@ -36,6 +38,12 @@ mode that bumps the entire scale a notch without per-component CSS.
 | Toggle a stylesheet at runtime | Medium | Flicker on swap | Acceptable |
 
 ## Decision
+
+<Callout type="info" title="Decision">
+  Adopt **`mode-watcher` with `defaultMode="light"`** for theming, and a
+  **`data-comfort` attribute + CSS-variable type scale** for the comfortable-typography
+  toggle.
+</Callout>
 
 **Theme (P2-09)**
 
