@@ -75,17 +75,33 @@ $env:LIBCLANG_PATH        = "C:\Program Files\LLVM\bin"
 $env:Path = "C:\tools\opencv\build\x64\vc16\bin;$env:Path"
 ```
 
+> `scripts/fetch-binaries.ps1` performs step 1 for you — it extracts OpenCV 4.10.0 to
+> `C:\tools\opencv` and copies the runtime `opencv_world4100.dll` into
+> `apps/desktop/resources/`. You still set steps 2–3 (the build-time env vars and `PATH`)
+> in your shell yourself, since the Rust compile and link read them at build time.
+
 Bumping OpenCV requires updating the version in three places: the snippet above, the
 `OPENCV_VERSION` job-level env in [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
 and the ADR itself.
 
-### pdfium
+### Native runtime libraries (pdfium + Windows OpenCV DLL)
 
-`pdfium-render` looks up the pdfium dynamic library at runtime. Download a release for
-your OS from [bblanchon/pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) and
-place it next to the executable, or extend `LD_LIBRARY_PATH` (Linux) / `DYLD_LIBRARY_PATH`
-(macOS) / `PATH` (Windows). P4 will add a script that bundles it into
-`tauri.conf.json#bundle.resources`.
+`pdfium-render` loads the pdfium dynamic library at runtime, and on Windows the OpenCV
+runtime DLL must ship next to the executable. Both land in `apps/desktop/resources/`
+(bundled via `tauri.conf.json#bundle.resources`) through a single idempotent script:
+
+| Platform      | Command                           | Fetches                               |
+| ------------- | --------------------------------- | ------------------------------------- |
+| Windows       | `pwsh scripts/fetch-binaries.ps1` | `pdfium.dll` + `opencv_world4100.dll` |
+| Linux / macOS | `scripts/fetch-binaries.sh`       | `libpdfium.so` / `libpdfium.dylib`    |
+
+You normally never run these by hand: they fire automatically on `pnpm install`
+(postinstall) and again before `pnpm tauri dev` / `pnpm tauri build`, so a fresh clone
+needs no manual step. They are idempotent — files already present are skipped; pass
+`-Force` (ps1) / `--force` (sh) to refresh — and are skipped automatically in CI or when
+`SHALGALT_SKIP_FETCH_BINARIES=1` is set. Run the platform command above manually if you
+ever need to repopulate `resources/` (e.g. you cleaned it, or installed with
+`--ignore-scripts`).
 
 ## Install & Dev
 
@@ -93,6 +109,11 @@ place it next to the executable, or extend `LD_LIBRARY_PATH` (Linux) / `DYLD_LIB
 pnpm install
 pnpm tauri dev
 ```
+
+> `pnpm install` runs the native-binary fetch automatically (postinstall), and
+> `pnpm tauri dev` / `pnpm tauri build` re-check it first, so `apps/desktop/resources/` is
+> populated without any manual step. See the **Native runtime libraries** section above to
+> run it by hand or to opt out with `SHALGALT_SKIP_FETCH_BINARIES=1`.
 
 > On first run, the SQL plugin creates the SQLite file in the OS-specific
 > `ProjectDirs::data_dir` (e.g. macOS `~/Library/Application Support/dev.filename.shalgalt-omr/`,
