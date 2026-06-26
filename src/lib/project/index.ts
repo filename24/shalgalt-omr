@@ -21,6 +21,10 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import type { OpenedProject, ProjectEntry } from "$lib/ipc/project";
 import { getTemplate, createTemplate } from "$lib/db/templates";
 import { getJobById, parseGradedSheets } from "$lib/db/jobs";
+import { createExam } from "$lib/db/exams";
+import { createAnswerKey, listAnswerKeysByExam } from "$lib/db/answerKeys";
+import { toAnswerKey } from "$lib/types/exam";
+import { parseStoredAnswerKeys } from "$lib/results/storedAnswerKeys";
 import { templateSchema, type OmrTemplate } from "$lib/types/template";
 import { answerKeySchema } from "$lib/schemas/answerKey";
 import type { GradedJobSheet } from "$lib/types/job";
@@ -35,6 +39,11 @@ const FORMAT_VERSION = 1;
 
 export interface AssembleProjectOptions {
   templateId: number;
+  /**
+   * When set, the exam's per-variant answer keys are bundled as
+   * `answer-keys.json` (an `AnswerKey[]`) and the manifest records `exam_id`.
+   */
+  examId?: number;
   /** When set, the job's answer key and graded sheets are bundled too. */
   jobId?: number;
   title: string;
@@ -80,6 +89,21 @@ export async function assembleProject(
     content: JSON.stringify(template.schema),
   });
 
+  // 2. answer-keys.json — when an exam is bundled, ship every variant's key as
+  // an `AnswerKey[]`. This is the canonical source for the import round-trip and
+  // takes precedence over the job's single key (see the jobId branch below).
+  let examKeysBundled = false;
+  if (opts.examId !== undefined) {
+    const records = await listAnswerKeysByExam(opts.examId);
+    const keys = records.map(toAnswerKey);
+    entries.push({
+      kind: "inline",
+      name: ENTRY_ANSWER_KEYS,
+      content: JSON.stringify(keys),
+    });
+    examKeysBundled = true;
+  }
+
   let sheetCount = 0;
   let gradedSheets: GradedJobSheet[] = [];
   let sourcePdfPath: string | null = null;
@@ -93,12 +117,15 @@ export async function assembleProject(
     gradedSheets = parseGradedSheets(job);
     sheetCount = gradedSheets.length;
 
-    // 2. answer-keys.json — the AnswerKey JSON the grade run was scored against.
-    entries.push({
-      kind: "inline",
-      name: ENTRY_ANSWER_KEYS,
-      content: job.answer_key_json,
-    });
+    // answer-keys.json — the AnswerKey JSON the grade run was scored against.
+    // Skipped when an exam already supplied the canonical keys above.
+    if (!examKeysBundled) {
+      entries.push({
+        kind: "inline",
+        name: ENTRY_ANSWER_KEYS,
+        content: job.answer_key_json,
+      });
+    }
 
     // 3. metadata.json — the graded per-page payload (scores + readings).
     entries.push({
@@ -138,7 +165,9 @@ export async function assembleProject(
     // forwards the same passphrase to project_export; the Rust writer enforces
     // `manifest.encrypted === passphrase.is_some()`.
     encrypted: Boolean(opts.passphrase),
-    // TODO(P4-04): populate `exam_id` once exam rows are wired in.
+    // Record the source exam id when one was bundled. It is a provenance hint —
+    // `restoreProject` always remaps keys onto a freshly created exam row.
+    ...(opts.examId !== undefined ? { exam_id: opts.examId } : {}),
   };
 
   return { manifestJson: JSON.stringify(manifest), entries };
@@ -173,21 +202,37 @@ export async function restoreProject(opened: OpenedProject): Promise<void> {
   }
   const template = templateSchema.parse(JSON.parse(templateText)) as OmrTemplate;
   // Backdrop is not part of the project file (Rule 3 sidecar), so null here.
-  await createTemplate(template, null);
+  const templateId = await createTemplate(template, null);
 
-  // 2. Validate the answer key when present. Persisting it belongs with the
-  // exam/job rows that P4-04 introduces; validate now so a corrupt archive
-  // fails loudly at import time.
+  // 2. Recreate the exam + its answer keys when the archive carries them.
+  // `answer-keys.json` is either an `AnswerKey[]` (exam export) or a single
+  // legacy `AnswerKey` (graded-job export); `parseStoredAnswerKeys` normalizes
+  // both. Each key is validated, then remapped onto the freshly created exam
+  // row — the source `exam_id` is provenance only and means nothing in this DB.
   const answerKeysText = await readEntry(opened, ENTRY_ANSWER_KEYS);
   if (answerKeysText) {
-    answerKeySchema.parse(JSON.parse(answerKeysText));
-    // TODO(P4-04): insert the answer key into the exams table once it exists.
+    const keys = parseStoredAnswerKeys(answerKeysText).map((k) =>
+      answerKeySchema.parse(k),
+    );
+    const exam = await createExam({
+      name: opened.manifest.title,
+      template_id: templateId,
+    });
+    for (const key of keys) {
+      await createAnswerKey({
+        exam_id: exam.id,
+        variant: key.variant,
+        answers: key.answers,
+      });
+    }
   }
 
   // 3. Graded metadata + image rows are restored once the jobs/results import
   // path is wired. The extracted page images live under
   // `opened.workspaceDir`; their `ExtractedEntry.path` values are what future
-  // result rows will point at.
-  // TODO(P4-04): rebuild job/result rows from metadata.json and link the
+  // result rows will point at. This is the largest remaining piece — it needs
+  // a job row (createJob) plus per-page result reconstruction with remapped
+  // image paths, which is substantial new import machinery beyond this task.
+  // TODO(P4-05): rebuild job/result rows from metadata.json and link the
   // extracted page-*.png entries by path.
 }
